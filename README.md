@@ -29,7 +29,7 @@ manifest.json  Build state (created automatically)
 | `image_quality` | JPEG quality for resized images (0–95) | `75` |
 | `micro_post_max_length` | Max plain-text characters for a post to be treated as a microblog post | `180` |
 | `micro_posts_per_page` | Posts shown per microblog page (`microblog.html`, `microblog-2.html`, …) | `20` |
-| `index_meta_description` | `<meta name="description">` content on index pages (via `MAGNETIZER_META_DESCRIPTION` placeholder) | Not set |
+| `index_meta_description` | `<meta name="description">` content on index pages (via `MAGNETIZER_METADATA` placeholder) | Not set |
 | `index_title` | When set, the title of `index.html` becomes `site_name - index_title` | Not set |
 | `categories` | Map of category slug to display name, e.g. `{photography: Photography}` | `{}` (no categories) |
 | `navigation` | Map of page filename to nav label, e.g. `{index.html: Home}`, in display order | `{}` (no navigation) |
@@ -82,6 +82,8 @@ Set `favourite: true` to mark a post as a favourite — it will receive an addit
 
 Set `ai_assisted: true` to mark a post as AI-assisted — a disclosure banner is inserted at the top of the post's content, wherever it's shown (individual post page, and index/category excerpts or full body). The banner text comes from `ai_disclosure_html` in `config.yaml` (raw HTML, so it can include a link) — Magnetizer has no built-in wording of its own beyond a generic fallback sentence used when `ai_disclosure_html` isn't set. The banner also needs the `.container-brown` and `.ai-disclosure` CSS rules to be present in the project's `resources/` directory — the icon itself is a CSS background image, base64-encoded in the project's own stylesheet, same as every other icon on the site.
 
+Set `noindex: true` to exclude a post from search engine indexing — it's dropped from `sitemap.xml` and its page gets a `<meta name="robots" content="noindex">` tag via `MAGNETIZER_METADATA`, but is otherwise a normal published post (still shown on index pages, category pages, the feed, the archive, and post navigation). Unlike `draft`, it doesn't hide the post anywhere except search indexing. If `noindex` is absent or `false`, the post is indexed normally. `noindex` works the same way on special pages.
+
 Set `category` to a slug from the `categories` map in `config.yaml` to assign the post to a category — matching is case-insensitive. This adds a link to the category's page in the post's footer, and includes the post on that category's page (`{slug}.html`). If `categories` is configured, the build prints a warning for posts with no category or with a category not found in `categories`.
 
 A post with no title, no images, and a plain-text body of `micro_post_max_length` characters or fewer is treated as a microblog post and rendered with an additional `micro-post` CSS class. Microblog posts also get a `<a href="microblog.html" class="microblog">Microblog</a>` link in their footer (before the category link, if any), linking to the paginated microblog page.
@@ -133,11 +135,9 @@ Magnetizer uses a single template file: `templates/index.html`. It must contain 
 
 | Placeholder | Required | Replaced with |
 |---|---|---|
-| `MAGNETIZER_TITLE` | Yes | The page title — `post_title - site_name` for titled posts, `Post N - site_name` for untitled posts (e.g. microblog posts), `site_name` for index pages |
+| `MAGNETIZER_METADATA` | Yes | A block of `<head>` metadata tags: `<title>`, an optional `<meta name="description">` (index pages only, from `index_meta_description`), a `<link rel="canonical">`, and — for posts or special pages with `noindex: true` — a `<meta name="robots" content="noindex">`. Each line is present only when applicable. |
 | `MAGNETIZER_CONTENT` | Yes | The generated page content |
 | `MAGNETIZER_BUILD_ID` | No | A Unix timestamp, useful for cache-busting: `style.css?v=MAGNETIZER_BUILD_ID` |
-| `MAGNETIZER_CANONICAL_URL` | No | The canonical URL of the page. For `index.html` this is the root URL (e.g. `https://example.github.io/`); for all other pages it is `{site_url}/{filename}`. Use in a `<link rel="canonical">` tag to prevent duplicate-page issues with search engines. |
-| `MAGNETIZER_META_DESCRIPTION` | No | On index pages: replaced with `<meta name="description" content="...">` using `index_meta_description` from config. Removed (empty string) when not configured or on non-index pages. |
 
 Example `templates/index.html`:
 
@@ -146,8 +146,7 @@ Example `templates/index.html`:
 <html lang="en">
   <head>
     <meta charset="UTF-8">
-    <title>MAGNETIZER_TITLE</title>
-    <link rel="canonical" href="MAGNETIZER_CANONICAL_URL">
+    MAGNETIZER_METADATA
     <link rel="stylesheet" href="resources/style.css?v=MAGNETIZER_BUILD_ID">
   </head>
   <body>

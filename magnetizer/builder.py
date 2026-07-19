@@ -161,7 +161,8 @@ def _write_post_html(post, index_page_url, dist_dir, config, template, newer_url
     filename = f"{post.id}.html"
     html = render_template(template, title=title, content=content_html,
                            canonical=canonical_url(config["site_url"], filename),
-                           navigation=render_navigation(config["navigation"], filename))
+                           navigation=render_navigation(config["navigation"], filename),
+                           is_noindex=post.is_noindex)
     (dist_dir / filename).write_text(html)
 
 
@@ -262,7 +263,8 @@ def _build_special_page(name, content_dir, dist_dir, config, template, values, w
     filename = f"{name}.html"
     html = render_template(template, title=title, content=content_html,
                            canonical=canonical_url(config["site_url"], filename),
-                           navigation=render_navigation(config["navigation"], filename))
+                           navigation=render_navigation(config["navigation"], filename),
+                           is_noindex=post.is_noindex)
     (dist_dir / filename).write_text(html)
     return w, dynamic_flag
 
@@ -367,6 +369,7 @@ def build(cwd, filename=None, flush=False, resources=False, on_progress=None):
         for name in config["special_pages"]
         if (content_dir / f"{name}.md").exists()
     ]
+    special_page_posts_by_name = {p.id: p for p in special_page_posts}
 
     # Sitewide dynamic-value computation runs unconditionally (even for a single-page
     # preview build) so that any shortcodes on the page(s) being built expand correctly.
@@ -555,6 +558,8 @@ def build(cwd, filename=None, flush=False, resources=False, on_progress=None):
         index_lastmod = _lastmod([content_dir / f"{pid}.md" for pid in published_post_ids_sorted_desc])
         sitemap_pages = []
         for pid in published_post_ids_sorted_desc:
+            if posts_cache[pid].is_noindex:
+                continue
             post_files = [content_dir / f"{pid}.md"] + [
                 f for f in content_dir.iterdir() if re.match(rf'^{pid}-image-', f.name)
             ]
@@ -583,6 +588,8 @@ def build(cwd, filename=None, flush=False, resources=False, on_progress=None):
             for page_num in range(1, total_micro_pages_sitemap + 1):
                 sitemap_pages.append((microblog_page_url(page_num), micro_lastmod))
         for name in config["special_pages"]:
+            if special_page_posts_by_name[name].is_noindex:
+                continue
             page_files = [content_dir / f"{name}.md"] + [
                 content_dir / img for img in _special_page_image_filenames(content_dir, name)
             ]

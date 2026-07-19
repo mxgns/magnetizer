@@ -263,7 +263,7 @@ Examples:
 | `posts_per_page` | Number of posts per page when generating the index files | `12` |
 | `micro_post_max_length` | Maximum plain-text character count for a post to be treated as a microblog post | `180` |
 | `micro_posts_per_page` | Number of microblog posts per page when generating the microblog pages | `20` |
-| `index_meta_description` | Content for the `<meta name="description">` tag on index pages, via the `MAGNETIZER_META_DESCRIPTION` template placeholder | Not set — placeholder is removed |
+| `index_meta_description` | Content for the `<meta name="description">` tag on index pages, via the `MAGNETIZER_METADATA` template placeholder | Not set — line is omitted |
 | `index_title` | When set, the title of `index.html` becomes `site_name - index_title` instead of just `site_name` | Not set — `index.html` title is just `site_name` |
 | `categories` | A map of category slug to display name, e.g. `{photography: Photography}`. See [Categories](#categories). | `{}` (no categories) |
 | `navigation` | A map of page filename to nav label, e.g. `{index.html: Home}`. See [Navigation](#navigation). | `{}` (no navigation) |
@@ -282,11 +282,9 @@ The following placeholders are available:
 
 | Placeholder | Required | Replaced with |
 | --- | --- | --- |
-| `MAGNETIZER_TITLE` | Yes | The title of the page, made up from `site_name` (from config) plus contextual information, e.g:<br>• `site_name` (index.html, no `index_title`)<br>• `site_name - index_title` (index.html, with `index_title`)<br>• `site_name - Page 2` (index-2.html and beyond)<br>• `post_title - site_name` (individual post page with a title)<br>• `Post N - site_name` (individual post page without a title, e.g. a microblog post) |
+| `MAGNETIZER_METADATA` | Yes | A block of `<head>` metadata tags — see [Metadata](#metadata) below. |
 | `MAGNETIZER_CONTENT` | Yes | The generated page content — one post for an individual post page or multiple posts for an index page. |
 | `MAGNETIZER_BUILD_ID` | No | A Unix timestamp generated at build time, e.g. `1748123456`. Useful for cache-busting static assets: `<link rel="stylesheet" href="resources/style.css?v=MAGNETIZER_BUILD_ID">`. The same value is used across all pages in a single build. |
-| `MAGNETIZER_CANONICAL_URL` | No | The canonical URL of the page, derived from `site_url` in config. For `index.html` this is the root URL (e.g. `https://example.github.io/`); for all other pages it is `site_url` + `/` + filename (e.g. `https://example.github.io/1.html`). Use in a `<link rel="canonical">` tag to help search engines identify the preferred URL for each page. |
-| `MAGNETIZER_META_DESCRIPTION` | No | On index pages: replaced with `<meta name="description" content="...">` using the value of `index_meta_description` from config, if set. Replaced with an empty string when not configured, or on non-index pages. |
 | `MAGNETIZER_NAVIGATION` | No | A `<ul>` of nav links built from `navigation` in config. See [Navigation](#navigation). Replaced with an empty string when `navigation` is not configured. |
 
 The following template is required in `templates/`:
@@ -300,8 +298,7 @@ Example `index.html`:
 <html lang="en">
   <head>
     <meta charset="UTF-8">
-    <title>MAGNETIZER_TITLE</title>
-    <link rel="canonical" href="MAGNETIZER_CANONICAL_URL">
+    MAGNETIZER_METADATA
     <link rel="stylesheet" href="resources/style.css?v=MAGNETIZER_BUILD_ID">
   </head>
   <body>
@@ -312,6 +309,27 @@ Example `index.html`:
 ```
 
 Magnetizer does not enforce any structure beyond the presence of the placeholders. The templates are otherwise free-form — all styling, layout and structure is the responsibility of the template author.
+
+### Metadata
+
+`MAGNETIZER_METADATA` expands to one or more lines, each present only when applicable, in this fixed order:
+
+```html
+<title>PAGE_TITLE</title>
+<meta name="description" content="...">
+<link rel="canonical" href="...">
+<meta name="robots" content="noindex">
+```
+
+- `<title>` is always present. `PAGE_TITLE` is made up from `site_name` (from config) plus contextual information, e.g:
+  - `site_name` (index.html, no `index_title`)
+  - `site_name - index_title` (index.html, with `index_title`)
+  - `site_name - Page 2` (index-2.html and beyond)
+  - `post_title - site_name` (individual post page with a title)
+  - `Post N - site_name` (individual post page without a title, e.g. a microblog post)
+- `<meta name="description">` appears only on index pages, using `index_meta_description` from config, if set.
+- `<link rel="canonical">` appears on every generated page, derived from `site_url` in config. For `index.html` this is the root URL (e.g. `https://example.github.io/`); for all other pages it is `site_url` + `/` + filename (e.g. `https://example.github.io/1.html`).
+- `<meta name="robots" content="noindex">` appears only for posts or special pages with `noindex: true` in frontmatter — see [Noindex posts](#noindex-posts).
 
 ### Navigation
 
@@ -468,6 +486,23 @@ Magnetizer ships no opinion on this wording — it's blog-specific content, not 
 The banner appears wherever the post's content is shown — the individual post page, and the excerpt or full body shown on index and category pages — since it's a disclosure about the content itself. If `ai_assisted` is absent or `false`, no banner is added.
 
 The banner has no icon markup of its own — like every other icon on the site, the icon is a CSS background image on `.ai-disclosure`, base64-encoded directly in the project's own `resources/style.css`. The banner relies on the `.container-brown` and `.ai-disclosure` CSS rules being present in the project's `resources/` directory, the same way other CSS-dependent conventions (e.g. container colour variants) rely on styling the project author supplies.
+
+### Noindex posts
+
+A post can be excluded from search engine indexing by setting `noindex: true` in its frontmatter:
+
+```yaml
+---
+date: 2026-05-21
+noindex: true
+---
+```
+
+A noindex post is excluded from `sitemap.xml`, and its own page gets a `<meta name="robots" content="noindex">` tag via `MAGNETIZER_METADATA` (see [Metadata](#metadata)) — this is what actually tells search engines not to index the page; a robots.txt `Disallow` alone doesn't, since a disallowed page can still be indexed (without its content) if it's discovered through other links, and would also stop crawlers from ever seeing the noindex tag itself. It's otherwise treated as a normal published post — it still appears on index pages, category pages, the Atom feed, the archive, and post navigation, and its HTML page is generated as usual. This is different from `draft`, which hides a post everywhere except its own direct URL.
+
+`noindex` works the same way on special pages (see [Special pages](#special-pages)) as on regular posts.
+
+If `noindex` is absent or set to `false`, the post is indexed normally.
 
 ### Categories
 
@@ -968,11 +1003,11 @@ Magnetizer generates an XML sitemap at `dist/sitemap.xml` and a `dist/robots.txt
 
 | Page | Condition |
 | --- | --- |
-| `{post-id}.html` | All published (non-draft) posts, in reverse chronological order |
+| `{post-id}.html` | All published (non-draft) posts, in reverse chronological order, excluding posts with `noindex: true` |
 | `index.html`, `index-2.html`, … | All index pages |
 | `{slug}.html`, `{slug}-2.html`, … | All pages for each category that has at least one matching post |
 | `microblog.html`, `microblog-2.html`, … | All microblog pages, if at least one microblog post exists |
-| `{name}.html` | For each name in `special_pages` (see [Special pages](#special-pages)) |
+| `{name}.html` | For each name in `special_pages` (see [Special pages](#special-pages)), excluding ones with `noindex: true` |
 | `archive.html` | Always |
 
 ### lastmod dates

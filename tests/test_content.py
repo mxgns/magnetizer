@@ -408,6 +408,38 @@ class TestDraft:
 
 
 # ---------------------------------------------------------------------------
+# Noindex
+# ---------------------------------------------------------------------------
+
+class TestNoindex:
+
+    def test_is_not_noindex_by_default(self):
+        post = parse_post(make_md(), 1, [])
+        assert post.is_noindex is False
+
+    def test_is_noindex_when_frontmatter_true(self):
+        md = "---\ndate: 2026-05-24\nnoindex: true\n---\n"
+        post = parse_post(md, 1, [])
+        assert post.is_noindex is True
+
+    def test_noindex_false_is_not_noindex(self):
+        md = "---\ndate: 2026-05-24\nnoindex: false\n---\n"
+        post = parse_post(md, 1, [])
+        assert post.is_noindex is False
+
+    def test_noindex_key_does_not_trigger_unknown_key_warning(self, capsys):
+        md = "---\ndate: 2026-05-24\nnoindex: true\n---\n"
+        parse_post(md, 1, [])
+        assert "Warning" not in capsys.readouterr().out
+
+    def test_noindex_empty_yaml_value_treated_as_not_noindex(self):
+        # YAML `noindex:` with no value parses as None; must not crash or set is_noindex
+        md = "---\ndate: 2026-05-24\nnoindex:\n---\n"
+        post = parse_post(md, 1, [])
+        assert post.is_noindex is False
+
+
+# ---------------------------------------------------------------------------
 # AI-assisted disclosure
 # ---------------------------------------------------------------------------
 

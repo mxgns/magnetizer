@@ -765,18 +765,12 @@ class TestRenderNavigation:
 
 class TestRenderTemplate:
 
-    TEMPLATE = "<title>MAGNETIZER_TITLE</title><body>MAGNETIZER_CONTENT</body>"
-    CANONICAL_TEMPLATE = (
-        '<link rel="canonical" href="MAGNETIZER_CANONICAL_URL">'
-        "<title>MAGNETIZER_TITLE</title><body>MAGNETIZER_CONTENT</body>"
-    )
-    META_TEMPLATE = "MAGNETIZER_META_DESCRIPTION<title>MAGNETIZER_TITLE</title><body>MAGNETIZER_CONTENT</body>"
+    TEMPLATE = "<head>MAGNETIZER_METADATA</head><body>MAGNETIZER_CONTENT</body>"
     NAVIGATION_TEMPLATE = "<body><nav>MAGNETIZER_NAVIGATION</nav>MAGNETIZER_CONTENT</body>"
 
-    def test_title_placeholder_replaced(self):
+    def test_metadata_placeholder_replaced(self):
         html = render_template(self.TEMPLATE, title="My Page", content="<p>hi</p>")
-        assert "MAGNETIZER_TITLE" not in html
-        assert "My Page" in html
+        assert "MAGNETIZER_METADATA" not in html
 
     def test_content_placeholder_replaced(self):
         html = render_template(self.TEMPLATE, title="T", content="<main>stuff</main>")
@@ -785,41 +779,67 @@ class TestRenderTemplate:
 
     def test_rest_of_template_preserved(self):
         html = render_template(self.TEMPLATE, title="T", content="C")
-        assert "<title>" in html
+        assert "<head>" in html
         assert "<body>" in html
 
-    def test_canonical_placeholder_replaced_when_provided(self):
-        html = render_template(self.CANONICAL_TEMPLATE, title="T", content="C",
+    def test_metadata_includes_title(self):
+        html = render_template(self.TEMPLATE, title="My Page", content="C")
+        assert "<title>My Page</title>" in html
+
+    def test_metadata_includes_canonical_when_provided(self):
+        html = render_template(self.TEMPLATE, title="T", content="C",
                                canonical="https://example.com/1.html")
-        assert "MAGNETIZER_CANONICAL_URL" not in html
         assert 'href="https://example.com/1.html"' in html
 
-    def test_canonical_placeholder_untouched_when_not_provided(self):
-        html = render_template(self.CANONICAL_TEMPLATE, title="T", content="C")
-        assert "MAGNETIZER_CANONICAL_URL" in html
+    def test_metadata_omits_canonical_when_not_provided(self):
+        html = render_template(self.TEMPLATE, title="T", content="C")
+        assert 'rel="canonical"' not in html
 
-    def test_meta_description_tag_injected_when_provided(self):
-        html = render_template(self.META_TEMPLATE, title="T", content="C",
+    def test_metadata_includes_meta_description_when_provided(self):
+        html = render_template(self.TEMPLATE, title="T", content="C",
                                meta_description="A great blog about things.")
-        assert 'MAGNETIZER_META_DESCRIPTION' not in html
         assert '<meta name="description" content="A great blog about things.">' in html
 
-    def test_meta_description_placeholder_removed_when_not_provided(self):
-        html = render_template(self.META_TEMPLATE, title="T", content="C")
-        assert 'MAGNETIZER_META_DESCRIPTION' not in html
+    def test_metadata_omits_meta_description_when_not_provided(self):
+        html = render_template(self.TEMPLATE, title="T", content="C")
         assert '<meta name="description"' not in html
 
     def test_meta_description_special_chars_are_escaped(self):
-        html = render_template(self.META_TEMPLATE, title="T", content="C",
+        html = render_template(self.TEMPLATE, title="T", content="C",
                                meta_description='A "great" blog & <more>')
         assert 'content="A &quot;great&quot; blog &amp; &lt;more&gt;"' in html
 
-    def test_canonical_url_in_content_is_not_replaced(self):
-        template = '<link href="MAGNETIZER_CANONICAL_URL"><body>MAGNETIZER_CONTENT</body>'
-        content = "Visit MAGNETIZER_CANONICAL_URL for more"
-        html = render_template(template, title="T", content=content,
-                               canonical="https://example.com/")
-        assert "Visit MAGNETIZER_CANONICAL_URL for more" in html
+    def test_title_special_chars_are_escaped(self):
+        html = render_template(self.TEMPLATE, title='A "great" <post> & more', content="C")
+        assert "<title>A &quot;great&quot; &lt;post&gt; &amp; more</title>" in html
+
+    def test_canonical_special_chars_are_escaped(self):
+        html = render_template(self.TEMPLATE, title="T", content="C",
+                               canonical='https://example.com/?a=1&b="2"')
+        assert 'href="https://example.com/?a=1&amp;b=&quot;2&quot;"' in html
+
+    def test_metadata_includes_robots_noindex_when_is_noindex_true(self):
+        html = render_template(self.TEMPLATE, title="T", content="C", is_noindex=True)
+        assert '<meta name="robots" content="noindex">' in html
+
+    def test_metadata_omits_robots_tag_when_not_noindex(self):
+        html = render_template(self.TEMPLATE, title="T", content="C")
+        assert 'name="robots"' not in html
+
+    def test_metadata_line_order(self):
+        html = render_template(self.TEMPLATE, title="T", content="C",
+                               canonical="https://example.com/1.html",
+                               meta_description="Desc.", is_noindex=True)
+        title_pos = html.index("<title>")
+        desc_pos = html.index('name="description"')
+        canonical_pos = html.index('rel="canonical"')
+        robots_pos = html.index('name="robots"')
+        assert title_pos < desc_pos < canonical_pos < robots_pos
+
+    def test_metadata_placeholder_in_content_is_not_replaced(self):
+        content = "Visit MAGNETIZER_METADATA for more"
+        html = render_template(self.TEMPLATE, title="T", content=content)
+        assert "Visit MAGNETIZER_METADATA for more" in html
 
     def test_navigation_placeholder_replaced_when_provided(self):
         html = render_template(self.NAVIGATION_TEMPLATE, title="T", content="C",
