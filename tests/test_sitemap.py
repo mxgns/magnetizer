@@ -61,20 +61,3 @@ class TestRenderRobotsTxt:
     def test_trailing_slash_stripped_from_site_url(self):
         result = render_robots_txt(CONFIG_TRAILING_SLASH)
         assert "Sitemap: https://example.com/sitemap.xml" in result
-
-    def test_no_disallow_lines_when_no_paths_given(self):
-        result = render_robots_txt(CONFIG)
-        assert "Disallow" not in result
-
-    def test_disallow_line_for_each_path(self):
-        result = render_robots_txt(CONFIG, disallowed_paths=["5.html"])
-        assert "Disallow: /5.html" in result
-
-    def test_disallow_line_per_path_for_multiple_paths(self):
-        result = render_robots_txt(CONFIG, disallowed_paths=["5.html", "12.html"])
-        assert "Disallow: /5.html" in result
-        assert "Disallow: /12.html" in result
-
-    def test_disallow_lines_come_before_sitemap(self):
-        result = render_robots_txt(CONFIG, disallowed_paths=["5.html"])
-        assert result.index("Disallow: /5.html") < result.index("Sitemap:")

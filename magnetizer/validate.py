@@ -33,7 +33,7 @@ def validate_project(cwd):
     if not (cwd / "config.yaml").is_file():
         _error(f"required file 'config.yaml' not found in {cwd}")
     if not (cwd / "templates" / "index.html").is_file():
-        _error("required template 'templates/index.html' not found — create it with MAGNETIZER_TITLE and MAGNETIZER_CONTENT placeholders")
+        _error("required template 'templates/index.html' not found — create it with MAGNETIZER_METADATA and MAGNETIZER_CONTENT placeholders")
 
 
 def validate_content(content_dir, config=None):

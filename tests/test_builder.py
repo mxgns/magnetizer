@@ -50,7 +50,7 @@ class TestBasicBuild:
         html = (p / "dist" / "1.html").read_text()
         assert "<html>" in html
         assert "MAGNETIZER_CONTENT" not in html
-        assert "MAGNETIZER_TITLE" not in html
+        assert "MAGNETIZER_METADATA" not in html
 
     def test_post_html_title_is_site_name_when_no_post_title(self, tmp_path):
         p = make_project(tmp_path, posts={1: MINIMAL_MD})
@@ -1178,21 +1178,19 @@ class TestVerboseLog:
 BUILD_ID_TEMPLATE = (
     "<!DOCTYPE html><html><head>"
     "<link rel=\"stylesheet\" href=\"style.css?v=MAGNETIZER_BUILD_ID\">"
-    "<title>MAGNETIZER_TITLE</title></head>"
+    "MAGNETIZER_METADATA</head>"
     "<body>MAGNETIZER_CONTENT</body></html>"
 )
 
 CANONICAL_TEMPLATE = (
     "<!DOCTYPE html><html><head>"
-    "<link rel=\"canonical\" href=\"MAGNETIZER_CANONICAL_URL\">"
-    "<title>MAGNETIZER_TITLE</title></head>"
+    "MAGNETIZER_METADATA</head>"
     "<body>MAGNETIZER_CONTENT</body></html>"
 )
 
 META_DESCRIPTION_TEMPLATE = (
     "<!DOCTYPE html><html><head>"
-    "MAGNETIZER_META_DESCRIPTION"
-    "<title>MAGNETIZER_TITLE</title></head>"
+    "MAGNETIZER_METADATA</head>"
     "<body>MAGNETIZER_CONTENT</body></html>"
 )
 
@@ -1303,7 +1301,7 @@ class TestIndexMetaDescription:
         p = make_project(tmp_path, posts={1: MINIMAL_MD})
         (p / "templates" / "index.html").write_text(META_DESCRIPTION_TEMPLATE)
         build(p)
-        assert 'MAGNETIZER_META_DESCRIPTION' not in (p / "dist" / "index.html").read_text()
+        assert 'MAGNETIZER_METADATA' not in (p / "dist" / "index.html").read_text()
 
 
 # ---------------------------------------------------------------------------
@@ -1741,17 +1739,27 @@ class TestNoindexPosts:
         build(p)
         assert "1.html" not in (p / "dist" / "sitemap.xml").read_text()
 
-    def test_noindex_post_disallowed_in_robots_txt(self, tmp_path):
+    def test_noindex_post_has_robots_meta_tag(self, tmp_path):
         p = make_project(tmp_path, posts={1: _NOINDEX_MD})
         build(p)
-        assert "Disallow: /1.html" in (p / "dist" / "robots.txt").read_text()
+        assert '<meta name="robots" content="noindex">' in (p / "dist" / "1.html").read_text()
+
+    def test_noindex_not_mentioned_in_robots_txt(self, tmp_path):
+        p = make_project(tmp_path, posts={1: _NOINDEX_MD})
+        build(p)
+        assert "Disallow" not in (p / "dist" / "robots.txt").read_text()
 
     def test_non_noindex_post_not_excluded_from_sitemap(self, tmp_path):
         md = "---\ndate: 2026-05-24\ntitle: Published\nnoindex: false\n---\n\nPublished content\n"
         p = make_project(tmp_path, posts={1: md})
         build(p)
         assert "1.html" in (p / "dist" / "sitemap.xml").read_text()
-        assert "Disallow" not in (p / "dist" / "robots.txt").read_text()
+
+    def test_non_noindex_post_has_no_robots_meta_tag(self, tmp_path):
+        md = "---\ndate: 2026-05-24\ntitle: Published\nnoindex: false\n---\n\nPublished content\n"
+        p = make_project(tmp_path, posts={1: md})
+        build(p)
+        assert 'name="robots"' not in (p / "dist" / "1.html").read_text()
 
     def test_noindex_special_page_still_built(self, tmp_path):
         p = make_project(tmp_path, posts={1: MINIMAL_MD}, config=_ABOUT_CONFIG)
@@ -1767,18 +1775,24 @@ class TestNoindexPosts:
         build(p)
         assert "about.html" not in (p / "dist" / "sitemap.xml").read_text()
 
-    def test_noindex_special_page_disallowed_in_robots_txt(self, tmp_path):
+    def test_noindex_special_page_has_robots_meta_tag(self, tmp_path):
         p = make_project(tmp_path, posts={1: MINIMAL_MD}, config=_ABOUT_CONFIG)
         md = "---\ndate: 2026-05-24\ntitle: About\nnoindex: true\n---\n\nAbout content\n"
         (p / "content" / "about.md").write_text(md)
         build(p)
-        assert "Disallow: /about.html" in (p / "dist" / "robots.txt").read_text()
+        assert '<meta name="robots" content="noindex">' in (p / "dist" / "about.html").read_text()
 
     def test_non_noindex_special_page_not_excluded_from_sitemap(self, tmp_path):
         p = make_project(tmp_path, posts={1: MINIMAL_MD}, config=_ABOUT_CONFIG)
         (p / "content" / "about.md").write_text(ABOUT_MD)
         build(p)
         assert "about.html" in (p / "dist" / "sitemap.xml").read_text()
+
+    def test_non_noindex_special_page_has_no_robots_meta_tag(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD}, config=_ABOUT_CONFIG)
+        (p / "content" / "about.md").write_text(ABOUT_MD)
+        build(p)
+        assert 'name="robots"' not in (p / "dist" / "about.html").read_text()
 
 
 # ---------------------------------------------------------------------------

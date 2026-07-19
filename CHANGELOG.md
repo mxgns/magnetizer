@@ -2,7 +2,8 @@
 
 ## 19/7/26
 
-- `noindex` frontmatter key: excludes a post or special page from `sitemap.xml` and adds a `Disallow` entry in `robots.txt`, while still showing it everywhere else
+- `noindex` frontmatter key: excludes a post or special page from `sitemap.xml` and adds a `<meta name="robots" content="noindex">` tag to its page, while still showing it everywhere else
+- Refactored page `<head>` metadata (title, meta description, canonical URL, robots tag) into a single `MAGNETIZER_METADATA` template placeholder, replacing the separate `MAGNETIZER_TITLE`, `MAGNETIZER_CANONICAL_URL` and `MAGNETIZER_META_DESCRIPTION` placeholders
 
 ## 18/7/26
 

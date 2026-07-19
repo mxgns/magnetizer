@@ -14,7 +14,6 @@ def render_sitemap(pages, config):
     return '\n'.join(lines)
 
 
-def render_robots_txt(config, disallowed_paths=()):
+def render_robots_txt(config):
     site_url = config["site_url"].rstrip('/')
-    disallow_lines = "".join(f"Disallow: /{path}\n" for path in disallowed_paths)
-    return f"User-agent: *\nAllow: /\n{disallow_lines}\nSitemap: {site_url}/sitemap.xml\n"
+    return f"User-agent: *\nAllow: /\n\nSitemap: {site_url}/sitemap.xml\n"

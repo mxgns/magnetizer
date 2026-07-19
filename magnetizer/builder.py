@@ -161,7 +161,8 @@ def _write_post_html(post, index_page_url, dist_dir, config, template, newer_url
     filename = f"{post.id}.html"
     html = render_template(template, title=title, content=content_html,
                            canonical=canonical_url(config["site_url"], filename),
-                           navigation=render_navigation(config["navigation"], filename))
+                           navigation=render_navigation(config["navigation"], filename),
+                           is_noindex=post.is_noindex)
     (dist_dir / filename).write_text(html)
 
 
@@ -262,7 +263,8 @@ def _build_special_page(name, content_dir, dist_dir, config, template, values, w
     filename = f"{name}.html"
     html = render_template(template, title=title, content=content_html,
                            canonical=canonical_url(config["site_url"], filename),
-                           navigation=render_navigation(config["navigation"], filename))
+                           navigation=render_navigation(config["navigation"], filename),
+                           is_noindex=post.is_noindex)
     (dist_dir / filename).write_text(html)
     return w, dynamic_flag
 
@@ -555,10 +557,8 @@ def build(cwd, filename=None, flush=False, resources=False, on_progress=None):
         total_pages = max(1, (len(published_post_ids_sorted_desc) + per_page - 1) // per_page)
         index_lastmod = _lastmod([content_dir / f"{pid}.md" for pid in published_post_ids_sorted_desc])
         sitemap_pages = []
-        noindex_paths = []
         for pid in published_post_ids_sorted_desc:
             if posts_cache[pid].is_noindex:
-                noindex_paths.append(f"{pid}.html")
                 continue
             post_files = [content_dir / f"{pid}.md"] + [
                 f for f in content_dir.iterdir() if re.match(rf'^{pid}-image-', f.name)
@@ -589,7 +589,6 @@ def build(cwd, filename=None, flush=False, resources=False, on_progress=None):
                 sitemap_pages.append((microblog_page_url(page_num), micro_lastmod))
         for name in config["special_pages"]:
             if special_page_posts_by_name[name].is_noindex:
-                noindex_paths.append(f"{name}.html")
                 continue
             page_files = [content_dir / f"{name}.md"] + [
                 content_dir / img for img in _special_page_image_filenames(content_dir, name)
@@ -598,7 +597,7 @@ def build(cwd, filename=None, flush=False, resources=False, on_progress=None):
         sitemap_pages.append(("archive.html", index_lastmod))
         (dist_dir / "sitemap.xml").write_text(render_sitemap(sitemap_pages, config))
         _log(("UPDATED", "sitemap.xml"))
-        (dist_dir / "robots.txt").write_text(render_robots_txt(config, disallowed_paths=noindex_paths))
+        (dist_dir / "robots.txt").write_text(render_robots_txt(config))
         _log(("UPDATED", "robots.txt"))
 
     resources_dir = cwd / "resources"

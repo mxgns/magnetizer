@@ -198,12 +198,20 @@ def render_page_title(site_name, post_title, page_num, index_title=None, post_id
     return site_name
 
 
-def render_template(template_html, title, content, canonical=None, meta_description=None, navigation=''):
-    html = template_html.replace('MAGNETIZER_TITLE', title)
+def render_metadata(title, canonical=None, meta_description=None, is_noindex=False):
+    lines = [f'<title>{title}</title>']
+    if meta_description:
+        lines.append(f'<meta name="description" content="{_escape(meta_description, quote=True)}">')
     if canonical is not None:
-        html = html.replace('MAGNETIZER_CANONICAL_URL', canonical)
-    meta_tag = f'<meta name="description" content="{_escape(meta_description, quote=True)}">' if meta_description else ''
-    html = html.replace('MAGNETIZER_META_DESCRIPTION', meta_tag)
+        lines.append(f'<link rel="canonical" href="{canonical}">')
+    if is_noindex:
+        lines.append('<meta name="robots" content="noindex">')
+    return '\n'.join(lines)
+
+
+def render_template(template_html, title, content, canonical=None, meta_description=None, navigation='', is_noindex=False):
+    metadata = render_metadata(title, canonical=canonical, meta_description=meta_description, is_noindex=is_noindex)
+    html = template_html.replace('MAGNETIZER_METADATA', metadata)
     html = html.replace('MAGNETIZER_NAVIGATION', navigation)
     html = html.replace('MAGNETIZER_CONTENT', content)
     return html

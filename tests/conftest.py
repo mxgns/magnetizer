@@ -1,7 +1,7 @@
 from magnetizer.content import Image, Post
 
 TEMPLATE = (
-    "<!DOCTYPE html><html><head><title>MAGNETIZER_TITLE</title></head>"
+    "<!DOCTYPE html><html><head>MAGNETIZER_METADATA</head>"
     "<body><nav>MAGNETIZER_NAVIGATION</nav>MAGNETIZER_CONTENT</body></html>"
 )
 MINIMAL_MD = "---\ndate: 2026-05-24\n---\n\nHello world\n"
