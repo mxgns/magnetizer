@@ -50,7 +50,7 @@
 ## 16/6/26
 
 - Post categories and category pages
-- Article heading hierchachy, using h1 on individual post pages and h2 on index pages
+- Article heading hierarchy, using h1 on individual post pages and h2 on index pages
 
 ## 15/6/26
 
@@ -101,7 +101,7 @@
 
 ## 1/6/26
 
-- `MAGNETIZER_BUILD_ID` template placeholder for cache busting resource files on build
+- `MAGNETIZER_BUILD_ID` template placeholder busting the cache for resource files on build
 - Archive page listing all blogposts
 - Image alt texts via frontmatter with build warning when missing
 
