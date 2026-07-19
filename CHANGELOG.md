@@ -4,6 +4,7 @@
 
 - `noindex` frontmatter key: excludes a page from `sitemap.xml` and adds a noindex meta tag
 - Refactored page `<head>` metadata into a single `MAGNETIZER_METADATA` template placeholder
+- Removed `{{ days_since_last_post }}` shortcode
 
 ## 18/7/26
 
