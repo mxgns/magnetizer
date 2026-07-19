@@ -6,7 +6,7 @@ from html import escape as _escape
 
 from magnetizer.content import _plain_text
 
-SCALAR_NAMES = {"post_count", "word_count", "image_count", "days_since_last_post", "today"}
+SCALAR_NAMES = {"post_count", "word_count", "image_count", "today"}
 BLOCK_NAMES = {"ai_post_list"}
 KNOWN_NAMES = SCALAR_NAMES | BLOCK_NAMES
 
@@ -56,22 +56,6 @@ def render_ai_post_list(published_posts) -> str:
     return f'<ul class="ai-post-list">{items}</ul>'
 
 
-def compute_days_since_last_post(published_posts, build_date, warn) -> int:
-    if not published_posts:
-        warn("No published posts exist; days_since_last_post defaults to 0")
-        return 0
-    latest = max(published_posts, key=lambda p: p.id)
-    if not latest.date:
-        warn(f"Post {latest.id} has no date; days_since_last_post defaults to 0")
-        return 0
-    try:
-        post_date = _date.fromisoformat(latest.date)
-    except ValueError:
-        warn(f"Post {latest.id} has an unparseable date; days_since_last_post defaults to 0")
-        return 0
-    return (build_date - post_date).days
-
-
 def compute_base_values(published_posts, build_date, warn, ai_post_list_candidates=None) -> dict:
     # ai_post_list is the one dynamic value that also draws on special pages (an
     # about/now/etc. page can be ai_assisted too) — every other value stays scoped
@@ -80,11 +64,9 @@ def compute_base_values(published_posts, build_date, warn, ai_post_list_candidat
         ai_post_list_candidates = published_posts
     post_count = len(published_posts)
     image_count = sum(len(p.images) for p in published_posts)
-    days_since_last_post = compute_days_since_last_post(published_posts, build_date, warn)
     return {
         "post_count": wrap_scalar("post_count", format_int(post_count)),
         "image_count": wrap_scalar("image_count", format_int(image_count)),
-        "days_since_last_post": wrap_scalar("days_since_last_post", format_int(days_since_last_post)),
         "today": wrap_scalar("today", format_today(build_date)),
         "ai_post_list": render_ai_post_list(ai_post_list_candidates),
     }

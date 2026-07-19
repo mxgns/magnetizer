@@ -196,11 +196,10 @@ Whitespace inside the braces is optional (`{{post_count}}` and `{{ post_count }}
 | `{{ post_count }}` | Total number of published posts |
 | `{{ word_count }}` | Total word count across all published posts |
 | `{{ image_count }}` | Total number of images across all published posts |
-| `{{ days_since_last_post }}` | Days since the most recently published post |
 | `{{ today }}` | The build date, as `D/M/YY` (e.g. `17/7/26`) |
 | `{{ ai_post_list }}` | A `<ul>` of posts with `ai_assisted: true`, newest first |
 
-"Published posts" means non-draft posts with their own page — special pages, index/category/archive pages don't count. The four counts (`post_count`, `word_count`, `image_count`, `days_since_last_post`) are drawn only from that set. `{{ ai_post_list }}` is the one exception — a special page with `ai_assisted: true` shows up there too, alongside qualifying posts, even though it's never counted. Numbers 1,000 and above render with a comma thousands-separator (e.g. `12,345`).
+"Published posts" means non-draft posts with their own page — special pages, index/category/archive pages don't count. The three counts (`post_count`, `word_count`, `image_count`) are drawn only from that set. `{{ ai_post_list }}` is the one exception — a special page with `ai_assisted: true` shows up there too, alongside qualifying posts, even though it's never counted. Numbers 1,000 and above render with a comma thousands-separator (e.g. `12,345`).
 
 Each expanded value is wrapped for styling: scalars in `<span class="post-count">42</span>` (underscores in the name become hyphens in the class); `{{ ai_post_list }}` renders its own `<ul class="ai-post-list">`, or `<ul class="ai-post-list"><li>(none)</li></ul>` if no posts qualify. Put `{{ ai_post_list }}` on its own line (blank lines before and after) so it isn't trapped inside a `<p>`.
 

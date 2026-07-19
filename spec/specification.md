@@ -770,15 +770,14 @@ An unknown shortcode name (matching the `{{ ... }}` pattern but not one of the n
 | `{{ post_count }}` | integer | Total number of published posts |
 | `{{ word_count }}` | integer | Total word count across all published posts' bodies |
 | `{{ image_count }}` | integer | Total number of images across all published posts |
-| `{{ days_since_last_post }}` | integer | Whole calendar days between the most recently published post's date and the build date |
 | `{{ today }}` | date string | The build date, formatted `D/M/YY` (no leading zeros on day/month, two-digit year), e.g. `17/7/26` |
 | `{{ ai_post_list }}` | HTML block | `<ul>` of posts with `ai_assisted: true`, newest first |
 
-`post_count`, `word_count`, `image_count` and `days_since_last_post` draw only from **published posts**: markdown files that render to an individual post page and are not drafts. Special pages and generated pages (index, category, microblog, archive) are never counted by these four.
+`post_count`, `word_count` and `image_count` draw only from **published posts**: markdown files that render to an individual post page and are not drafts. Special pages and generated pages (index, category, microblog, archive) are never counted by these three.
 
 `{{ ai_post_list }}` is the one exception: a special page with `ai_assisted: true` also appears in the list (sorted alongside qualifying posts by the same rules), even though it's never counted by `post_count` or any other value. Generated pages (index, category, microblog, archive) never contribute to it regardless.
 
-`word_count` expands every other recognised shortcode in a post's body first (so e.g. a title shown via `{{ ai_post_list }}` counts towards the total), and treats any `{{ word_count }}` occurrence in the body as empty, to avoid circularity. `image_count` sums each published post's image count. `days_since_last_post` uses the post with the highest numeric filename — 0 (with a build warning) if there are no published posts, or if that post's date is missing or unparseable. `{{ ai_post_list }}` sorts newest-first by frontmatter date, ties broken by descending filename number, and renders `<ul class="ai-post-list"><li>(none)</li></ul>` if no post qualifies.
+`word_count` expands every other recognised shortcode in a post's body first (so e.g. a title shown via `{{ ai_post_list }}` counts towards the total), and treats any `{{ word_count }}` occurrence in the body as empty, to avoid circularity. `image_count` sums each published post's image count. `{{ ai_post_list }}` sorts newest-first by frontmatter date, ties broken by descending filename number, and renders `<ul class="ai-post-list"><li>(none)</li></ul>` if no post qualifies.
 
 Integers are formatted with a comma thousands-separator for values of 1,000 and above (e.g. `12,345`), matching ordinary UK usage.
 

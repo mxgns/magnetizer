@@ -5,7 +5,6 @@ from datetime import date
 from tests.conftest import make_post
 from magnetizer.dynamic import (
     compute_base_values,
-    compute_days_since_last_post,
     compute_word_count,
     expand_shortcodes,
     format_int,
@@ -50,7 +49,7 @@ class TestWrapScalar:
         assert wrap_scalar("post_count", "42") == '<span class="post-count">42</span>'
 
     def test_underscores_become_hyphens_in_class(self):
-        assert wrap_scalar("days_since_last_post", "3") == '<span class="days-since-last-post">3</span>'
+        assert wrap_scalar("example_value_name", "3") == '<span class="example-value-name">3</span>'
 
 
 # ---------------------------------------------------------------------------
@@ -137,54 +136,6 @@ class TestRenderAiPostList:
 
 
 # ---------------------------------------------------------------------------
-# compute_days_since_last_post
-# ---------------------------------------------------------------------------
-
-class TestComputeDaysSinceLastPost:
-
-    def test_zero_when_no_posts(self):
-        warnings = []
-        result = compute_days_since_last_post([], date(2026, 7, 17), warnings.append)
-        assert result == 0
-        assert warnings
-
-    def test_zero_when_dated_today(self):
-        posts = [make_post(post_id=1, date="2026-07-17")]
-        warnings = []
-        result = compute_days_since_last_post(posts, date(2026, 7, 17), warnings.append)
-        assert result == 0
-        assert not warnings
-
-    def test_counts_whole_days(self):
-        posts = [make_post(post_id=1, date="2026-07-10")]
-        result = compute_days_since_last_post(posts, date(2026, 7, 17), lambda msg: None)
-        assert result == 7
-
-    def test_uses_highest_numeric_filename(self):
-        posts = [
-            make_post(post_id=1, date="2026-07-01"),
-            make_post(post_id=20, date="2026-07-15"),
-            make_post(post_id=3, date="2026-07-10"),
-        ]
-        result = compute_days_since_last_post(posts, date(2026, 7, 17), lambda msg: None)
-        assert result == 2
-
-    def test_zero_and_warning_on_missing_date(self):
-        posts = [make_post(post_id=1, date=None)]
-        warnings = []
-        result = compute_days_since_last_post(posts, date(2026, 7, 17), warnings.append)
-        assert result == 0
-        assert warnings
-
-    def test_zero_and_warning_on_unparseable_date(self):
-        posts = [make_post(post_id=1, date="not-a-date")]
-        warnings = []
-        result = compute_days_since_last_post(posts, date(2026, 7, 17), warnings.append)
-        assert result == 0
-        assert warnings
-
-
-# ---------------------------------------------------------------------------
 # compute_base_values
 # ---------------------------------------------------------------------------
 
@@ -221,7 +172,6 @@ class TestComputeBaseValues:
         values = compute_base_values([], date(2026, 7, 17), lambda msg: None)
         assert values["post_count"] == '<span class="post-count">0</span>'
         assert values["image_count"] == '<span class="image-count">0</span>'
-        assert values["days_since_last_post"] == '<span class="days-since-last-post">0</span>'
         assert values["ai_post_list"] == '<ul class="ai-post-list"><li>(none)</li></ul>'
 
     def test_ai_post_list_candidates_defaults_to_published_posts(self):
@@ -257,7 +207,6 @@ _VALUES = {
     "post_count": '<span class="post-count">42</span>',
     "word_count": '<span class="word-count">1,234</span>',
     "image_count": '<span class="image-count">65</span>',
-    "days_since_last_post": '<span class="days-since-last-post">3</span>',
     "today": '<span class="today">17/7/26</span>',
     "ai_post_list": '<ul class="ai-post-list"><li><a href="1.html">Post</a></li></ul>',
 }
