@@ -367,6 +367,7 @@ def build(cwd, filename=None, flush=False, resources=False, on_progress=None):
         for name in config["special_pages"]
         if (content_dir / f"{name}.md").exists()
     ]
+    special_page_posts_by_name = {p.id: p for p in special_page_posts}
 
     # Sitewide dynamic-value computation runs unconditionally (even for a single-page
     # preview build) so that any shortcodes on the page(s) being built expand correctly.
@@ -587,6 +588,9 @@ def build(cwd, filename=None, flush=False, resources=False, on_progress=None):
             for page_num in range(1, total_micro_pages_sitemap + 1):
                 sitemap_pages.append((microblog_page_url(page_num), micro_lastmod))
         for name in config["special_pages"]:
+            if special_page_posts_by_name[name].is_noindex:
+                noindex_paths.append(f"{name}.html")
+                continue
             page_files = [content_dir / f"{name}.md"] + [
                 content_dir / img for img in _special_page_image_filenames(content_dir, name)
             ]

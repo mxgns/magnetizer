@@ -1753,6 +1753,33 @@ class TestNoindexPosts:
         assert "1.html" in (p / "dist" / "sitemap.xml").read_text()
         assert "Disallow" not in (p / "dist" / "robots.txt").read_text()
 
+    def test_noindex_special_page_still_built(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD}, config=_ABOUT_CONFIG)
+        md = "---\ndate: 2026-05-24\ntitle: About\nnoindex: true\n---\n\nAbout content\n"
+        (p / "content" / "about.md").write_text(md)
+        build(p)
+        assert "About content" in (p / "dist" / "about.html").read_text()
+
+    def test_noindex_special_page_excluded_from_sitemap(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD}, config=_ABOUT_CONFIG)
+        md = "---\ndate: 2026-05-24\ntitle: About\nnoindex: true\n---\n\nAbout content\n"
+        (p / "content" / "about.md").write_text(md)
+        build(p)
+        assert "about.html" not in (p / "dist" / "sitemap.xml").read_text()
+
+    def test_noindex_special_page_disallowed_in_robots_txt(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD}, config=_ABOUT_CONFIG)
+        md = "---\ndate: 2026-05-24\ntitle: About\nnoindex: true\n---\n\nAbout content\n"
+        (p / "content" / "about.md").write_text(md)
+        build(p)
+        assert "Disallow: /about.html" in (p / "dist" / "robots.txt").read_text()
+
+    def test_non_noindex_special_page_not_excluded_from_sitemap(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD}, config=_ABOUT_CONFIG)
+        (p / "content" / "about.md").write_text(ABOUT_MD)
+        build(p)
+        assert "about.html" in (p / "dist" / "sitemap.xml").read_text()
+
 
 # ---------------------------------------------------------------------------
 # Warnings

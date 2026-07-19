@@ -2,7 +2,7 @@
 
 ## 19/7/26
 
-- `noindex` frontmatter key: excludes a post from `sitemap.xml` and adds a `Disallow` entry in `robots.txt`, while still showing it everywhere else
+- `noindex` frontmatter key: excludes a post or special page from `sitemap.xml` and adds a `Disallow` entry in `robots.txt`, while still showing it everywhere else
 
 ## 18/7/26
 

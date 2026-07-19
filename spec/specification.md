@@ -482,6 +482,8 @@ noindex: true
 
 A noindex post is excluded from `sitemap.xml` and gets a `Disallow` entry of its own in `robots.txt`. It's otherwise treated as a normal published post — it still appears on index pages, category pages, the Atom feed, the archive, and post navigation, and its HTML page is generated as usual. This is different from `draft`, which hides a post everywhere except its own direct URL.
 
+`noindex` works the same way on special pages (see [Special pages](#special-pages)) as on regular posts.
+
 If `noindex` is absent or set to `false`, the post is indexed normally.
 
 ### Categories
@@ -987,7 +989,7 @@ Magnetizer generates an XML sitemap at `dist/sitemap.xml` and a `dist/robots.txt
 | `index.html`, `index-2.html`, … | All index pages |
 | `{slug}.html`, `{slug}-2.html`, … | All pages for each category that has at least one matching post |
 | `microblog.html`, `microblog-2.html`, … | All microblog pages, if at least one microblog post exists |
-| `{name}.html` | For each name in `special_pages` (see [Special pages](#special-pages)) |
+| `{name}.html` | For each name in `special_pages` (see [Special pages](#special-pages)), excluding ones with `noindex: true` |
 | `archive.html` | Always |
 
 ### lastmod dates
