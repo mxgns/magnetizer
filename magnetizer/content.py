@@ -16,9 +16,6 @@ def special_page_image_pattern(name):
 
 _ALLOWED_FRONTMATTER_KEYS = frozenset({'date', 'title', 'images', 'favourite', 'category', 'draft', 'ai_assisted', 'noindex'})
 _MARKDOWN_EXTENSIONS = ['pymdownx.mark', 'smarty', 'magnetizer.containers']
-_MARKDOWN_EXTENSION_CONFIGS = {
-    'smarty': {'smart_dashes': False, 'smart_ellipses': False},
-}
 
 _IMAGE_TOKEN_BLOCK_RE = re.compile(r'^\{\{\s*image\s+(\d+)\s*\}\}$')
 _IMAGE_TOKEN_LOOSE_RE = re.compile(r'\{\{\s*image\s+\d+\s*\}\}')
@@ -164,12 +161,12 @@ def parse_post(md_text, post_id, image_filenames, micro_post_max_length=180):
         part0, excerpt_inline_image_filenames = _substitute_image_tokens(more_parts[0], images, post_id)
         part1, used1 = _substitute_image_tokens(more_parts[1], images, post_id)
         inline_image_filenames = excerpt_inline_image_filenames | used1
-        body_html = _markdown.markdown(part0 + '\n\n' + part1, extensions=_MARKDOWN_EXTENSIONS, extension_configs=_MARKDOWN_EXTENSION_CONFIGS)
-        excerpt_html = _markdown.markdown(part0.strip(), extensions=_MARKDOWN_EXTENSIONS, extension_configs=_MARKDOWN_EXTENSION_CONFIGS)
+        body_html = _markdown.markdown(part0 + '\n\n' + part1, extensions=_MARKDOWN_EXTENSIONS)
+        excerpt_html = _markdown.markdown(part0.strip(), extensions=_MARKDOWN_EXTENSIONS)
     else:
         body, inline_image_filenames = _substitute_image_tokens(body, images, post_id)
         excerpt_inline_image_filenames = inline_image_filenames
-        body_html = _markdown.markdown(body, extensions=_MARKDOWN_EXTENSIONS, extension_configs=_MARKDOWN_EXTENSION_CONFIGS) if body else ''
+        body_html = _markdown.markdown(body, extensions=_MARKDOWN_EXTENSIONS) if body else ''
         excerpt_html = None
 
     char_count = len(_plain_text(body_html))

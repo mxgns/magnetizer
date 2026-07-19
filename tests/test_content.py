@@ -499,13 +499,35 @@ class TestSmartQuotes:
         post = parse_post(make_md(body='```\n"not converted"\n```'), 1, [])
         assert '"not converted"' in post.body_html
 
-    def test_dashes_not_converted(self):
+    def test_double_dash_converted_to_en_dash(self):
         post = parse_post(make_md(body='a--b'), 1, [])
-        assert '--' in post.body_html
+        assert '&ndash;' in post.body_html
+        assert '--' not in post.body_html
 
-    def test_ellipsis_not_converted(self):
+    def test_triple_dash_converted_to_em_dash(self):
+        post = parse_post(make_md(body='a---b'), 1, [])
+        assert '&mdash;' in post.body_html
+
+    def test_ellipsis_converted(self):
         post = parse_post(make_md(body='hello...'), 1, [])
-        assert '...' in post.body_html
+        assert '&hellip;' in post.body_html
+        assert '...' not in post.body_html
+
+    def test_dashes_in_inline_code_not_converted(self):
+        post = parse_post(make_md(body='Use `a--b` here'), 1, [])
+        assert 'a--b' in post.body_html
+
+    def test_dashes_in_fenced_code_block_not_converted(self):
+        post = parse_post(make_md(body='```\na--b\n```'), 1, [])
+        assert 'a--b' in post.body_html
+
+    def test_ellipsis_in_inline_code_not_converted(self):
+        post = parse_post(make_md(body='Use `hello...` here'), 1, [])
+        assert 'hello...' in post.body_html
+
+    def test_ellipsis_in_fenced_code_block_not_converted(self):
+        post = parse_post(make_md(body='```\nhello...\n```'), 1, [])
+        assert 'hello...' in post.body_html
 
     def test_smart_quotes_applied_to_excerpt(self):
         post = parse_post(make_md(body='"intro"\n\n<!-- more -->\n\n"rest"'), 1, [])
