@@ -277,6 +277,49 @@ class TestCLIVerbose:
 
 
 # ---------------------------------------------------------------------------
+# Category pages summary
+# ---------------------------------------------------------------------------
+
+_CATEGORIES_CLI_CONFIG = (
+    "site_name: Test Blog\nsite_url: https://example.github.io\n"
+    "posts_per_page: 2\ncategories:\n  photography: Photography\n  travel: Travel\n"
+)
+_PHOTO_MD = "---\ndate: 2026-05-24\ntitle: Photo Post\ncategory: photography\n---\n\nContent\n"
+_TRAVEL_MD = "---\ndate: 2026-05-24\ntitle: Travel Post\ncategory: travel\n---\n\nContent\n"
+
+
+class TestCLICategoryPagesSummary:
+
+    def test_verbose_shows_category_count_not_individual_names(self, tmp_path):
+        posts = {1: _PHOTO_MD, 2: _PHOTO_MD, 3: _PHOTO_MD, 4: _TRAVEL_MD}
+        p = make_project(tmp_path, posts=posts, config=_CATEGORIES_CLI_CONFIG)
+        result = run_build(["--verbose"], cwd=p)
+        assert "categories(3)" in result.stdout
+        assert "photography.html" not in result.stdout
+        assert "photography-2.html" not in result.stdout
+        assert "travel.html" not in result.stdout
+
+    def test_non_verbose_shows_category_count_not_individual_names(self, tmp_path):
+        posts = {1: _PHOTO_MD, 2: _PHOTO_MD, 3: _PHOTO_MD, 4: _TRAVEL_MD}
+        p = make_project(tmp_path, posts=posts, config=_CATEGORIES_CLI_CONFIG)
+        result = run_build([], cwd=p)
+        assert "categories(3)" in result.stdout
+        assert "photography.html" not in result.stdout
+        assert "travel.html" not in result.stdout
+
+    def test_single_category_page_still_shows_count(self, tmp_path):
+        p = make_project(tmp_path, posts={1: _PHOTO_MD}, config=_CATEGORIES_CLI_CONFIG)
+        result = run_build(["--verbose"], cwd=p)
+        assert "categories(1)" in result.stdout
+        assert "photography.html" not in result.stdout
+
+    def test_no_categories_section_when_no_category_pages_built(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD}, config=_CATEGORIES_CLI_CONFIG)
+        result = run_build(["--verbose"], cwd=p)
+        assert "categories(" not in result.stdout
+
+
+# ---------------------------------------------------------------------------
 # Generating header and no-changes message
 # ---------------------------------------------------------------------------
 

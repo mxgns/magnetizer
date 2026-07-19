@@ -14,6 +14,7 @@
 - Split `build()` into named phase functions in `builder.py` (no behaviour change)
 - Consolidated config and frontmatter reference docs
 - Fixed category pages never appearing in the build log
+- Category pages now summarised as `categories(N)` in build output instead of listed individually
 
 ### 18/7/26
 
