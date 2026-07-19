@@ -19,25 +19,29 @@ manifest.json  Build state (created automatically)
 
 ## Configuration
 
-`config.yaml` supports the following options:
+`config.yaml` supports the following options — this table is the single reference for all of them:
 
 | Option | Description | Default |
 |---|---|---|
 | `site_name` | Used in page `<title>` tags | `My Blog` |
-| `posts_per_page` | Posts shown per index page | `12` |
+| `site_url` | Absolute base URL of the published site, e.g. `https://example.github.io` — used for canonical links, the Atom feed, and the sitemap | **Required** — build exits with an error if absent or empty |
 | `image_max_dimension` | Long-edge pixel limit when resizing images | `1600` |
 | `image_quality` | JPEG quality for resized images (0–95) | `75` |
+| `posts_per_page` | Posts shown per index page | `12` |
 | `micro_post_max_length` | Max plain-text characters for a post to be treated as a microblog post | `180` |
 | `micro_posts_per_page` | Posts shown per microblog page (`microblog.html`, `microblog-2.html`, …) | `20` |
 | `index_meta_description` | `<meta name="description">` content on index pages (via `MAGNETIZER_METADATA` placeholder) | Not set |
 | `index_title` | When set, the title of `index.html` becomes `site_name - index_title` | Not set |
 | `categories` | Map of category slug to display name, e.g. `{photography: Photography}` | `{}` (no categories) |
 | `navigation` | Map of page filename to nav label, e.g. `{index.html: Home}`, in display order | `{}` (no navigation) |
+| `special_pages` | List of standalone page names, each backed by a `content/{name}.md` file — see [Special pages](#special-pages) | `[]` (no special pages) |
+| `ai_disclosure_html` | Raw HTML (not escaped, so it may include a link) shown in the AI-assisted disclosure banner — see [Frontmatter reference](#frontmatter-reference) | Not set — falls back to a generic disclosure sentence |
 
 Example:
 
 ```yaml
 site_name: My Blog
+site_url: https://example.github.io
 posts_per_page: 12
 image_max_dimension: 1600
 image_quality: 75
@@ -48,6 +52,8 @@ categories:
 navigation:
   index.html: Home
   archive.html: Archive
+special_pages:
+  - about
 ```
 
 Use the `MAGNETIZER_NAVIGATION` template placeholder to render `navigation` as a `<ul>` of links. Each link gets its own `nav-{slug}` class derived from its filename (e.g. `archive.html` → `nav-archive`), and the link matching the page currently being generated additionally gets `current` appended to its class and an `aria-current="page"` attribute.
@@ -76,15 +82,7 @@ title: My post title
 Post body goes here. Standard Markdown is supported.
 ```
 
-The `title` field is optional. Set `draft: true` to mark a post as a draft — it will still be generated as an HTML page, but will be excluded from index pages, category pages, the feed, the sitemap, the archive, and next/previous navigation. Draft posts are only reachable via their direct URL. If `draft` is absent or `false`, the post is published normally.
-
-Set `favourite: true` to mark a post as a favourite — it will receive an additional `favourite` CSS class in the archive.
-
-Set `ai_assisted: true` to mark a post as AI-assisted — a disclosure banner is inserted at the top of the post's content, wherever it's shown (individual post page, and index/category excerpts or full body). The banner text comes from `ai_disclosure_html` in `config.yaml` (raw HTML, so it can include a link) — Magnetizer has no built-in wording of its own beyond a generic fallback sentence used when `ai_disclosure_html` isn't set. The banner also needs the `.container-brown` and `.ai-disclosure` CSS rules to be present in the project's `resources/` directory — the icon itself is a CSS background image, base64-encoded in the project's own stylesheet, same as every other icon on the site.
-
-Set `noindex: true` to exclude a post from search engine indexing — it's dropped from `sitemap.xml` and its page gets a `<meta name="robots" content="noindex">` tag via `MAGNETIZER_METADATA`, but is otherwise a normal published post (still shown on index pages, category pages, the feed, the archive, and post navigation). Unlike `draft`, it doesn't hide the post anywhere except search indexing. If `noindex` is absent or `false`, the post is indexed normally. `noindex` works the same way on special pages.
-
-Set `category` to a slug from the `categories` map in `config.yaml` to assign the post to a category — matching is case-insensitive. This adds a link to the category's page in the post's footer, and includes the post on that category's page (`{slug}.html`). If `categories` is configured, the build prints a warning for posts with no category or with a category not found in `categories`.
+The `title` field is optional — see [Frontmatter reference](#frontmatter-reference) below for `title` and every other supported key.
 
 A post with no title, no images, and a plain-text body of `micro_post_max_length` characters or fewer is treated as a microblog post and rendered with an additional `micro-post` CSS class. Microblog posts also get a `<a href="microblog.html" class="microblog">Microblog</a>` link in their footer (before the category link, if any), linking to the paginated microblog page.
 
@@ -111,6 +109,30 @@ More text.
 ```
 
 It must be on its own line with a blank line before and after (its own paragraph, not just its own line within one) — used inline with other text, or referencing an image number that doesn't exist for the post, is a build error. The image is rendered as `<figure><img src="..." alt="..."></figure>` using its frontmatter alt text, and is excluded from the top-of-post image strip since it's already shown in the body. On index pages, if it falls after a `<!-- more -->` marker (so isn't part of the shown excerpt), it's counted into the "Read more (+N photo(s))" link text — see below.
+
+## Frontmatter reference
+
+This is the single reference for every frontmatter key a post or special page can set. Any other key produces a build warning naming the post and the unknown key.
+
+| Key | Applies to | Format | Default |
+|---|---|---|---|
+| `date` | Posts (required), special pages (optional) | `YYYY-MM-DD` | — |
+| `title` | Posts, special pages | Plain text | Not set |
+| `images` | Posts, special pages | List of alt text strings, one per image file, in file order | `[]` |
+| `category` | Posts | A slug from `categories` in `config.yaml` | Not set |
+| `draft` | Posts | `true` / `false` | `false` |
+| `favourite` | Posts | `true` / `false` | `false` |
+| `ai_assisted` | Posts, special pages | `true` / `false` | `false` |
+| `noindex` | Posts, special pages | `true` / `false` | `false` |
+
+- **`date`** — publish date. Required on posts; optional on special pages (omit it and no date footer is rendered). Shown in the footer as `D Month YYYY` and used for the Atom feed, sitemap `lastmod`, and archive month grouping.
+- **`title`** — rendered as the page's `<h1>` on its own page, or `<h2>` when shown alongside other posts (index and category pages). Omit it for an untitled, photo-only, or microblog post.
+- **`images`** — alt text for each image file belonging to the post (`{post-id}-image-{nn}.*`), matched to image files in filename order. If the list is absent or has fewer entries than image files, the remaining images get `alt=""` (decorative). An incomplete list triggers a "Missing alt text" build warning.
+- **`category`** — assigns the post to a category. Matching against `categories` in `config.yaml` is case-insensitive and the value is normalised to lowercase. Adds a category link to the post's footer and includes the post on that category's page (`{slug}.html`). If `categories` is configured, a build warning is printed for posts with no category or with a category not found in `categories`.
+- **`draft`** — generates the post's HTML page as usual, but excludes it from index pages, category pages, the Atom feed, the sitemap, the archive, and next/previous navigation. A draft post is only reachable via its direct URL.
+- **`favourite`** — adds an additional `favourite` CSS class to the post's entry in the archive.
+- **`ai_assisted`** — inserts a disclosure banner at the top of the content, wherever it's shown (individual page, and index/category excerpts or full body). The banner text comes from `ai_disclosure_html` in `config.yaml` (raw HTML, so it can include a link) — Magnetizer falls back to a generic sentence if `ai_disclosure_html` isn't set. The banner needs the `.container-brown` and `.ai-disclosure` CSS rules to be present in the project's `resources/` directory — the icon itself is a CSS background image, base64-encoded in the project's own stylesheet, same as every other icon on the site.
+- **`noindex`** — excludes the page from `sitemap.xml` and adds a `<meta name="robots" content="noindex">` tag via `MAGNETIZER_METADATA`, but is otherwise treated normally (still shown on index pages, category pages, the feed, the archive, and post navigation). Unlike `draft`, it doesn't hide the page anywhere except search indexing. Works the same way on special pages as on posts.
 
 ## Building the site
 

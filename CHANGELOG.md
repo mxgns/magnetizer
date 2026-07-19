@@ -7,6 +7,7 @@
 - Removed `{{ days_since_last_post }}` shortcode
 - Smart typography now also converts `--`/`---` to en/em dashes and `...` to an ellipsis
 - Split `build()` into named phase functions in `builder.py` (no behaviour change)
+- Consolidated all `config.yaml` options and all frontmatter keys into single reference tables in README and spec; removed a stale duplicate `site_url` config section
 
 ## 18/7/26
 
