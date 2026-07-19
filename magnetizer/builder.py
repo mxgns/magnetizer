@@ -500,6 +500,14 @@ def _write_generated_pages(published_posts_sorted_desc, dist_dir, config, templa
     for page_num in range(1, total_pages + 1):
         log(("UPDATED", index_page_url(page_num)))
     _write_category_pages(published_posts_sorted_desc, dist_dir, config, template)
+    categories = config["categories"]
+    for slug in categories:
+        category_posts = [p for p in published_posts_sorted_desc if p.category == slug]
+        if not category_posts:
+            continue
+        total_cat_pages = max(1, (len(category_posts) + per_page - 1) // per_page)
+        for page_num in range(1, total_cat_pages + 1):
+            log(("UPDATED", category_page_url(slug, page_num)))
     micro_posts = [p for p in published_posts_sorted_desc if p.is_micro]
     _write_microblog_pages(published_posts_sorted_desc, dist_dir, config, template)
     micro_per_page = config["micro_posts_per_page"]

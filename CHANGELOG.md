@@ -13,6 +13,7 @@
 - Smart typography now also converts `--`/`---` to en/em dashes and `...` to an ellipsis
 - Split `build()` into named phase functions in `builder.py` (no behaviour change)
 - Consolidated config and frontmatter reference docs
+- Fixed category pages never appearing in the build log
 
 ### 18/7/26
 
