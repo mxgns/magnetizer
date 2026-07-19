@@ -219,7 +219,8 @@ def main():
     config = load_config(Path.cwd() / "config.yaml")
     dist_path = (Path.cwd() / "dist").resolve()
 
-    print(f"Generating {config['site_name']} → {dist_path}/")
+    if args.verbose:
+        print(f"Generating {config['site_name']} → {dist_path}/")
 
     dot_count = 0
 

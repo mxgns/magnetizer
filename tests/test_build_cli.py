@@ -264,7 +264,7 @@ class TestCLIVerbose:
 
     def test_generating_line_has_site_name_then_arrow(self, tmp_path):
         p = make_project(tmp_path, posts={1: MINIMAL_MD})
-        result = run_build([], cwd=p)
+        result = run_build(["--verbose"], cwd=p)
         assert "Generating Test Blog →" in result.stdout
 
     def test_pages_summary_shows_configured_special_page_name(self, tmp_path):
@@ -328,18 +328,23 @@ class TestCLIHeaderAndStatus:
 
     def test_generating_line_includes_site_name(self, tmp_path):
         p = make_project(tmp_path, posts={1: MINIMAL_MD})
-        result = run_build([], cwd=p)
+        result = run_build(["--verbose"], cwd=p)
         assert "Generating Test Blog" in result.stdout
 
     def test_generating_line_includes_dist_path(self, tmp_path):
         p = make_project(tmp_path, posts={1: MINIMAL_MD})
-        result = run_build([], cwd=p)
+        result = run_build(["--verbose"], cwd=p)
         assert str(p / "dist") in result.stdout
 
     def test_generating_line_appears_before_summary(self, tmp_path):
         p = make_project(tmp_path, posts={1: MINIMAL_MD})
-        result = run_build([], cwd=p)
+        result = run_build(["--verbose"], cwd=p)
         assert result.stdout.index("Generating") < result.stdout.index("created")
+
+    def test_generating_line_not_shown_in_non_verbose_mode(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD})
+        result = run_build([], cwd=p)
+        assert "Generating" not in result.stdout
 
     def test_no_changes_message_shown_on_second_build(self, tmp_path):
         p = make_project(tmp_path, posts={1: MINIMAL_MD})
