@@ -1602,6 +1602,15 @@ class TestCategoryPages:
         build(p)
         assert 'class="category"' in (p / "dist" / "photography.html").read_text()
 
+    def test_category_page_in_log(self, tmp_path):
+        p = make_project(tmp_path, posts={1: _CATEGORY_MD}, config=_CATEGORIES_CONFIG)
+        assert ("UPDATED", "photography.html") in build(p)["log"]
+
+    def test_second_category_page_in_log(self, tmp_path):
+        posts = {i: _CATEGORY_MD for i in range(1, 4)}  # 3 posts, per_page=2
+        p = make_project(tmp_path, posts=posts, config=_CATEGORIES_CONFIG)
+        assert ("UPDATED", "photography-2.html") in build(p)["log"]
+
 
 # ---------------------------------------------------------------------------
 # Archive categories list

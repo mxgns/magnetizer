@@ -183,17 +183,24 @@ def _write_index_pages(posts_sorted_desc, dist_dir, config, template, categories
         (dist_dir / filename).write_text(html)
 
 
+def _category_pages(posts_sorted_desc, categories, per_page):
+    """Yield (slug, display_name, category_posts, total_pages) for each configured
+    category with at least one matching post — the single source of truth for
+    category pagination, shared by rendering, build logging, and the sitemap."""
+    for slug, display_name in categories.items():
+        category_posts = [p for p in posts_sorted_desc if p.category == slug]
+        if not category_posts:
+            continue
+        total_pages = max(1, (len(category_posts) + per_page - 1) // per_page)
+        yield slug, display_name, category_posts, total_pages
+
+
 def _write_category_pages(posts_sorted_desc, dist_dir, config, template):
     categories = config["categories"]
     if not categories:
         return
     per_page = config["posts_per_page"]
-    for slug, display_name in categories.items():
-        category_posts = [p for p in posts_sorted_desc if p.category == slug]
-        if not category_posts:
-            continue
-        total = len(category_posts)
-        total_pages = max(1, (total + per_page - 1) // per_page)
+    for slug, display_name, category_posts, total_pages in _category_pages(posts_sorted_desc, categories, per_page):
         for page_num in range(1, total_pages + 1):
             slice_ = category_posts[(page_num - 1) * per_page: page_num * per_page]
             content_html = render_category_page_content(
@@ -500,6 +507,10 @@ def _write_generated_pages(published_posts_sorted_desc, dist_dir, config, templa
     for page_num in range(1, total_pages + 1):
         log(("UPDATED", index_page_url(page_num)))
     _write_category_pages(published_posts_sorted_desc, dist_dir, config, template)
+    categories = config["categories"]
+    for slug, _, _, total_cat_pages in _category_pages(published_posts_sorted_desc, categories, per_page):
+        for page_num in range(1, total_cat_pages + 1):
+            log(("UPDATED", category_page_url(slug, page_num)))
     micro_posts = [p for p in published_posts_sorted_desc if p.is_micro]
     _write_microblog_pages(published_posts_sorted_desc, dist_dir, config, template)
     micro_per_page = config["micro_posts_per_page"]
@@ -535,16 +546,12 @@ def _write_sitemap_and_robots(published_post_ids_sorted_desc, published_posts_so
         sitemap_pages.append((index_page_url(page_num), index_lastmod))
     categories = config["categories"]
     if categories:
-        for slug in categories:
-            cat_posts = [p for p in published_posts_sorted_desc if p.category == slug]
-            if not cat_posts:
-                continue
+        for slug, _, cat_posts, total_cat_pages in _category_pages(published_posts_sorted_desc, categories, per_page):
             cat_lastmod = _lastmod([
                 path
                 for p in cat_posts
                 for path in [content_dir / f"{p.id}.md"] + [content_dir / img.filename for img in p.images]
             ])
-            total_cat_pages = max(1, (len(cat_posts) + per_page - 1) // per_page)
             for page_num in range(1, total_cat_pages + 1):
                 sitemap_pages.append((category_page_url(slug, page_num), cat_lastmod))
     micro_posts_all = [p for p in published_posts_sorted_desc if p.is_micro]
