@@ -469,6 +469,21 @@ The banner appears wherever the post's content is shown — the individual post 
 
 The banner has no icon markup of its own — like every other icon on the site, the icon is a CSS background image on `.ai-disclosure`, base64-encoded directly in the project's own `resources/style.css`. The banner relies on the `.container-brown` and `.ai-disclosure` CSS rules being present in the project's `resources/` directory, the same way other CSS-dependent conventions (e.g. container colour variants) rely on styling the project author supplies.
 
+### Noindex posts
+
+A post can be excluded from search engine indexing by setting `noindex: true` in its frontmatter:
+
+```yaml
+---
+date: 2026-05-21
+noindex: true
+---
+```
+
+A noindex post is excluded from `sitemap.xml` and gets a `Disallow` entry of its own in `robots.txt`. It's otherwise treated as a normal published post — it still appears on index pages, category pages, the Atom feed, the archive, and post navigation, and its HTML page is generated as usual. This is different from `draft`, which hides a post everywhere except its own direct URL.
+
+If `noindex` is absent or set to `false`, the post is indexed normally.
+
 ### Categories
 
 Categories are configured in `config.yaml` as a map of slug to display name:
@@ -968,7 +983,7 @@ Magnetizer generates an XML sitemap at `dist/sitemap.xml` and a `dist/robots.txt
 
 | Page | Condition |
 | --- | --- |
-| `{post-id}.html` | All published (non-draft) posts, in reverse chronological order |
+| `{post-id}.html` | All published (non-draft) posts, in reverse chronological order, excluding posts with `noindex: true` |
 | `index.html`, `index-2.html`, … | All index pages |
 | `{slug}.html`, `{slug}-2.html`, … | All pages for each category that has at least one matching post |
 | `microblog.html`, `microblog-2.html`, … | All microblog pages, if at least one microblog post exists |
@@ -999,6 +1014,17 @@ The generated `robots.txt` allows all crawlers and links to the sitemap:
 ```
 User-agent: *
 Allow: /
+
+Sitemap: https://example.github.io/sitemap.xml
+```
+
+If one or more published posts have `noindex: true`, a `Disallow` line is added for each, right after `Allow: /`:
+
+```
+User-agent: *
+Allow: /
+Disallow: /5.html
+Disallow: /12.html
 
 Sitemap: https://example.github.io/sitemap.xml
 ```

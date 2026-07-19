@@ -554,7 +554,11 @@ def build(cwd, filename=None, flush=False, resources=False, on_progress=None):
         total_pages = max(1, (len(published_post_ids_sorted_desc) + per_page - 1) // per_page)
         index_lastmod = _lastmod([content_dir / f"{pid}.md" for pid in published_post_ids_sorted_desc])
         sitemap_pages = []
+        noindex_paths = []
         for pid in published_post_ids_sorted_desc:
+            if posts_cache[pid].is_noindex:
+                noindex_paths.append(f"{pid}.html")
+                continue
             post_files = [content_dir / f"{pid}.md"] + [
                 f for f in content_dir.iterdir() if re.match(rf'^{pid}-image-', f.name)
             ]
@@ -590,7 +594,7 @@ def build(cwd, filename=None, flush=False, resources=False, on_progress=None):
         sitemap_pages.append(("archive.html", index_lastmod))
         (dist_dir / "sitemap.xml").write_text(render_sitemap(sitemap_pages, config))
         _log(("UPDATED", "sitemap.xml"))
-        (dist_dir / "robots.txt").write_text(render_robots_txt(config))
+        (dist_dir / "robots.txt").write_text(render_robots_txt(config, disallowed_paths=noindex_paths))
         _log(("UPDATED", "robots.txt"))
 
     resources_dir = cwd / "resources"

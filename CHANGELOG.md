@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## 19/7/26
+
+- `noindex` frontmatter key: excludes a post from `sitemap.xml` and adds a `Disallow` entry in `robots.txt`, while still showing it everywhere else
+
 ## 18/7/26
 
 - Dynamic shortcodes, e.g. `post_count` and `ai_post_list`

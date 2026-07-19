@@ -1702,6 +1702,59 @@ class TestDraftPosts:
 
 
 # ---------------------------------------------------------------------------
+# Noindex posts
+# ---------------------------------------------------------------------------
+
+_NOINDEX_MD = "---\ndate: 2026-05-24\ntitle: Noindex Post\nnoindex: true\n---\n\nNoindex content\n"
+
+
+class TestNoindexPosts:
+
+    def test_noindex_post_html_is_still_built(self, tmp_path):
+        p = make_project(tmp_path, posts={1: _NOINDEX_MD})
+        build(p)
+        assert (p / "dist" / "1.html").exists()
+
+    def test_noindex_post_still_shown_on_index_page(self, tmp_path):
+        p = make_project(tmp_path, posts={1: _NOINDEX_MD})
+        build(p)
+        assert "Noindex content" in (p / "dist" / "index.html").read_text()
+
+    def test_noindex_post_still_shown_on_category_page(self, tmp_path):
+        md = "---\ndate: 2026-05-24\ntitle: Noindex Post\nnoindex: true\ncategory: photography\n---\n\nNoindex content\n"
+        p = make_project(tmp_path, posts={1: md}, config=_CATEGORIES_CONFIG)
+        build(p)
+        assert "Noindex content" in (p / "dist" / "photography.html").read_text()
+
+    def test_noindex_post_still_shown_in_feed(self, tmp_path):
+        p = make_project(tmp_path, posts={1: _NOINDEX_MD})
+        build(p)
+        assert "Noindex content" in (p / "dist" / "feed.xml").read_text()
+
+    def test_noindex_post_still_shown_in_archive(self, tmp_path):
+        p = make_project(tmp_path, posts={1: _NOINDEX_MD})
+        build(p)
+        assert "Noindex Post" in (p / "dist" / "archive.html").read_text()
+
+    def test_noindex_post_excluded_from_sitemap(self, tmp_path):
+        p = make_project(tmp_path, posts={1: _NOINDEX_MD})
+        build(p)
+        assert "1.html" not in (p / "dist" / "sitemap.xml").read_text()
+
+    def test_noindex_post_disallowed_in_robots_txt(self, tmp_path):
+        p = make_project(tmp_path, posts={1: _NOINDEX_MD})
+        build(p)
+        assert "Disallow: /1.html" in (p / "dist" / "robots.txt").read_text()
+
+    def test_non_noindex_post_not_excluded_from_sitemap(self, tmp_path):
+        md = "---\ndate: 2026-05-24\ntitle: Published\nnoindex: false\n---\n\nPublished content\n"
+        p = make_project(tmp_path, posts={1: md})
+        build(p)
+        assert "1.html" in (p / "dist" / "sitemap.xml").read_text()
+        assert "Disallow" not in (p / "dist" / "robots.txt").read_text()
+
+
+# ---------------------------------------------------------------------------
 # Warnings
 # ---------------------------------------------------------------------------
 
