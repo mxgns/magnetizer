@@ -6,6 +6,7 @@
 - Refactored page `<head>` metadata into a single `MAGNETIZER_METADATA` template placeholder
 - Removed `{{ days_since_last_post }}` shortcode
 - Smart typography now also converts `--`/`---` to en/em dashes and `...` to an ellipsis
+- Split `build()` into named phase functions in `builder.py` (no behaviour change)
 
 ## 18/7/26
 

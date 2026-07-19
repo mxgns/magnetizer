@@ -313,42 +313,19 @@ def _sync_resources(resources_dir, dist_dir, changed_filenames, replace=False):
     return copied, deleted
 
 
-def build(cwd, filename=None, flush=False, resources=False, on_progress=None):
-    cwd = Path(cwd)
-    content_dir = cwd / "content"
-    dist_dir = cwd / "dist"
-    manifest_path = cwd / "manifest.json"
+def _flush_dist(dist_dir, manifest_path):
+    for item in dist_dir.iterdir():
+        if item.name in _FLUSH_PRESERVE:
+            continue
+        if item.is_dir():
+            shutil.rmtree(item)
+        else:
+            item.unlink()
+    if manifest_path.exists():
+        manifest_path.unlink()
 
-    validate_project(cwd)
 
-    config = load_config(cwd / "config.yaml")
-    validate_config(config)
-    validate_content(content_dir, config)
-    template = (cwd / "templates" / "index.html").read_text().replace(
-        'MAGNETIZER_BUILD_ID', str(int(time.time()))
-    )
-
-    if flush:
-        for item in dist_dir.iterdir():
-            if item.name in _FLUSH_PRESERVE:
-                continue
-            if item.is_dir():
-                shutil.rmtree(item)
-            else:
-                item.unlink()
-        if manifest_path.exists():
-            manifest_path.unlink()
-
-    manifest = load_manifest(manifest_path)
-    prev_pages = manifest.get("pages", {})
-    log = []
-    warnings = []
-
-    def _log(entry):
-        log.append(entry)
-        if on_progress:
-            on_progress()
-
+def _load_content(content_dir, config):
     all_post_ids_sorted_desc = sorted(_post_ids_in_content(content_dir), reverse=True)
 
     posts_cache = {}
@@ -371,67 +348,64 @@ def build(cwd, filename=None, flush=False, resources=False, on_progress=None):
     ]
     special_page_posts_by_name = {p.id: p for p in special_page_posts}
 
-    # Sitewide dynamic-value computation runs unconditionally (even for a single-page
-    # preview build) so that any shortcodes on the page(s) being built expand correctly.
-    build_date = _date.today()
+    return (
+        all_post_ids_sorted_desc, posts_cache,
+        published_post_ids_sorted_desc, published_posts_sorted_desc,
+        special_page_posts, special_page_posts_by_name,
+    )
+
+
+def _compute_dynamic_values(published_posts_sorted_desc, special_page_posts, build_date, warnings):
     base_values = compute_base_values(
         published_posts_sorted_desc, build_date,
         warn=lambda msg: warnings.append(("build", msg)),
         ai_post_list_candidates=published_posts_sorted_desc + special_page_posts,
     )
     total_words = compute_word_count(published_posts_sorted_desc, base_values)
-    values = {**base_values, "word_count": wrap_scalar("word_count", format_int(total_words))}
+    return {**base_values, "word_count": wrap_scalar("word_count", format_int(total_words))}
 
-    pages_dynamic_updates = {}
-    deleted_page_filenames = set()
 
-    post_ids_to_build: set[int] = set()
+def _build_requested_special_page(stem, content_dir, dist_dir, config, template, values, pages_dynamic_updates, warnings, log):
+    filename_html = f"{stem}.html"
 
-    if filename:
-        stem = Path(filename).stem
-        if stem in config["special_pages"]:
-            filename_html = f"{stem}.html"
+    def _warn_special(msg):
+        warnings.append((filename_html, msg))
 
-            def _warn_special(msg):
-                warnings.append((filename_html, msg))
+    w, dynamic_flag = _build_special_page(stem, content_dir, dist_dir, config, template, values, _warn_special)
+    if w:
+        warnings.append((filename_html, w))
+    log(("UPDATED", filename_html))
+    pages_dynamic_updates[filename_html] = {"dynamic": dynamic_flag}
 
-            w, dynamic_flag = _build_special_page(stem, content_dir, dist_dir, config, template, values, _warn_special)
-            if w:
-                warnings.append((filename_html, w))
-            _log(("UPDATED", filename_html))
-            pages_dynamic_updates[filename_html] = {"dynamic": dynamic_flag}
-        else:
-            post_id = int(Path(filename).stem)
-            changed_post_ids = {post_id}
-            post_ids_to_build = {post_id}
-    else:
-        changed_post_ids = get_changed_post_ids(content_dir, manifest)
 
-    created = updated = deleted = 0
-
-    if not filename:
-        neighbor_ids = {
-            n
-            for pid in changed_post_ids
-            for n in _neighbor_post_ids(pid, published_post_ids_sorted_desc)
+def _determine_full_build_scope(changed_post_ids, content_dir, manifest, prev_pages, config, all_post_ids_sorted_desc, published_post_ids_sorted_desc):
+    neighbor_ids = {
+        n
+        for pid in changed_post_ids
+        for n in _neighbor_post_ids(pid, published_post_ids_sorted_desc)
+    }
+    # Dynamic-flagged pages are only pulled in when something that could have
+    # changed their computed values actually changed this build (a post or a
+    # special page) — otherwise a build with zero changes anywhere would still
+    # needlessly rebuild every dynamic page, every single time.
+    any_special_page_changed = any(
+        _special_page_changed(content_dir, manifest, f"{name}.md", special_page_image_pattern(name))
+        for name in config["special_pages"]
+    )
+    any_relevant_change = bool(changed_post_ids) or any_special_page_changed
+    if any_relevant_change:
+        forced_dynamic_ids = {
+            pid for pid in all_post_ids_sorted_desc
+            if prev_pages.get(f"{pid}.html", {}).get("dynamic")
         }
-        # Dynamic-flagged pages are only pulled in when something that could have
-        # changed their computed values actually changed this build (a post or a
-        # special page) — otherwise a build with zero changes anywhere would still
-        # needlessly rebuild every dynamic page, every single time.
-        any_special_page_changed = any(
-            _special_page_changed(content_dir, manifest, f"{name}.md", special_page_image_pattern(name))
-            for name in config["special_pages"]
-        )
-        any_relevant_change = bool(changed_post_ids) or any_special_page_changed
-        if any_relevant_change:
-            forced_dynamic_ids = {
-                pid for pid in all_post_ids_sorted_desc
-                if prev_pages.get(f"{pid}.html", {}).get("dynamic")
-            }
-        else:
-            forced_dynamic_ids = set()
-        post_ids_to_build = changed_post_ids | neighbor_ids | forced_dynamic_ids
+    else:
+        forced_dynamic_ids = set()
+    post_ids_to_build = changed_post_ids | neighbor_ids | forced_dynamic_ids
+    return post_ids_to_build, any_relevant_change
+
+
+def _build_changed_posts(post_ids_to_build, changed_post_ids, posts_cache, manifest, published_post_ids_sorted_desc, content_dir, dist_dir, config, template, values, pages_dynamic_updates, deleted_page_filenames, warnings, log):
+    created = updated = deleted = 0
 
     for post_id in post_ids_to_build:
         md_path = content_dir / f"{post_id}.md"
@@ -440,7 +414,7 @@ def build(cwd, filename=None, flush=False, resources=False, on_progress=None):
                 _delete_post_files(dist_dir, post_id)
                 deleted += 1
                 deleted_page_filenames.add(f"{post_id}.html")
-                _log(("REMOVED", f"{post_id}.html"))
+                log(("REMOVED", f"{post_id}.html"))
             continue
 
         action = "UPDATED" if f"{post_id}.md" in manifest else "CREATED"
@@ -484,7 +458,7 @@ def build(cwd, filename=None, flush=False, resources=False, on_progress=None):
                 stem, _, ext = image.filename.rpartition('.')
                 resized_name = f"{stem}-resized.{ext}"
                 dest_size = (dist_dir / resized_name).stat().st_size
-                _log(("RESIZED", resized_name, src_sizes[image.filename], dest_size))
+                log(("RESIZED", resized_name, src_sizes[image.filename], dest_size))
         if post.is_draft:
             newer_url, older_url = None, None
             idx_url = "index.html"
@@ -494,7 +468,174 @@ def build(cwd, filename=None, flush=False, resources=False, on_progress=None):
             idx_url = _post_index_page_url(post_id, published_post_ids_sorted_desc, config["posts_per_page"])
             back_url = None
         _write_post_html(post, idx_url, dist_dir, config, template, newer_url=newer_url, older_url=older_url, back_url=back_url, categories=config["categories"])
-        _log((action, f"{post_id}.html", post.char_count, post.is_micro, len(post.images), post.is_draft))
+        log((action, f"{post_id}.html", post.char_count, post.is_micro, len(post.images), post.is_draft))
+
+    return created, updated, deleted
+
+
+def _rebuild_stale_special_pages(config, content_dir, dist_dir, template, values, manifest, prev_pages, any_relevant_change, pages_dynamic_updates, warnings, log):
+    specials_rebuilt = False
+    for name in config["special_pages"]:
+        page_filename = f"{name}.html"
+        should_build = _special_page_changed(content_dir, manifest, f"{name}.md", special_page_image_pattern(name))
+        if not should_build and any_relevant_change:
+            should_build = bool(prev_pages.get(page_filename, {}).get("dynamic"))
+        if should_build:
+            def _warn_special(msg, _page_filename=page_filename):
+                warnings.append((_page_filename, msg))
+
+            w, dynamic_flag = _build_special_page(name, content_dir, dist_dir, config, template, values, _warn_special)
+            if w:
+                warnings.append((page_filename, w))
+            log(("UPDATED", page_filename))
+            pages_dynamic_updates[page_filename] = {"dynamic": dynamic_flag}
+            specials_rebuilt = True
+    return specials_rebuilt
+
+
+def _write_generated_pages(published_posts_sorted_desc, dist_dir, config, template, log):
+    _write_index_pages(published_posts_sorted_desc, dist_dir, config, template, categories=config["categories"])
+    per_page = config["posts_per_page"]
+    total_pages = max(1, (len(published_posts_sorted_desc) + per_page - 1) // per_page)
+    for page_num in range(1, total_pages + 1):
+        log(("UPDATED", index_page_url(page_num)))
+    _write_category_pages(published_posts_sorted_desc, dist_dir, config, template)
+    micro_posts = [p for p in published_posts_sorted_desc if p.is_micro]
+    _write_microblog_pages(published_posts_sorted_desc, dist_dir, config, template)
+    micro_per_page = config["micro_posts_per_page"]
+    total_micro_pages = max(1, (len(micro_posts) + micro_per_page - 1) // micro_per_page) if micro_posts else 0
+    for page_num in range(1, total_micro_pages + 1):
+        log(("UPDATED", microblog_page_url(page_num)))
+    (dist_dir / "feed.xml").write_text(render_feed(published_posts_sorted_desc, config))
+    log(("UPDATED", "feed.xml"))
+    archive_html = render_template(
+        template,
+        title=render_page_title(config["site_name"], "Archive", page_num=None),
+        content=render_archive_page_content(published_posts_sorted_desc, categories=config["categories"]),
+        canonical=canonical_url(config["site_url"], "archive.html"),
+        navigation=render_navigation(config["navigation"], "archive.html"),
+    )
+    (dist_dir / "archive.html").write_text(archive_html)
+    log(("UPDATED", "archive.html"))
+
+
+def _write_sitemap_and_robots(published_post_ids_sorted_desc, published_posts_sorted_desc, posts_cache, content_dir, dist_dir, config, special_page_posts_by_name, log):
+    per_page = config["posts_per_page"]
+    total_pages = max(1, (len(published_post_ids_sorted_desc) + per_page - 1) // per_page)
+    index_lastmod = _lastmod([content_dir / f"{pid}.md" for pid in published_post_ids_sorted_desc])
+    sitemap_pages = []
+    for pid in published_post_ids_sorted_desc:
+        if posts_cache[pid].is_noindex:
+            continue
+        post_files = [content_dir / f"{pid}.md"] + [
+            f for f in content_dir.iterdir() if re.match(rf'^{pid}-image-', f.name)
+        ]
+        sitemap_pages.append((f"{pid}.html", _lastmod(post_files)))
+    for page_num in range(1, total_pages + 1):
+        sitemap_pages.append((index_page_url(page_num), index_lastmod))
+    categories = config["categories"]
+    if categories:
+        for slug in categories:
+            cat_posts = [p for p in published_posts_sorted_desc if p.category == slug]
+            if not cat_posts:
+                continue
+            cat_lastmod = _lastmod([
+                path
+                for p in cat_posts
+                for path in [content_dir / f"{p.id}.md"] + [content_dir / img.filename for img in p.images]
+            ])
+            total_cat_pages = max(1, (len(cat_posts) + per_page - 1) // per_page)
+            for page_num in range(1, total_cat_pages + 1):
+                sitemap_pages.append((category_page_url(slug, page_num), cat_lastmod))
+    micro_posts_all = [p for p in published_posts_sorted_desc if p.is_micro]
+    if micro_posts_all:
+        micro_lastmod = _lastmod([content_dir / f"{p.id}.md" for p in micro_posts_all])
+        micro_per_page_sitemap = config["micro_posts_per_page"]
+        total_micro_pages_sitemap = max(1, (len(micro_posts_all) + micro_per_page_sitemap - 1) // micro_per_page_sitemap)
+        for page_num in range(1, total_micro_pages_sitemap + 1):
+            sitemap_pages.append((microblog_page_url(page_num), micro_lastmod))
+    for name in config["special_pages"]:
+        if special_page_posts_by_name[name].is_noindex:
+            continue
+        page_files = [content_dir / f"{name}.md"] + [
+            content_dir / img for img in _special_page_image_filenames(content_dir, name)
+        ]
+        sitemap_pages.append((f"{name}.html", _lastmod(page_files)))
+    sitemap_pages.append(("archive.html", index_lastmod))
+    (dist_dir / "sitemap.xml").write_text(render_sitemap(sitemap_pages, config))
+    log(("UPDATED", "sitemap.xml"))
+    (dist_dir / "robots.txt").write_text(render_robots_txt(config))
+    log(("UPDATED", "robots.txt"))
+
+
+def build(cwd, filename=None, flush=False, resources=False, on_progress=None):
+    cwd = Path(cwd)
+    content_dir = cwd / "content"
+    dist_dir = cwd / "dist"
+    manifest_path = cwd / "manifest.json"
+
+    validate_project(cwd)
+
+    config = load_config(cwd / "config.yaml")
+    validate_config(config)
+    validate_content(content_dir, config)
+    template = (cwd / "templates" / "index.html").read_text().replace(
+        'MAGNETIZER_BUILD_ID', str(int(time.time()))
+    )
+
+    if flush:
+        _flush_dist(dist_dir, manifest_path)
+
+    manifest = load_manifest(manifest_path)
+    prev_pages = manifest.get("pages", {})
+    log = []
+    warnings = []
+
+    def _log(entry):
+        log.append(entry)
+        if on_progress:
+            on_progress()
+
+    (
+        all_post_ids_sorted_desc, posts_cache,
+        published_post_ids_sorted_desc, published_posts_sorted_desc,
+        special_page_posts, special_page_posts_by_name,
+    ) = _load_content(content_dir, config)
+
+    # Sitewide dynamic-value computation runs unconditionally (even for a single-page
+    # preview build) so that any shortcodes on the page(s) being built expand correctly.
+    values = _compute_dynamic_values(published_posts_sorted_desc, special_page_posts, _date.today(), warnings)
+
+    pages_dynamic_updates = {}
+    deleted_page_filenames = set()
+
+    post_ids_to_build: set[int] = set()
+
+    if filename:
+        stem = Path(filename).stem
+        if stem in config["special_pages"]:
+            _build_requested_special_page(
+                stem, content_dir, dist_dir, config, template, values,
+                pages_dynamic_updates, warnings, _log,
+            )
+            changed_post_ids = set()
+        else:
+            post_id = int(stem)
+            changed_post_ids = {post_id}
+            post_ids_to_build = {post_id}
+        any_relevant_change = False
+    else:
+        changed_post_ids = get_changed_post_ids(content_dir, manifest)
+        post_ids_to_build, any_relevant_change = _determine_full_build_scope(
+            changed_post_ids, content_dir, manifest, prev_pages, config,
+            all_post_ids_sorted_desc, published_post_ids_sorted_desc,
+        )
+
+    created, updated, deleted = _build_changed_posts(
+        post_ids_to_build, changed_post_ids, posts_cache, manifest,
+        published_post_ids_sorted_desc, content_dir, dist_dir, config, template,
+        values, pages_dynamic_updates, deleted_page_filenames, warnings, _log,
+    )
 
     if filename:
         # Single-file preview build (post or special page): patch just this one page's
@@ -511,94 +652,19 @@ def build(cwd, filename=None, flush=False, resources=False, on_progress=None):
         # A single-file build only ever touches the one page requested — a special
         # page named directly as FILENAME is handled above; any other special page,
         # even one whose own file also changed, is left untouched.
-        for name in config["special_pages"]:
-            page_filename = f"{name}.html"
-            should_build = _special_page_changed(content_dir, manifest, f"{name}.md", special_page_image_pattern(name))
-            if not should_build and any_relevant_change:
-                should_build = bool(prev_pages.get(page_filename, {}).get("dynamic"))
-            if should_build:
-                def _warn_special(msg, _page_filename=page_filename):
-                    warnings.append((_page_filename, msg))
-
-                w, dynamic_flag = _build_special_page(name, content_dir, dist_dir, config, template, values, _warn_special)
-                if w:
-                    warnings.append((page_filename, w))
-                _log(("UPDATED", page_filename))
-                pages_dynamic_updates[page_filename] = {"dynamic": dynamic_flag}
-                specials_rebuilt = True
+        specials_rebuilt = _rebuild_stale_special_pages(
+            config, content_dir, dist_dir, template, values, manifest, prev_pages,
+            any_relevant_change, pages_dynamic_updates, warnings, _log,
+        )
 
     if not filename and post_ids_to_build:
-        _write_index_pages(published_posts_sorted_desc, dist_dir, config, template, categories=config["categories"])
-        per_page = config["posts_per_page"]
-        total_pages = max(1, (len(published_posts_sorted_desc) + per_page - 1) // per_page)
-        for page_num in range(1, total_pages + 1):
-            _log(("UPDATED", index_page_url(page_num)))
-        _write_category_pages(published_posts_sorted_desc, dist_dir, config, template)
-        micro_posts = [p for p in published_posts_sorted_desc if p.is_micro]
-        _write_microblog_pages(published_posts_sorted_desc, dist_dir, config, template)
-        micro_per_page = config["micro_posts_per_page"]
-        total_micro_pages = max(1, (len(micro_posts) + micro_per_page - 1) // micro_per_page) if micro_posts else 0
-        for page_num in range(1, total_micro_pages + 1):
-            _log(("UPDATED", microblog_page_url(page_num)))
-        (dist_dir / "feed.xml").write_text(render_feed(published_posts_sorted_desc, config))
-        _log(("UPDATED", "feed.xml"))
-        archive_html = render_template(
-            template,
-            title=render_page_title(config["site_name"], "Archive", page_num=None),
-            content=render_archive_page_content(published_posts_sorted_desc, categories=config["categories"]),
-            canonical=canonical_url(config["site_url"], "archive.html"),
-            navigation=render_navigation(config["navigation"], "archive.html"),
-        )
-        (dist_dir / "archive.html").write_text(archive_html)
-        _log(("UPDATED", "archive.html"))
+        _write_generated_pages(published_posts_sorted_desc, dist_dir, config, template, _log)
 
     if not filename and log:
-        per_page = config["posts_per_page"]
-        total_pages = max(1, (len(published_post_ids_sorted_desc) + per_page - 1) // per_page)
-        index_lastmod = _lastmod([content_dir / f"{pid}.md" for pid in published_post_ids_sorted_desc])
-        sitemap_pages = []
-        for pid in published_post_ids_sorted_desc:
-            if posts_cache[pid].is_noindex:
-                continue
-            post_files = [content_dir / f"{pid}.md"] + [
-                f for f in content_dir.iterdir() if re.match(rf'^{pid}-image-', f.name)
-            ]
-            sitemap_pages.append((f"{pid}.html", _lastmod(post_files)))
-        for page_num in range(1, total_pages + 1):
-            sitemap_pages.append((index_page_url(page_num), index_lastmod))
-        categories = config["categories"]
-        if categories:
-            for slug in categories:
-                cat_posts = [p for p in published_posts_sorted_desc if p.category == slug]
-                if not cat_posts:
-                    continue
-                cat_lastmod = _lastmod([
-                    path
-                    for p in cat_posts
-                    for path in [content_dir / f"{p.id}.md"] + [content_dir / img.filename for img in p.images]
-                ])
-                total_cat_pages = max(1, (len(cat_posts) + per_page - 1) // per_page)
-                for page_num in range(1, total_cat_pages + 1):
-                    sitemap_pages.append((category_page_url(slug, page_num), cat_lastmod))
-        micro_posts_all = [p for p in published_posts_sorted_desc if p.is_micro]
-        if micro_posts_all:
-            micro_lastmod = _lastmod([content_dir / f"{p.id}.md" for p in micro_posts_all])
-            micro_per_page_sitemap = config["micro_posts_per_page"]
-            total_micro_pages_sitemap = max(1, (len(micro_posts_all) + micro_per_page_sitemap - 1) // micro_per_page_sitemap)
-            for page_num in range(1, total_micro_pages_sitemap + 1):
-                sitemap_pages.append((microblog_page_url(page_num), micro_lastmod))
-        for name in config["special_pages"]:
-            if special_page_posts_by_name[name].is_noindex:
-                continue
-            page_files = [content_dir / f"{name}.md"] + [
-                content_dir / img for img in _special_page_image_filenames(content_dir, name)
-            ]
-            sitemap_pages.append((f"{name}.html", _lastmod(page_files)))
-        sitemap_pages.append(("archive.html", index_lastmod))
-        (dist_dir / "sitemap.xml").write_text(render_sitemap(sitemap_pages, config))
-        _log(("UPDATED", "sitemap.xml"))
-        (dist_dir / "robots.txt").write_text(render_robots_txt(config))
-        _log(("UPDATED", "robots.txt"))
+        _write_sitemap_and_robots(
+            published_post_ids_sorted_desc, published_posts_sorted_desc, posts_cache,
+            content_dir, dist_dir, config, special_page_posts_by_name, _log,
+        )
 
     resources_dir = cwd / "resources"
     changed_resource_filenames = get_changed_resource_filenames(resources_dir, manifest)
