@@ -305,6 +305,7 @@ class TestCLICategoryPagesSummary:
         result = run_build([], cwd=p)
         assert "categories(3)" in result.stdout
         assert "photography.html" not in result.stdout
+        assert "photography-2.html" not in result.stdout
         assert "travel.html" not in result.stdout
 
     def test_single_category_page_still_shows_count(self, tmp_path):
