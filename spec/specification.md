@@ -419,6 +419,21 @@ This renders as:
 
 The class name is optional — a bare `:::` fence renders `<div class="container">`. When a class name is given, it's appended after the default `container` class. Content between the fences is itself parsed as Markdown. An opening `:::` with no matching closing `:::` is left as ordinary text. Container blocks don't nest.
 
+### Frontmatter reference
+
+This is the single overview of every frontmatter key a post or special page can set. Any other key produces a build warning naming the post and the unknown key. Sections below give the full behaviour for each key; this table is the at-a-glance summary.
+
+| Key | Applies to | Format | Default | Details |
+| --- | --- | --- | --- | --- |
+| `date` | Posts (required), special pages (optional) | `YYYY-MM-DD` | — | [Posts](#posts) |
+| `title` | Posts, special pages | Plain text | Not set | [Posts](#posts) |
+| `images` | Posts, special pages | List of alt text strings, one per image file, in file order | `[]` | [Alt texts](#alt-texts) |
+| `category` | Posts | A slug from `categories` in `config.yaml` | Not set | [Categories](#categories) |
+| `draft` | Posts | `true` / `false` | `false` | [Draft posts](#draft-posts) |
+| `favourite` | Posts | `true` / `false` | `false` | [Favourite posts](#favourite-posts) |
+| `ai_assisted` | Posts, special pages | `true` / `false` | `false` | [AI-assisted disclosure](#ai-assisted-disclosure) |
+| `noindex` | Posts, special pages | `true` / `false` | `false` | [Noindex posts](#noindex-posts) |
+
 ### Draft posts
 
 A post can be marked as a draft by setting `draft: true` in its frontmatter:
@@ -950,15 +965,7 @@ When a single `FILENAME` is specified (preview builds), the manifest is *not* re
 
 ## Atom feed
 
-Magnetizer generates an Atom 1.0 feed at `dist/feed.xml` on every full build (incremental or `--flush`). Single-file preview builds (`build.py 1.md`) do not update the feed. `site_url` must be set in `config.yaml`; the build will exit with an error if it is absent or empty.
-
-### Configuration
-
-A new configuration variable is required:
-
-| Variable | Use | Default, if not specified |
-| --- | --- | --- |
-| `site_url` | The absolute base URL of the published site, e.g. `https://example.github.io` | Required — build exits with an error if absent or empty |
+Magnetizer generates an Atom 1.0 feed at `dist/feed.xml` on every full build (incremental or `--flush`). Single-file preview builds (`build.py 1.md`) do not update the feed. `site_url` must be set in `config.yaml`; the build will exit with an error if it is absent or empty — see [Configuration](#configuration) for the full list of config variables.
 
 ### Feed structure
 
