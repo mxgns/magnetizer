@@ -221,10 +221,9 @@ Examples:
     **Normal output** (only posts with warnings are listed):
 
     ```text
-    Generating MXGNS → dist/
       002   +2.html    ⚠ No category
     30 created · 0 updated · 0 deleted
-    updated    about, index(+3), feed.xml
+    updated    about, index(+3), categories(3), feed.xml
     resources  style.css
     DONE with warnings
     ```
@@ -242,13 +241,13 @@ Examples:
     30 created · 0 updated · 0 deleted
     ⚠ 1 warning: 2.html
 
-    Pages updated   about, cookies, index(+3), feed.xml, archive.html, sitemap.xml, robots.txt
+    Pages updated   about, cookies, index(+3), categories(3), feed.xml, archive.html, sitemap.xml, robots.txt
     Resources       style.css
 
     DONE with warnings
     ```
 
-    Draft posts are shown with a `+` prefix (e.g. `+26.html`) in both normal and verbose output. The final status line is `DONE` (green) on success, `DONE with warnings` (yellow, `DONE` in colour) when warnings were raised, or `ERROR` (red) if the build failed. Warnings are collected and shown in-line — per post, or on their own `  {page}.html   ⚠ {message}` line for a special page or a sitewide (non-page) issue — and never interrupt the build. Deleted posts are counted in the totals line but never appear in the pages summary.
+    Draft posts are shown with a `+` prefix (e.g. `+26.html`) in both normal and verbose output. The final status line is `DONE` (green) on success, `DONE with warnings` (yellow, `DONE` in colour) when warnings were raised, or `ERROR` (red) if the build failed. Warnings are collected and shown in-line — per post, or on their own `{page}.html   ⚠ {message}` line for a special page or a sitewide (non-page) issue — and never interrupt the build. Deleted posts are counted in the totals line but never appear in the pages summary. Category pages are summarised as `categories(N)` — the total number of category pages built across every category, not listed individually — the same way paginated index pages are summarised as `index(+N)`. The `Generating {site_name} → dist/` header line is only printed in verbose mode.
 
 ### Configuration
 

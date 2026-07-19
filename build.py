@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import argparse
+import re
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -45,7 +46,17 @@ def _post_id(entry):
     return int(entry[1][:-5])
 
 
-def _pages_summary(log, verbose, special_pages=()):
+def _category_page_names(names, categories):
+    if not categories:
+        return []
+    matched = []
+    for slug in categories:
+        pattern = re.compile(rf'^{re.escape(slug)}(-\d+)?\.html$')
+        matched.extend(n for n in names if pattern.match(n))
+    return matched
+
+
+def _pages_summary(log, verbose, special_pages=(), categories=None):
     entries = _page_entries(log)
     if not entries:
         return None
@@ -68,6 +79,12 @@ def _pages_summary(log, verbose, special_pages=()):
     if index_pages:
         n = len(index_pages)
         parts.append(f"index(+{n})" if n > 1 else "index")
+
+    category_pages = _category_page_names(non_index, categories)
+    if category_pages:
+        parts.append(f"categories({len(category_pages)})")
+        for name in category_pages:
+            non_index.remove(name)
 
     if "feed.xml" in non_index:
         parts.append("feed.xml")
@@ -165,7 +182,7 @@ def _print_output(outcome, config, dist_path, verbose):
             print(f"⚠ {len(w_files)} {label}: {', '.join(w_files)}")
         print()
 
-        pages = _pages_summary(log, verbose=True, special_pages=config["special_pages"])
+        pages = _pages_summary(log, verbose=True, special_pages=config["special_pages"], categories=config["categories"])
         if pages:
             print(f"{'Pages updated':<16}{pages}")
         if resources:
@@ -173,7 +190,7 @@ def _print_output(outcome, config, dist_path, verbose):
             print(f"{'Resources':<16}{names}")
         print()  # blank line before DONE in verbose
     else:
-        pages = _pages_summary(log, verbose=False, special_pages=config["special_pages"])
+        pages = _pages_summary(log, verbose=False, special_pages=config["special_pages"], categories=config["categories"])
         if pages:
             print(f"{'updated':<11}{pages}")
         if resources:
@@ -202,7 +219,8 @@ def main():
     config = load_config(Path.cwd() / "config.yaml")
     dist_path = (Path.cwd() / "dist").resolve()
 
-    print(f"Generating {config['site_name']} → {dist_path}/")
+    if args.verbose:
+        print(f"Generating {config['site_name']} → {dist_path}/")
 
     dot_count = 0
 
