@@ -35,7 +35,7 @@ manifest.json  Build state (created automatically)
 | `categories` | Map of category slug to display name, e.g. `{photography: Photography}` | `{}` (no categories) |
 | `navigation` | Map of page filename to nav label, e.g. `{index.html: Home}`, in display order | `{}` (no navigation) |
 | `special_pages` | List of standalone page names, each backed by a `content/{name}.md` file — see [Special pages](#special-pages) | `[]` (no special pages) |
-| `ai_disclosure_html` | Raw HTML (not escaped, so it may include a link) shown in the AI-assisted disclosure banner — see [Frontmatter reference](#frontmatter-reference) | Not set — falls back to a generic disclosure sentence |
+| `ai_disclosure_html` | Raw HTML (not escaped, so it may include a link) shown in the disclosure banner when a post or special page sets `ai_assisted: true` — see the `ai_assisted` entry in [Frontmatter reference](#frontmatter-reference) | Not set — falls back to a generic disclosure sentence |
 
 Example:
 
