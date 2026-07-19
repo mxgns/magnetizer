@@ -809,6 +809,15 @@ class TestRenderTemplate:
                                meta_description='A "great" blog & <more>')
         assert 'content="A &quot;great&quot; blog &amp; &lt;more&gt;"' in html
 
+    def test_title_special_chars_are_escaped(self):
+        html = render_template(self.TEMPLATE, title='A "great" <post> & more', content="C")
+        assert "<title>A &quot;great&quot; &lt;post&gt; &amp; more</title>" in html
+
+    def test_canonical_special_chars_are_escaped(self):
+        html = render_template(self.TEMPLATE, title="T", content="C",
+                               canonical='https://example.com/?a=1&b="2"')
+        assert 'href="https://example.com/?a=1&amp;b=&quot;2&quot;"' in html
+
     def test_metadata_includes_robots_noindex_when_is_noindex_true(self):
         html = render_template(self.TEMPLATE, title="T", content="C", is_noindex=True)
         assert '<meta name="robots" content="noindex">' in html

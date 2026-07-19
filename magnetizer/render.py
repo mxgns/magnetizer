@@ -199,11 +199,11 @@ def render_page_title(site_name, post_title, page_num, index_title=None, post_id
 
 
 def render_metadata(title, canonical=None, meta_description=None, is_noindex=False):
-    lines = [f'<title>{title}</title>']
+    lines = [f'<title>{_escape(title)}</title>']
     if meta_description:
         lines.append(f'<meta name="description" content="{_escape(meta_description, quote=True)}">')
     if canonical is not None:
-        lines.append(f'<link rel="canonical" href="{canonical}">')
+        lines.append(f'<link rel="canonical" href="{_escape(canonical, quote=True)}">')
     if is_noindex:
         lines.append('<meta name="robots" content="noindex">')
     return '\n'.join(lines)
