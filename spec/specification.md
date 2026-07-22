@@ -234,7 +234,7 @@ Examples:
     Generating MXGNS → dist/
 
       001   1.html
-      002   2.html    [2 imgs]   ⚠ No title
+      002   2.html    [2 imgs]   ⚠ Title and name both set
       003   3.html    [1 img]
       026   +26.html   [7 imgs]
 
@@ -260,8 +260,7 @@ Examples:
 | `image_max_dimension` | Long-edge max size when resizing images | `1600` |
 | `image_quality` | Image quality, when resizing images | `75` |
 | `posts_per_page` | Number of posts per page when generating the index files | `12` |
-| `micro_post_max_length` | Maximum plain-text character count for a post to be treated as a microblog post | `180` |
-| `micro_posts_per_page` | Number of microblog posts per page when generating the microblog pages | `20` |
+| `notes_per_page` | Number of Notes per page when generating the notes pages | `20` |
 | `index_meta_description` | Content for the `<meta name="description">` tag on index pages, via the `MAGNETIZER_METADATA` template placeholder | Not set — line is omitted |
 | `index_title` | When set, the title of `index.html` becomes `site_name - index_title` instead of just `site_name` | Not set — `index.html` title is just `site_name` |
 | `categories` | A map of category slug to display name, e.g. `{photography: Photography}`. See [Categories](#categories). | `{}` (no categories) |
@@ -324,8 +323,7 @@ Magnetizer does not enforce any structure beyond the presence of the placeholder
   - `site_name` (index.html, no `index_title`)
   - `site_name - index_title` (index.html, with `index_title`)
   - `site_name - Page 2` (index-2.html and beyond)
-  - `post_title - site_name` (individual post page with a title)
-  - `Post N - site_name` (individual post page without a title, e.g. a microblog post)
+  - `post_heading - site_name` (individual post page — `post_heading` follows the title/name/date-fallback priority order described in [Post types](#post-types))
 - `<meta name="description">` appears only on index pages, using `index_meta_description` from config, if set.
 - `<link rel="canonical">` appears on every generated page, derived from `site_url` in config. For `index.html` this is the root URL (e.g. `https://example.github.io/`); for all other pages it is `site_url` + `/` + filename (e.g. `https://example.github.io/1.html`).
 - `<meta name="robots" content="noindex">` appears only for posts or special pages with `noindex: true` in frontmatter — see [Noindex posts](#noindex-posts).
@@ -351,7 +349,7 @@ The `MAGNETIZER_NAVIGATION` template placeholder is replaced with a `<ul>` conta
 
 Each `<a>` gets its own class, `nav-{slug}`, derived from its filename (extension stripped, lowercased, any run of non-alphanumeric characters collapsed to a single `-`) — e.g. `archive.html` → `nav-archive`, `feed.xml` → `nav-feed`, `out-and-about.html` → `nav-out-and-about`. This lets each nav item be styled independently regardless of its label text.
 
-The `<a>` for the page currently being generated additionally gets `current` appended to its class (e.g. `class="nav-archive current"`) and an `aria-current="page"` attribute, so it can be styled to indicate the active page and is announced as such by assistive technology — this is determined by comparing each entry's filename against the filename of the page being built, so it works across every page type (index, archive, category, microblog, individual post, about, cookies). No entry gets `current`/`aria-current` if the current page's filename isn't present in `navigation` (e.g. an individual post page, unless a post's own filename happens to be configured).
+The `<a>` for the page currently being generated additionally gets `current` appended to its class (e.g. `class="nav-archive current"`) and an `aria-current="page"` attribute, so it can be styled to indicate the active page and is announced as such by assistive technology — this is determined by comparing each entry's filename against the filename of the page being built, so it works across every page type (index, archive, category, notes, individual post, about, cookies). No entry gets `current`/`aria-current` if the current page's filename isn't present in `navigation` (e.g. an individual post page, unless a post's own filename happens to be configured).
 
 Replaced with an empty string when `navigation` is not configured.
 
@@ -360,8 +358,8 @@ Replaced with an empty string when `navigation` is not configured.
 Posts are generated using a simple html structure.
 
 ```html
-<article id="POST_HTML_ID">
-  <POST_TITLE_TAG><a href="POST_URL">POST_TITLE</a></POST_TITLE_TAG>
+<article id="POST_HTML_ID" class="POST_LAYOUT_CLASS POST_TYPE_CLASS">
+  <POST_TITLE_TAG><a href="POST_URL">POST_HEADING</a></POST_TITLE_TAG>
 	<div class="post-body">
     POST_BODY
   </div>
@@ -377,9 +375,11 @@ Posts are generated using a simple html structure.
 Where:
 
 - `POST_HTML_ID` is the unique id of the `<article>` element, as `post-{post-id}` , used for anchor links
+- `POST_LAYOUT_CLASS` is `single-post` on the individual post page, or `multiple-posts` on a multi-post page (index or category page) — see [Read more](#read-more)
+- `POST_TYPE_CLASS` is `full-post`, `image-post` or `note`, depending on the post's type — see [Post types](#post-types). It's always present alongside `POST_LAYOUT_CLASS`, not instead of it, e.g. `class="single-post note"` or `class="multiple-posts image-post"`.
 - `POST_URL` is the URL of the individual post page, e.g. `1.html`
 - `POST_TITLE_TAG` is `h2` when the post is displayed on a multi-post page (index or category page), or `h1` on the individual post page
-- `POST_TITLE` is the `title` from the Markdown frontmatter
+- `POST_HEADING` is the post's heading text — see [Post types](#post-types) for how it's derived
 - `POST_DATE` is the `date` from the Markdown frontmatter
 - `POST_DATE_UK` is the human-readable version of the `date`, e.g. “24 May 2026”
 - `POST_BODY` is the HTML generated from the Markdown
@@ -387,16 +387,68 @@ Where:
 
 Notes:
 
-- The title element is only included if the post has a title.
-- On multi-post pages (index and category pages), the title is an `<h2>` rather than `<h1>`, so that a page listing several posts has only one `<h1>` (used elsewhere on the page, e.g. for a category name). On the individual post page, the title is an `<h1>`.
-- If the post is displayed on a multi-post page, the title and `<time>` contain a link to the post page. On the individual post page, no links are included.
-- Magnetizer prints a warning during the build if a post's Markdown body contains a heading more prominent than `<h3>` (i.e. an `<h1>` or `<h2>`, from `#` or `##`), since the post title already occupies that level of the document outline:
+- The heading element is always present, on every post, regardless of type. See [Post types](#post-types) for what text it contains when the post has no `title`. Visually hiding it for untitled posts — so it exists for the document outline and assistive technology without appearing on the page — is the responsibility of the project's own `resources/` CSS, keyed off `POST_TYPE_CLASS`; Magnetizer itself never hides it.
+- On multi-post pages (index and category pages), the heading is an `<h2>` rather than `<h1>`, so that a page listing several posts has only one `<h1>` (used elsewhere on the page, e.g. for a category name). On the individual post page, the heading is an `<h1>`.
+- If the post is displayed on a multi-post page, the heading and `<time>` contain a link to the post page. On the individual post page, no links are included.
+- Magnetizer prints a warning during the build if a post's Markdown body contains a heading more prominent than `<h3>` (i.e. an `<h1>` or `<h2>`, from `#` or `##`), since the post heading already occupies that level of the document outline:
 
 ```
 Warning: Post {post-id} has heading(s) more prominent than <h3> in its body: <h1>, <h2>
 ```
 
 The same warning is printed for each [special page](#special-pages), using its configured name in place of `{post-id}`. The build continues normally — this is a warning, not an error.
+
+### Post types
+
+Every post is classified into exactly one of three types, based on its `title`, its top-level images, and its body content:
+
+| Type | `POST_TYPE_CLASS` | Criteria |
+| --- | --- | --- |
+| Full post | `full-post` | Has a `title` |
+| Image post | `image-post` | No `title`, and one or more top-level images |
+| Note | `note` | No `title`, no top-level images, and non-empty body content |
+
+- A blank or whitespace-only `title`, `name`, or body counts as unset/empty throughout — for classification, for the invalid-post and warning checks below, and for the heading/meta-title/archive fallback logic. A post with `title: "   "` is treated exactly like one with no `title` at all.
+- Images placed inline in the body via `{{ image N }}` (see [Inline images](#inline-images)) don't count as top-level images for this classification — a post with only inline images and no title is a Note, not an Image post.
+- All in-post features — `<!-- more -->`, `{{ image N }}`, container blocks, dynamic values — work the same way regardless of post type. Magnetizer doesn't restrict which features a Full post, Image post or Note can use.
+- A post with no `title`, no top-level images, and no body content is invalid. The build exits with an error.
+- A post with both `title` and `name` set uses the `title` and ignores `name`. A build warning is printed naming the post.
+- A post with a `title` but no top-level images and no body content doesn't make good use of its own page. A build warning is printed naming the post.
+- Notes replace what was previously called microblog posts. Compared to the old microblog behaviour, there is no longer a maximum length — any untitled, image-less post with body content is a Note, however long — and the paginated listing page is `notes.html` instead of `microblog.html` (see [Notes pages](#notes-pages)).
+
+Notes get a link to `notes.html` in their `<footer>`, before the category link (if any):
+
+```html
+<a href="notes.html" class="notes">Notes</a>
+```
+
+#### `name`
+
+`name` is a frontmatter field used as a fallback label for posts without a `title` — an Image post or a Note:
+
+```yaml
+---
+date: 2026-05-21
+name: Sunset over the harbour
+---
+```
+
+It has no effect on a Full post (a post with `title` set), beyond the warning described above.
+
+#### Heading and meta title text
+
+Every post has a non-empty heading (`POST_HEADING` — see [Posts](#posts)) and a non-empty page `<title>` (`PAGE_TITLE` — see [Metadata](#metadata)), derived using the same priority order:
+
+1. `title`, if set
+2. `name`, if set
+3. A generated fallback, based on post type and top-level image count:
+    - `Note posted {date}` — no top-level images
+    - `Photo posted {date}` — exactly one top-level image
+    - `Photos posted {date}` — more than one top-level image
+
+    `{date}` is the UK-formatted `date` from frontmatter, e.g. `Photo posted 22 July 2026`.
+
+This is the same priority order used for the archive link text (see [Archive page](#archive-page)), except the archive additionally falls back to an excerpt of the post's own content before reaching the generated fallback text.
 
 ### Container blocks
 
@@ -425,7 +477,8 @@ This is the single overview of every frontmatter key a post or special page can 
 | Key | Applies to | Format | Default | Details |
 | --- | --- | --- | --- | --- |
 | `date` | Posts (required), special pages (optional) | `YYYY-MM-DD` | — | [Posts](#posts) |
-| `title` | Posts, special pages | Plain text | Not set | [Posts](#posts) |
+| `title` | Posts, special pages | Plain text | Not set | [Post types](#post-types) |
+| `name` | Posts, special pages | Plain text | Not set | [Post types](#post-types) |
 | `images` | Posts, special pages | List of alt text strings, one per image file, in file order | `[]` | [Alt texts](#alt-texts) |
 | `category` | Posts | A slug from `categories` in `config.yaml` | Not set | [Categories](#categories) |
 | `draft` | Posts | `true` / `false` | `false` | [Draft posts](#draft-posts) |
@@ -462,10 +515,10 @@ favourite: true
 When a post is a favourite, its `<li>` element in the archive page gets an additional `favourite` class appended to the existing post-type class:
 
 ```html
-<li class="text-post favourite">...</li>
+<li class="full-post favourite">...</li>
 ```
 
-The `favourite` class is appended after the post-type class (`text-post`, `photo-post`, `mixed-post`, or `micro-post`). If `favourite` is absent or `false`, no additional class is added.
+The `favourite` class is appended after the post-type class (`full-post`, `image-post`, or `note` — see [Post types](#post-types)). If `favourite` is absent or `false`, no additional class is added.
 
 ### AI-assisted disclosure
 
@@ -551,7 +604,7 @@ Warning: Post {post-id} has unknown category: '{category}'
 
 Both warnings are skipped when `categories` is not configured. The build continues normally in both cases — these are warnings, not errors.
 
-When a post has a category that matches a configured slug, a link to that category's page is included in the post's `<footer>`, after the date (and after the microblog link, if present):
+When a post has a category that matches a configured slug, a link to that category's page is included in the post's `<footer>`, after the date (and after the notes link, if present):
 
 ```html
 <a href="{slug}.html" class="category">{display name}</a>
@@ -653,7 +706,7 @@ When there is one or more images for the post, each is included as a `<figure>` 
 
 ```html
 ...
-<article class="single-post">
+<article class="single-post full-post">
   <div class="post-images">
 	  <figure>
 		  <img src="{post-id}-image-{image-number}-resized.{image-file-extension}" alt="ALT_TEXT">
@@ -668,7 +721,7 @@ When there is one or more images for the post, each is included as a `<figure>` 
 
 Note: The following differences apply to `<article>` elements when they appear on index pages:
 
-- The `<article>` class is `multiple-posts`
+- `POST_LAYOUT_CLASS` is `multiple-posts` instead of `single-post` — the post-type class (`full-post`, `image-post` or `note`) is still appended alongside it, e.g. `class="multiple-posts note"`
 - The title is an `<h2>` instead of `<h1>` — see [Posts](#posts)
 - Each `<img>` is wrapped in an `<a>` pointing to the individual post page
 - Only the first two images are shown
@@ -681,28 +734,6 @@ Note: The following differences apply to `<article>` elements when they appear o
 Where `N` is the number of hidden top-of-post images (total minus two). The text uses "photo" for one hidden image and "photos" for two or more. Images used via [inline images](#inline-images) are excluded from the top-of-post strip and don't count here — a bare `{{ image N }}` post with no marker shows all its content, inline images included, so nothing is hidden.
 
 If a `<!-- more -->` marker **is** present, undisplayed images (top-strip overflow, plus any inline images that fall after the marker) are folded into the "Read more" link's text instead — see [Read more](#read-more). Exactly one of "Read more" or "N more photo(s)" is ever shown for a given post, never both.
-
-### Microblog posts
-
-A post is classified as a microblog post if it meets all of the following criteria:
-
-- No `title` in the frontmatter
-- No associated image files
-- Body plain-text length is between 1 and `micro_post_max_length` characters (inclusive)
-
-Character counting uses the rendered plain text — markdown syntax (e.g. `**bold**`) and HTML tags are excluded, so only visible characters count.
-
-Microblog posts have `micro-post` appended to the `<article>` class:
-
-```html
-<article id="post-1" class="single-post micro-post" ...>
-```
-
-Microblog posts also include a link to `microblog.html` in their `<footer>`, before the category link (if any):
-
-```html
-<a href="microblog.html" class="microblog">Microblog</a>
-```
 
 ### Individual post pages
 
@@ -748,7 +779,7 @@ special_pages:
 
 For each name in `special_pages`, Magnetizer requires a matching `content/{name}.md` file and generates `dist/{name}.html` on every full build — the build exits with an error if a configured special page's `.md` file is missing. A `.md` file matching the `{name}-image-NN.ext` convention that isn't listed in `special_pages` is treated as an unrecognised file (see [Input content model](#input-content-model)) — special pages are exempted from that check only when configured.
 
-A special page supports the same frontmatter fields (`date`, `title`) and image conventions as posts. Unlike posts, `date` is optional — if omitted, no date footer is rendered. On a full or partial build, it is rebuilt whenever its `.md` file or any of its images change. Single-file preview builds (e.g. `build.py about.md`) are also supported — a single-file build only ever touches the one page named by `FILENAME`, never any other special page, even one whose own file also changed since the last build.
+A special page supports the same frontmatter fields (`date`, `title`, `name`) and image conventions as posts, and is classified into a post type ([Post types](#post-types)) the same way. Unlike posts, `date` is optional — if omitted, no date footer is rendered. On a full or partial build, it is rebuilt whenever its `.md` file or any of its images change. Single-file preview builds (e.g. `build.py about.md`) are also supported — a single-file build only ever touches the one page named by `FILENAME`, never any other special page, even one whose own file also changed since the last build.
 
 Special pages are not automatically linked to from anywhere (add an entry to `navigation` to link one from the masthead — see [Navigation](#navigation)) and are not included in index pages, category pages, the archive, the feed, or the newer/older post navigation.
 
@@ -787,9 +818,9 @@ An unknown shortcode name (matching the `{{ ... }}` pattern but not one of the n
 | `{{ today }}` | date string | The build date, formatted `D/M/YY` (no leading zeros on day/month, two-digit year), e.g. `17/7/26` |
 | `{{ ai_post_list }}` | HTML block | `<ul>` of posts with `ai_assisted: true`, newest first |
 
-`post_count`, `word_count` and `image_count` draw only from **published posts**: markdown files that render to an individual post page and are not drafts. Special pages and generated pages (index, category, microblog, archive) are never counted by these three.
+`post_count`, `word_count` and `image_count` draw only from **published posts**: markdown files that render to an individual post page and are not drafts. Special pages and generated pages (index, category, notes, archive) are never counted by these three.
 
-`{{ ai_post_list }}` is the one exception: a special page with `ai_assisted: true` also appears in the list (sorted alongside qualifying posts by the same rules), even though it's never counted by `post_count` or any other value. Generated pages (index, category, microblog, archive) never contribute to it regardless.
+`{{ ai_post_list }}` is the one exception: a special page with `ai_assisted: true` also appears in the list (sorted alongside qualifying posts by the same rules), even though it's never counted by `post_count` or any other value. Generated pages (index, category, notes, archive) never contribute to it regardless.
 
 `word_count` expands every other recognised shortcode in a post's body first (so e.g. a title shown via `{{ ai_post_list }}` counts towards the total), and treats any `{{ word_count }}` occurrence in the body as empty, to avoid circularity. `image_count` sums each published post's image count. `{{ ai_post_list }}` sorts newest-first by frontmatter date, ties broken by descending filename number, and renders `<ul class="ai-post-list"><li>(none)</li></ul>` if no post qualifies.
 
@@ -817,7 +848,7 @@ Single-file preview builds (`build.py 42.md`) are the exception to the whole mec
 
 Magnetizer generates `dist/archive.html` under the same conditions as index pages — on full builds where post changes are detected, but not during single-file preview builds.
 
-The archive lists all dated blog posts (microblog posts excluded) grouped by month, newest month first. Within each month, posts appear in reverse chronological order (highest post ID first). Posts without a `date` are excluded. The archive is not included in index pages, the feed, or the newer/older post navigation.
+The archive lists all dated blog posts (Notes excluded) grouped by month, newest month first. Within each month, posts appear in reverse chronological order (highest post ID first). Posts without a `date` are excluded. The archive is not included in index pages, the feed, or the newer/older post navigation.
 
 The page title is `Archive - {site_name}`.
 
@@ -831,15 +862,15 @@ The `MAGNETIZER_CONTENT` has the following structure:
   <li><a href="CATEGORY_SLUG.html">CATEGORY_NAME</a> (N)</li>
   ...
 </ul>
-<h2>Microblog</h2>
+<h2>Notes</h2>
 <ul>
-  <li><a href="microblog.html">All microblog posts</a></li>
+  <li><a href="notes.html">All notes</a></li>
 </ul>
 <h2>Blog Posts</h2>
   <section>
     <h2>May 2026</h2>
     <ul>
-      <li class="POST_TYPE"><span class="day">DAY</span><a href="POST_URL">POST_TITLE</a></li>
+      <li class="POST_TYPE"><span class="day">DAY</span><a href="POST_URL">POST_LINK_TEXT</a></li>
       ...
     </ul>
   </section>
@@ -851,29 +882,33 @@ The `MAGNETIZER_CONTENT` has the following structure:
 Where:
 
 - The `<h2>Categories</h2>` heading and its `<ul>` are only included if `categories` is configured and at least one configured category has a matching post. Each `<li>` links to the corresponding category page (see [Categories](#categories)) and includes the number of posts `(N)` in that category. Categories are listed in descending order of post count; categories with no matching posts are omitted.
-- The `<h2>Microblog</h2>` heading and its `<ul>` are only included when at least one microblog post exists.
-- The `<h2>Blog Posts</h2>` heading is only included when the categories list, the microblog section, or both are shown.
+- The `<h2>Notes</h2>` heading and its `<ul>` are only included when at least one Note exists.
+- The `<h2>Blog Posts</h2>` heading is only included when the categories list, the notes section, or both are shown.
 - `DAY` is the day of the month with no leading zero, e.g. `16`
-- The `<a>` link text is the post title for titled posts; for untitled posts it is a truncated excerpt of the first paragraph (up to 36 characters), or `Untitled` if the post has no body text
-- `POST_TYPE` is one of: `text-post` (title, no images), `photo-post` (images, no title), `mixed-post` (title and images). Microblog posts are excluded from the monthly list.
+- `POST_TYPE` is `full-post` or `image-post` (see [Post types](#post-types)) — Notes are excluded from the monthly list entirely.
+- `POST_LINK_TEXT` is derived using this priority order:
+    1. `title`, if set
+    2. `name`, if set
+    3. The post's first `<p>` element, converted to plaintext with tags stripped, if it has any non-whitespace content — truncated to 40 characters after the last full word, with a trailing `…`, if longer than 40
+    4. Otherwise, the same generated fallback text used for the heading and meta title (see [Post types](#post-types)): `Photo posted {date}` or `Photos posted {date}` (an Image post always has at least one top-level image, so `Note posted {date}` is never reached here in practice — it only appears for a Note, which isn't listed in the archive at all)
 
-### Microblog pages
+### Notes pages
 
-Magnetizer generates `dist/microblog.html` (and `microblog-2.html`, etc.) under the same conditions as index pages — on full builds where post changes are detected, but not during single-file preview builds. If no microblog posts exist, no microblog pages are generated.
+Magnetizer generates `dist/notes.html` (and `notes-2.html`, etc.) under the same conditions as index pages — on full builds where post changes are detected, but not during single-file preview builds. If no Notes exist, no notes pages are generated.
 
-Microblog pages show all microblog posts in reverse chronological order (newest first), in full, with `micro_posts_per_page` posts per page. The page title is `Microblog - {site_name}`.
+Notes pages show all Notes in reverse chronological order (newest first), in full, with `notes_per_page` posts per page. The page title is `Notes - {site_name}`.
 
 The `MAGNETIZER_CONTENT` has the following structure:
 
 ```html
 <main>
-<h1>Microblog</h1>
+<h1>Notes</h1>
 <article>...</article>
 <article>...</article>
 </main>
 <nav><ul>
-  <li class="newer"><a href="microblog.html">Newer posts</a></li>
-  <li class="older"><a href="microblog-2.html">Older posts</a></li>
+  <li class="newer"><a href="notes.html">Newer posts</a></li>
+  <li class="older"><a href="notes-2.html">Older posts</a></li>
 </ul></nav>
 <nav><a href="index.html">Back to homepage</a></nav>
 ```
@@ -881,7 +916,7 @@ The `MAGNETIZER_CONTENT` has the following structure:
 Where:
 - The `<nav>` with newer/older links is only included when there is more than one page. The "Newer posts" `<li>` is omitted on the first page; the "Older posts" `<li>` is omitted on the last page.
 - The "Back to homepage" nav is always present.
-- Microblog pages are included in `sitemap.xml`. The `<lastmod>` date is derived from the most recent modification time across all microblog post source files.
+- Notes pages are included in `sitemap.xml`. The `<lastmod>` date is derived from the most recent modification time across all Note source files.
 
 
 ### Index pages
@@ -951,7 +986,7 @@ Where:
 - Keys without a prefix are filenames from `content/`
 - Keys with a `resources/` prefix are filenames from `resources/`
 - `mtime` is the file's last modified time as a Unix timestamp, recorded at the time of the last successful build
-- `pages` is a map of generated page filename (a post's or special page's own `.html` output, not index/category/microblog/archive pages) to `{"dynamic": bool}` — see [Dynamic values](#dynamic-values) for how this flag is used to decide what gets rebuilt
+- `pages` is a map of generated page filename (a post's or special page's own `.html` output, not index/category/notes/archive pages) to `{"dynamic": bool}` — see [Dynamic values](#dynamic-values) for how this flag is used to decide what gets rebuilt
 
 The manifest is:
 
@@ -993,7 +1028,7 @@ Where:
 - `SITE_URL` is `site_url` from config
 - `FEED_URL` is `site_url + "/feed.xml"`
 - `MOST_RECENT_DATE` is the date of the most recent post in RFC 3339 format, e.g. `2026-05-24T00:00:00Z`
-- `POST_TITLE` is the `title` from the post's frontmatter, or the UK-formatted date (e.g. `24 May 2026`) for untitled posts
+- `POST_TITLE` follows the same title/name/date-fallback priority order as the post heading and meta title — see [Post types](#post-types)
 - `POST_URL` is the absolute URL of the post page, e.g. `https://example.github.io/1.html`
 - `POST_DATE` is the post date in RFC 3339 format, e.g. `2026-05-24T00:00:00Z`
 - `POST_BODY_HTML` is the HTML generated from the post's Markdown body
@@ -1011,7 +1046,7 @@ Magnetizer generates an XML sitemap at `dist/sitemap.xml` and a `dist/robots.txt
 | `{post-id}.html` | All published (non-draft) posts, in reverse chronological order, excluding posts with `noindex: true` |
 | `index.html`, `index-2.html`, … | All index pages |
 | `{slug}.html`, `{slug}-2.html`, … | All pages for each category that has at least one matching post |
-| `microblog.html`, `microblog-2.html`, … | All microblog pages, if at least one microblog post exists |
+| `notes.html`, `notes-2.html`, … | All notes pages, if at least one Note exists |
 | `{name}.html` | For each name in `special_pages` (see [Special pages](#special-pages)), excluding ones with `noindex: true` |
 | `archive.html` | Always |
 

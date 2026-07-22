@@ -25,19 +25,40 @@ def category_page_url(slug, page_num):
     return f"{slug}.html" if page_num == 1 else f"{slug}-{page_num}.html"
 
 
-def microblog_page_url(page_num):
-    return "microblog.html" if page_num == 1 else f"microblog-{page_num}.html"
+def notes_page_url(page_num):
+    return "notes.html" if page_num == 1 else f"notes-{page_num}.html"
+
+
+_POST_TYPE_CLASS = {"full": "full-post", "image": "image-post", "note": "note"}
+
+
+def post_display_text(post):
+    """The post's title, falling back to its `name`, falling back to a
+    generated label based on top-level image count (inline images excluded).
+    Used for the post heading and the page meta title."""
+    if post.title:
+        return post.title
+    if post.name:
+        return post.name
+    return _generated_post_label(post)
+
+
+def _generated_post_label(post):
+    top_level_count = len(post.images) - len(post.inline_image_filenames)
+    if top_level_count == 0:
+        kind = "Note"
+    elif top_level_count == 1:
+        kind = "Photo"
+    else:
+        kind = "Photos"
+    return f"{kind} posted {post.date_uk}" if post.date_uk else kind
 
 
 def render_article(post, on_index_page, categories=None, ai_disclosure_html=None):
     article_class = "multiple-posts" if on_index_page else "single-post"
-    if post.is_micro:
-        article_class += " micro-post"
-    if not post.title:
-        aria = f' aria-label="Post {post.id} ({post.date_uk})"' if post.date_uk else f' aria-label="Post {post.id}"'
-    else:
-        aria = ''
-    parts = [f'<article id="post-{post.id}" class="{article_class}"{aria}>']
+    if post.post_type in _POST_TYPE_CLASS:
+        article_class += f" {_POST_TYPE_CLASS[post.post_type]}"
+    parts = [f'<article id="post-{post.id}" class="{article_class}">']
 
     top_images = [image for image in post.images if image.filename not in post.inline_image_filenames]
 
@@ -53,17 +74,17 @@ def render_article(post, on_index_page, categories=None, ai_disclosure_html=None
                 parts.append(f'<figure><img src="{resized}"{alt}></figure>')
         parts.append('</div>')
 
-    if post.title:
-        if on_index_page:
-            parts.append(f'<h2><a href="{post.url}">{_escape(post.title)}</a></h2>')
-        else:
-            parts.append(f'<h1>{_escape(post.title)}</h1>')
+    heading_text = _escape(post_display_text(post))
+    if on_index_page:
+        parts.append(f'<h2><a href="{post.url}">{heading_text}</a></h2>')
+    else:
+        parts.append(f'<h1>{heading_text}</h1>')
 
     hidden_top = max(0, len(top_images) - 2) if on_index_page else 0
 
     ai_banner = _render_ai_disclosure(ai_disclosure_html) if post.is_ai_assisted else ''
 
-    if on_index_page and post.excerpt_html is not None and not post.is_micro:
+    if on_index_page and post.excerpt_html is not None and post.post_type != "note":
         hidden_inline = len(post.inline_image_filenames) - len(post.excerpt_inline_image_filenames)
         hidden = hidden_top + hidden_inline
         if hidden > 0:
@@ -84,8 +105,8 @@ def render_article(post, on_index_page, categories=None, ai_disclosure_html=None
         else:
             date_content = post.date_uk
         footer_parts = [f'<time datetime="{post.date}">{date_content}</time>']
-        if post.is_micro:
-            footer_parts.append('<a href="microblog.html" class="microblog">Microblog</a>')
+        if post.post_type == "note":
+            footer_parts.append('<a href="notes.html" class="notes">Notes</a>')
         if post.category and categories and post.category in categories:
             display_name = _escape(categories[post.category])
             footer_parts.append(f'<a href="{post.category}.html" class="category">{display_name}</a>')
@@ -148,17 +169,17 @@ def render_category_page_content(posts, category_name, category_slug, page_num, 
     return content
 
 
-def render_microblog_page_content(posts, page_num, total_pages, categories=None, ai_disclosure_html=None):
+def render_notes_page_content(posts, page_num, total_pages, categories=None, ai_disclosure_html=None):
     articles = '\n'.join(render_article(p, on_index_page=True, categories=categories, ai_disclosure_html=ai_disclosure_html) for p in posts)
-    content = f'<main>\n<h1>Microblog</h1>\n{articles}\n</main>'
+    content = f'<main>\n<h1>Notes</h1>\n{articles}\n</main>'
 
     if total_pages > 1:
         nav_items = []
         if page_num > 1:
-            prev_url = microblog_page_url(page_num - 1)
+            prev_url = notes_page_url(page_num - 1)
             nav_items.append(f'<li class="newer"><a href="{prev_url}">Newer posts</a></li>')
         if page_num < total_pages:
-            next_url = microblog_page_url(page_num + 1)
+            next_url = notes_page_url(page_num + 1)
             nav_items.append(f'<li class="older"><a href="{next_url}">Older posts</a></li>')
         content += f'\n<nav><ul>{"".join(nav_items)}</ul></nav>'
 
@@ -186,15 +207,13 @@ def render_navigation(navigation, current_filename=None):
     return f'<ul>{"".join(items)}</ul>'
 
 
-def render_page_title(site_name, post_title, page_num, index_title=None, post_id=None):
+def render_page_title(site_name, post_title, page_num, index_title=None):
     if page_num is not None:
         if page_num == 1:
             return f"{site_name} - {index_title}" if index_title else site_name
         return f"{site_name} - Page {page_num}"
     if post_title:
         return f"{post_title} - {site_name}"
-    if post_id is not None:
-        return f"Post {post_id} - {site_name}"
     return site_name
 
 
@@ -227,34 +246,29 @@ def canonical_url(site_url, filename):
 def _archive_description(post):
     if post.title:
         return _escape(post.title)
+    if post.name:
+        return _escape(post.name)
     if post.body_html:
         m = re.search(r'<p\b[^>]*>(.*?)</p>', post.body_html, re.DOTALL | re.IGNORECASE)
         if m:
             text = _unescape(re.sub(r'<[^>]+>', '', m.group(1))).strip()
             if text:
-                if len(text) <= 36:
+                if len(text) <= 40:
                     return _escape(text)
-                truncated = text[:36].rsplit(' ', 1)[0]
+                truncated = text[:40].rsplit(' ', 1)[0]
                 return _escape(truncated) + '…'
-    return 'Untitled'
+    return _escape(_generated_post_label(post))
 
 
 def _archive_item_class(post):
-    if post.is_micro:
-        cls = "micro-post"
-    elif post.images and post.title:
-        cls = "mixed-post"
-    elif post.images:
-        cls = "photo-post"
-    else:
-        cls = "text-post"
+    cls = _POST_TYPE_CLASS.get(post.post_type, "")
     if post.is_favourite:
-        cls += " favourite"
+        cls = f"{cls} favourite" if cls else "favourite"
     return cls
 
 
 def render_archive_page_content(posts, categories=None):
-    blog_posts = [p for p in posts if p.date and not p.is_micro]
+    blog_posts = [p for p in posts if p.date and p.post_type != "note"]
 
     months = {}
     for post in blog_posts:
@@ -262,7 +276,7 @@ def render_archive_page_content(posts, categories=None):
         key = (d.year, d.month)
         months.setdefault(key, []).append(post)
 
-    micro_count = sum(1 for p in posts if p.is_micro)
+    notes_count = sum(1 for p in posts if p.post_type == "note")
 
     parts = ['<main>', '<h1>Archive</h1>']
     has_sections = False
@@ -281,10 +295,10 @@ def render_archive_page_content(posts, categories=None):
             parts.append('</ul>')
             has_sections = True
 
-    if micro_count:
-        parts.append('<h2>Microblog</h2>')
+    if notes_count:
+        parts.append('<h2>Notes</h2>')
         parts.append('<ul>')
-        parts.append('<li><a href="microblog.html">All microblog posts</a></li>')
+        parts.append('<li><a href="notes.html">All notes</a></li>')
         parts.append('</ul>')
         has_sections = True
 

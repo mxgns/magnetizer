@@ -5,12 +5,13 @@ from magnetizer.content import Image, Post
 from magnetizer.render import (
     canonical_url,
     category_page_url,
-    microblog_page_url,
+    notes_page_url,
+    post_display_text,
     render_archive_page_content,
     render_article,
     render_category_page_content,
     render_index_page_content,
-    render_microblog_page_content,
+    render_notes_page_content,
     render_navigation,
     render_page_title,
     render_post_page_content,
@@ -42,39 +43,30 @@ class TestRenderArticleStructure:
         html = render_article(make_post(), on_index_page=True)
         assert 'class="multiple-posts"' in html
 
-    def test_article_no_aria_label_when_titled(self):
-        html = render_article(make_post(title="My Post"), on_index_page=False)
-        assert 'aria-label' not in html
+    def test_full_post_type_class(self):
+        html = render_article(make_post(post_type="full"), on_index_page=False)
+        assert 'class="single-post full-post"' in html
 
-    def test_article_has_aria_label_when_untitled(self):
-        html = render_article(make_post(title=None, post_id=12, date_uk="5 May 2026"), on_index_page=False)
-        assert 'aria-label=' in html
+    def test_image_post_type_class(self):
+        html = render_article(make_post(post_type="image", title=None), on_index_page=False)
+        assert 'class="single-post image-post"' in html
 
-    def test_article_aria_label_includes_post_id_and_date(self):
-        html = render_article(make_post(title=None, post_id=12, date_uk="5 May 2026"), on_index_page=False)
-        assert 'aria-label="Post 12 (5 May 2026)"' in html
+    def test_note_post_type_class(self):
+        html = render_article(make_post(post_type="note", title=None), on_index_page=False)
+        assert 'class="single-post note"' in html
 
-    def test_article_aria_label_without_date_when_no_date(self):
-        post = Post(id=12, date=None, date_uk=None, title=None,
-                    url="12.html", body_html="", images=[])
-        html = render_article(post, on_index_page=False)
-        assert 'aria-label="Post 12"' in html
+    def test_post_type_class_on_index_page(self):
+        html = render_article(make_post(post_type="full"), on_index_page=True)
+        assert 'class="multiple-posts full-post"' in html
 
-    def test_micro_post_has_micro_post_class_on_post_page(self):
-        post = Post(id=1, date="2026-05-24", date_uk="24 May 2026", title=None,
-                    url="1.html", body_html="<p>Short.</p>", images=[], is_micro=True)
-        html = render_article(post, on_index_page=False)
-        assert 'class="single-post micro-post"' in html
+    def test_no_type_class_when_post_type_unset(self):
+        html = render_article(make_post(post_type=None), on_index_page=False)
+        assert 'class="single-post"' in html
 
-    def test_micro_post_has_micro_post_class_on_index_page(self):
-        post = Post(id=1, date="2026-05-24", date_uk="24 May 2026", title=None,
-                    url="1.html", body_html="<p>Short.</p>", images=[], is_micro=True)
-        html = render_article(post, on_index_page=True)
-        assert 'class="multiple-posts micro-post"' in html
-
-    def test_non_micro_post_has_no_micro_post_class(self):
-        html = render_article(make_post(), on_index_page=False)
-        assert "micro-post" not in html
+    def test_type_class_appended_alongside_layout_class_not_instead_of_it(self):
+        html = render_article(make_post(post_type="note", title=None), on_index_page=False)
+        assert 'class="single-post note"' in html
+        assert 'class="note"' not in html
 
     def test_post_body_present(self):
         html = render_article(make_post(body_html="<p>Hello</p>"), on_index_page=False)
@@ -117,9 +109,48 @@ class TestRenderArticleTitle:
         html = render_article(make_post(title="My Title"), on_index_page=False)
         assert "My Title" in html
 
-    def test_h1_absent_when_no_title(self):
-        html = render_article(make_post(title=None), on_index_page=False)
-        assert "<h1>" not in html and "<h1 " not in html
+    def test_h1_present_with_fallback_text_when_no_title(self):
+        html = render_article(make_post(title=None, date_uk="24 May 2026"), on_index_page=False)
+        assert "<h1>" in html or "<h1 " in html
+
+    def test_h1_fallback_text_uses_name_when_set(self):
+        html = render_article(make_post(title=None, name="A quiet morning"), on_index_page=False)
+        assert "<h1>A quiet morning</h1>" in html
+
+    def test_h1_fallback_text_uses_generated_note_label_when_no_images(self):
+        html = render_article(make_post(title=None, date_uk="24 May 2026", images=[]), on_index_page=False)
+        assert "<h1>Note posted 24 May 2026</h1>" in html
+
+    def test_h1_fallback_text_uses_generated_photo_label_singular(self):
+        html = render_article(
+            make_post(title=None, date_uk="24 May 2026", images=["1-image-01.jpg"]), on_index_page=False
+        )
+        assert "<h1>Photo posted 24 May 2026</h1>" in html
+
+    def test_h1_fallback_text_uses_generated_photos_label_plural(self):
+        html = render_article(
+            make_post(title=None, date_uk="24 May 2026", images=["1-image-01.jpg", "1-image-02.jpg"]),
+            on_index_page=False,
+        )
+        assert "<h1>Photos posted 24 May 2026</h1>" in html
+
+    def test_h1_fallback_text_omits_date_when_post_has_no_date(self):
+        html = render_article(make_post(title=None, date_uk=None, images=[]), on_index_page=False)
+        assert "<h1>Note</h1>" in html
+
+    def test_h1_fallback_text_ignores_inline_only_images(self):
+        html = render_article(
+            make_post(
+                title=None, date_uk="24 May 2026",
+                images=["1-image-01.jpg"], inline_image_filenames=frozenset({"1-image-01.jpg"}),
+            ),
+            on_index_page=False,
+        )
+        assert "<h1>Note posted 24 May 2026</h1>" in html
+
+    def test_h2_fallback_text_on_index_page_wrapped_in_link(self):
+        html = render_article(make_post(post_id=5, title=None, name="A quiet morning"), on_index_page=True)
+        assert '<h2><a href="5.html">A quiet morning</a></h2>' in html
 
     def test_h2_present_when_post_has_title_on_index_page(self):
         html = render_article(make_post(title="My Title"), on_index_page=True)
@@ -663,11 +694,46 @@ class TestRenderPageTitle:
     def test_index_page_2_not_affected_by_index_title(self):
         assert render_page_title("My Blog", None, page_num=2, index_title="Photos") == "My Blog - Page 2"
 
-    def test_untitled_post_with_id_uses_post_number_format(self):
-        assert render_page_title("MXGNS", None, page_num=None, post_id=43) == "Post 43 - MXGNS"
 
-    def test_titled_post_with_id_still_uses_title(self):
-        assert render_page_title("MXGNS", "A Great Post", page_num=None, post_id=43) == "A Great Post - MXGNS"
+# ---------------------------------------------------------------------------
+# post_display_text
+# ---------------------------------------------------------------------------
+
+class TestPostDisplayText:
+
+    def test_uses_title_when_set(self):
+        post = make_post(title="A Great Post", name="Fallback name")
+        assert post_display_text(post) == "A Great Post"
+
+    def test_uses_name_when_no_title(self):
+        post = make_post(title=None, name="A quiet morning")
+        assert post_display_text(post) == "A quiet morning"
+
+    def test_generated_note_label_when_no_title_no_name_no_images(self):
+        post = make_post(title=None, name=None, date_uk="24 May 2026", images=[])
+        assert post_display_text(post) == "Note posted 24 May 2026"
+
+    def test_generated_photo_label_singular_for_one_top_level_image(self):
+        post = make_post(title=None, name=None, date_uk="24 May 2026", images=["1-image-01.jpg"])
+        assert post_display_text(post) == "Photo posted 24 May 2026"
+
+    def test_generated_photos_label_plural_for_multiple_top_level_images(self):
+        post = make_post(
+            title=None, name=None, date_uk="24 May 2026",
+            images=["1-image-01.jpg", "1-image-02.jpg"],
+        )
+        assert post_display_text(post) == "Photos posted 24 May 2026"
+
+    def test_inline_only_images_dont_count_towards_photo_label(self):
+        post = make_post(
+            title=None, name=None, date_uk="24 May 2026",
+            images=["1-image-01.jpg"], inline_image_filenames=frozenset({"1-image-01.jpg"}),
+        )
+        assert post_display_text(post) == "Note posted 24 May 2026"
+
+    def test_generated_label_omits_posted_date_when_no_date(self):
+        post = make_post(title=None, name=None, date_uk=None, images=[])
+        assert post_display_text(post) == "Note"
 
 
 # ---------------------------------------------------------------------------
@@ -912,10 +978,10 @@ class TestRenderArticleReadMore:
         html = render_article(self._post_with_excerpt(), on_index_page=False)
         assert "Read more" not in html
 
-    def test_micro_post_on_index_page_shows_full_body_despite_excerpt(self):
+    def test_note_on_index_page_shows_full_body_despite_excerpt(self):
         post = Post(id=1, date="2026-05-24", date_uk="24 May 2026", title=None,
                     url="1.html", body_html="<p>Intro.</p><p>Rest.</p>",
-                    excerpt_html="<p>Intro.</p>", images=[], is_micro=True)
+                    excerpt_html="<p>Intro.</p>", images=[], post_type="note")
         html = render_article(post, on_index_page=True)
         assert "<p>Rest.</p>" in html
         assert "Read more" not in html
@@ -925,10 +991,11 @@ class TestRenderArticleReadMore:
 # render_archive_page_content
 # ---------------------------------------------------------------------------
 
-def make_dated_post(id, date, title=None, body_html="", images=None, category=None, is_micro=False):
-    return Post(id=id, date=date, date_uk="", title=title,
+def make_dated_post(id, date, title=None, name=None, body_html="", images=None, category=None,
+                     post_type=None, date_uk=""):
+    return Post(id=id, date=date, date_uk=date_uk, title=title, name=name,
                 url=f"{id}.html", body_html=body_html, images=images or [], category=category,
-                is_micro=is_micro)
+                post_type=post_type)
 
 
 class TestRenderArchivePageContent:
@@ -966,10 +1033,6 @@ class TestRenderArchivePageContent:
     def test_day_in_span_outside_link(self):
         html = render_archive_page_content([make_dated_post(1, "2026-05-24", title="Sunny day")])
         assert html.index('<span class="day">') < html.index('<a href=')
-
-    def test_untitled_imageless_post_shows_untitled(self):
-        html = render_archive_page_content([make_dated_post(1, "2026-05-03")])
-        assert "Untitled" in html
 
     def test_each_entry_is_a_link_to_post(self):
         html = render_archive_page_content([make_dated_post(5, "2026-05-24", title="Hello")])
@@ -1014,43 +1077,44 @@ class TestRenderArchivePageContent:
         html = render_archive_page_content([make_dated_post(1, "2026-05-24")])
         assert "archive-stats" not in html
 
-    def test_archive_item_text_post_class(self):
-        html = render_archive_page_content([make_dated_post(1, "2026-05-24", title="Hello")])
-        assert '<li class="text-post">' in html
+    def test_archive_item_full_post_class(self):
+        html = render_archive_page_content([make_dated_post(1, "2026-05-24", title="Hello", post_type="full")])
+        assert '<li class="full-post">' in html
 
-    def test_archive_item_photo_post_class(self):
+    def test_archive_item_image_post_class(self):
         from magnetizer.content import Image
-        html = render_archive_page_content([make_dated_post(1, "2026-05-24", images=[Image("1-image-01.jpg")])])
-        assert '<li class="photo-post">' in html
+        html = render_archive_page_content(
+            [make_dated_post(1, "2026-05-24", images=[Image("1-image-01.jpg")], post_type="image")]
+        )
+        assert '<li class="image-post">' in html
 
-    def test_archive_item_mixed_post_class(self):
+    def test_archive_item_full_post_class_with_images(self):
+        # A title always wins — a titled post with images is still full-post,
+        # not a separate "mixed" class.
         from magnetizer.content import Image
-        html = render_archive_page_content([make_dated_post(1, "2026-05-24", title="Hello", images=[Image("1-image-01.jpg")])])
-        assert '<li class="mixed-post">' in html
+        html = render_archive_page_content(
+            [make_dated_post(1, "2026-05-24", title="Hello", images=[Image("1-image-01.jpg")], post_type="full")]
+        )
+        assert '<li class="full-post">' in html
 
-    def test_micro_post_not_in_monthly_list(self):
+    def test_note_post_not_in_monthly_list(self):
         post = Post(id=1, date="2026-05-24", date_uk="24 May 2026", title=None,
-                    url="1.html", body_html="<p>Short text</p>", images=[], is_micro=True)
+                    url="1.html", body_html="<p>Short text</p>", images=[], post_type="note")
         html = render_archive_page_content([post])
-        assert '<li class="micro-post">' not in html
-
-    def test_archive_item_imageless_untitled_non_micro_is_text_post(self):
-        post = Post(id=1, date="2026-05-24", date_uk="24 May 2026", title=None,
-                    url="1.html", body_html="<p>Text</p>", images=[], is_micro=False)
-        html = render_archive_page_content([post])
-        assert '<li class="text-post">' in html
+        assert '<li class="note">' not in html
+        assert 'href="1.html"' not in html
 
     def test_archive_item_favourite_adds_class(self):
         post = Post(id=1, date="2026-05-24", date_uk="24 May 2026", title="Hello",
-                    url="1.html", body_html="", images=[], is_favourite=True)
+                    url="1.html", body_html="", images=[], is_favourite=True, post_type="full")
         html = render_archive_page_content([post])
-        assert '<li class="text-post favourite">' in html
+        assert '<li class="full-post favourite">' in html
 
     def test_archive_item_non_favourite_has_no_favourite_class(self):
         post = Post(id=1, date="2026-05-24", date_uk="24 May 2026", title="Hello",
-                    url="1.html", body_html="", images=[], is_favourite=False)
+                    url="1.html", body_html="", images=[], is_favourite=False, post_type="full")
         html = render_archive_page_content([post])
-        assert '<li class="text-post favourite">' not in html
+        assert '<li class="full-post favourite">' not in html
 
 
 # ---------------------------------------------------------------------------
@@ -1148,7 +1212,7 @@ class TestArchiveCategoriesList:
         html = render_archive_page_content([post], categories=_CATEGORIES)
         assert html.index('<a href="photography.html">') < html.index("<h2>Blog Posts</h2>")
 
-    def test_no_blog_posts_heading_when_no_categories_and_no_micro(self):
+    def test_no_blog_posts_heading_when_no_categories_and_no_notes(self):
         html = render_archive_page_content([make_dated_post(1, "2026-05-24")])
         assert "<h2>Blog Posts</h2>" not in html
 
@@ -1158,38 +1222,38 @@ class TestArchiveCategoriesList:
         assert "&amp;" in html
         assert ">A & B<" not in html
 
-    def test_microblog_section_shown_when_micro_posts_exist(self):
-        post = make_dated_post(1, "2026-05-24", is_micro=True)
+    def test_notes_section_shown_when_notes_exist(self):
+        post = make_dated_post(1, "2026-05-24", post_type="note")
         html = render_archive_page_content([post])
-        assert "<h2>Microblog</h2>" in html
+        assert "<h2>Notes</h2>" in html
 
-    def test_microblog_section_links_to_microblog_html(self):
-        post = make_dated_post(1, "2026-05-24", is_micro=True)
+    def test_notes_section_links_to_notes_html(self):
+        post = make_dated_post(1, "2026-05-24", post_type="note")
         html = render_archive_page_content([post])
-        assert '<a href="microblog.html">All microblog posts</a>' in html
+        assert '<a href="notes.html">All notes</a>' in html
 
-    def test_microblog_section_not_shown_when_no_micro_posts(self):
+    def test_notes_section_not_shown_when_no_notes(self):
         post = make_dated_post(1, "2026-05-24")
         html = render_archive_page_content([post])
-        assert "<h2>Microblog</h2>" not in html
+        assert "<h2>Notes</h2>" not in html
 
-    def test_microblog_section_after_categories(self):
+    def test_notes_section_after_categories(self):
         posts = [
             make_dated_post(1, "2026-05-24", category="photography"),
-            make_dated_post(2, "2026-05-25", is_micro=True),
+            make_dated_post(2, "2026-05-25", post_type="note"),
         ]
         html = render_archive_page_content(posts, categories=_CATEGORIES)
-        assert html.index("<h2>Microblog</h2>") > html.index("</ul>")
+        assert html.index("<h2>Notes</h2>") > html.index("</ul>")
 
-    def test_blog_posts_heading_shown_when_micro_posts_exist(self):
-        post = make_dated_post(1, "2026-05-24", is_micro=True)
+    def test_blog_posts_heading_shown_when_notes_exist(self):
+        post = make_dated_post(1, "2026-05-24", post_type="note")
         html = render_archive_page_content([post])
         assert "<h2>Blog Posts</h2>" in html
 
-    def test_blog_posts_heading_after_microblog_section(self):
-        post = make_dated_post(1, "2026-05-24", is_micro=True)
+    def test_blog_posts_heading_after_notes_section(self):
+        post = make_dated_post(1, "2026-05-24", post_type="note")
         html = render_archive_page_content([post])
-        assert html.index("<h2>Blog Posts</h2>") > html.index("<h2>Microblog</h2>")
+        assert html.index("<h2>Blog Posts</h2>") > html.index("<h2>Notes</h2>")
 
 
 # ---------------------------------------------------------------------------
@@ -1202,66 +1266,88 @@ class TestArchiveDescriptions:
         html = render_archive_page_content([make_dated_post(1, "2026-05-24", title="My Title")])
         assert "My Title" in html
 
+    def test_name_used_when_no_title(self):
+        # Notes are excluded from the monthly list entirely, so the only untitled
+        # posts that reach _archive_description are Image posts.
+        html = render_archive_page_content([
+            make_dated_post(1, "2026-05-24", name="A quiet morning",
+                            images=[Image("1-image-01.jpg")], post_type="image")
+        ])
+        assert "A quiet morning" in html
+
+    def test_title_wins_over_name(self):
+        html = render_archive_page_content([
+            make_dated_post(1, "2026-05-24", title="Real Title", name="Fallback name", post_type="full")
+        ])
+        assert "Real Title" in html
+        assert "Fallback name" not in html
+
     def test_untitled_post_with_short_text_shows_full_text(self):
         html = render_archive_page_content([
-            make_dated_post(1, "2026-05-24", body_html="<p>A short thought.</p>")
+            make_dated_post(1, "2026-05-24", body_html="<p>A short thought.</p>",
+                            images=[Image("1-image-01.jpg")], post_type="image")
         ])
         assert "A short thought." in html
 
-    def test_untitled_post_with_text_at_36_chars_not_truncated(self):
-        text = "a" * 36
+    def test_untitled_post_with_text_at_40_chars_not_truncated(self):
+        text = "a" * 40
         html = render_archive_page_content([
-            make_dated_post(1, "2026-05-24", body_html=f"<p>{text}</p>")
+            make_dated_post(1, "2026-05-24", body_html=f"<p>{text}</p>",
+                            images=[Image("1-image-01.jpg")], post_type="image")
         ])
         assert text in html
         assert "…" not in html
 
-    def test_untitled_post_with_text_over_36_chars_truncated(self):
-        text = "a" * 37
+    def test_untitled_post_with_text_over_40_chars_truncated(self):
+        text = "a" * 41
         html = render_archive_page_content([
-            make_dated_post(1, "2026-05-24", body_html=f"<p>{text}</p>")
+            make_dated_post(1, "2026-05-24", body_html=f"<p>{text}</p>",
+                            images=[Image("1-image-01.jpg")], post_type="image")
         ])
-        assert "a" * 36 + "…" in html
+        assert "a" * 40 + "…" in html
 
     def test_truncation_breaks_at_word_boundary(self):
-        # 36-char cut falls mid-word in "lazy" — should truncate before it
+        # 40-char cut falls mid-word in "enough" — should truncate before it
         html = render_archive_page_content([
-            make_dated_post(1, "2026-05-24",
-                            body_html="<p>The quick brown fox jumps over the lazy dog.</p>")
+            make_dated_post(1, "2026-05-24", images=[Image("1-image-01.jpg")], post_type="image",
+                            body_html="<p>This sentence is intentionally long enough to need truncating.</p>")
         ])
-        assert "The quick brown fox jumps over the…" in html
+        assert "This sentence is intentionally long…" in html
 
     def test_truncation_does_not_cut_mid_word(self):
         html = render_archive_page_content([
-            make_dated_post(1, "2026-05-24",
-                            body_html="<p>The quick brown fox jumps over the lazy dog.</p>")
+            make_dated_post(1, "2026-05-24", images=[Image("1-image-01.jpg")], post_type="image",
+                            body_html="<p>This sentence is intentionally long enough to need truncating.</p>")
         ])
-        assert "the l…" not in html
+        assert "enou…" not in html
 
-    def test_untitled_post_with_only_images_shows_untitled(self):
+    def test_generated_fallback_used_when_only_images_no_title_name_or_text(self):
         html = render_archive_page_content([
-            make_dated_post(1, "2026-05-24", images=[Image("1-image-01.jpg")])
+            make_dated_post(1, "2026-05-24", date_uk="24 May 2026",
+                            images=[Image("1-image-01.jpg")], post_type="image")
         ])
-        assert "Untitled" in html
-        assert "Photo" not in html
+        assert "Photo posted 24 May 2026" in html
 
-    def test_untitled_post_with_no_content_shows_untitled(self):
-        html = render_archive_page_content([make_dated_post(1, "2026-05-24")])
-        assert "Untitled" in html
-        assert "Photo" not in html
-
-    def test_untitled_post_with_text_and_images_shows_text_not_photo(self):
+    def test_generated_fallback_pluralised_for_multiple_images(self):
         html = render_archive_page_content([
-            make_dated_post(1, "2026-05-24",
+            make_dated_post(1, "2026-05-24", date_uk="24 May 2026",
+                            images=[Image("1-image-01.jpg"), Image("1-image-02.jpg")], post_type="image")
+        ])
+        assert "Photos posted 24 May 2026" in html
+
+    def test_untitled_post_with_text_and_images_shows_text_not_generated_label(self):
+        html = render_archive_page_content([
+            make_dated_post(1, "2026-05-24", post_type="image",
                             body_html="<p>Has text.</p>",
                             images=[Image("1-image-01.jpg")])
         ])
         assert "Has text." in html
-        assert ">Photo<" not in html
+        assert "Photo posted" not in html
 
     def test_uses_first_paragraph_only(self):
         html = render_archive_page_content([
-            make_dated_post(1, "2026-05-24", body_html="<p>First.</p><p>Second.</p>")
+            make_dated_post(1, "2026-05-24", body_html="<p>First.</p><p>Second.</p>",
+                            images=[Image("1-image-01.jpg")], post_type="image")
         ])
         assert "First." in html
         assert "Second." not in html
@@ -1415,42 +1501,42 @@ class TestRenderArticleAiDisclosure:
 
 
 # ---------------------------------------------------------------------------
-# render_article — microblog footer link
+# render_article — notes footer link
 # ---------------------------------------------------------------------------
 
-class TestRenderArticleMicroblogLink:
+class TestRenderArticleNotesLink:
 
-    def test_microblog_link_in_footer_for_micro_post(self):
-        html = render_article(make_post(is_micro=True, title=None), on_index_page=False)
-        assert 'class="microblog"' in html
+    def test_notes_link_in_footer_for_note(self):
+        html = render_article(make_post(post_type="note", title=None), on_index_page=False)
+        assert 'class="notes"' in html
 
-    def test_no_microblog_link_for_non_micro_post(self):
-        html = render_article(make_post(), on_index_page=False)
-        assert 'class="microblog"' not in html
+    def test_no_notes_link_for_non_note_post(self):
+        html = render_article(make_post(post_type="full"), on_index_page=False)
+        assert 'class="notes"' not in html
 
-    def test_microblog_link_href_points_to_microblog_html(self):
-        html = render_article(make_post(is_micro=True, title=None), on_index_page=False)
-        assert 'href="microblog.html"' in html
+    def test_notes_link_href_points_to_notes_html(self):
+        html = render_article(make_post(post_type="note", title=None), on_index_page=False)
+        assert 'href="notes.html"' in html
 
-    def test_microblog_link_text_is_microblog(self):
-        html = render_article(make_post(is_micro=True, title=None), on_index_page=False)
-        assert ">Microblog<" in html
+    def test_notes_link_text_is_notes(self):
+        html = render_article(make_post(post_type="note", title=None), on_index_page=False)
+        assert ">Notes<" in html
 
-    def test_microblog_link_inside_footer(self):
-        html = render_article(make_post(is_micro=True, title=None), on_index_page=False)
+    def test_notes_link_inside_footer(self):
+        html = render_article(make_post(post_type="note", title=None), on_index_page=False)
         footer_start = html.index('<footer>')
         footer_end = html.index('</footer>')
-        link_pos = html.index('class="microblog"')
+        link_pos = html.index('class="notes"')
         assert footer_start < link_pos < footer_end
 
-    def test_microblog_link_before_category_link(self):
-        html = render_article(make_post(is_micro=True, title=None, category="photography"),
+    def test_notes_link_before_category_link(self):
+        html = render_article(make_post(post_type="note", title=None, category="photography"),
                               on_index_page=False, categories=_CATEGORIES)
-        assert html.index('class="microblog"') < html.index('class="category"')
+        assert html.index('class="notes"') < html.index('class="category"')
 
-    def test_microblog_link_appears_on_index_page(self):
-        html = render_article(make_post(is_micro=True, title=None), on_index_page=True)
-        assert 'class="microblog"' in html
+    def test_notes_link_appears_on_index_page(self):
+        html = render_article(make_post(post_type="note", title=None), on_index_page=True)
+        assert 'class="notes"' in html
 
 
 # ---------------------------------------------------------------------------
@@ -1532,69 +1618,69 @@ class TestRenderCategoryPage:
 
 
 # ---------------------------------------------------------------------------
-# microblog_page_url
+# notes_page_url
 # ---------------------------------------------------------------------------
 
-class TestMicroblogPageUrl:
+class TestNotesPageUrl:
 
-    def test_first_page_is_microblog_dot_html(self):
-        assert microblog_page_url(1) == "microblog.html"
+    def test_first_page_is_notes_dot_html(self):
+        assert notes_page_url(1) == "notes.html"
 
     def test_second_page_has_number_suffix(self):
-        assert microblog_page_url(2) == "microblog-2.html"
+        assert notes_page_url(2) == "notes-2.html"
 
     def test_third_page_has_number_suffix(self):
-        assert microblog_page_url(3) == "microblog-3.html"
+        assert notes_page_url(3) == "notes-3.html"
 
 
 # ---------------------------------------------------------------------------
-# render_microblog_page_content
+# render_notes_page_content
 # ---------------------------------------------------------------------------
 
-_MICRO_POST = Post(id=1, date="2026-05-24", date_uk="24 May 2026", title=None,
-                   url="1.html", body_html="<p>Short.</p>", images=[], is_micro=True)
+_NOTE_POST = Post(id=1, date="2026-05-24", date_uk="24 May 2026", title=None,
+                  url="1.html", body_html="<p>Short.</p>", images=[], post_type="note")
 
 
-class TestRenderMicroblogPage:
+class TestRenderNotesPage:
 
-    def test_microblog_page_has_h1_microblog(self):
-        html = render_microblog_page_content([_MICRO_POST], 1, 1)
-        assert "<h1>Microblog</h1>" in html
+    def test_notes_page_has_h1_notes(self):
+        html = render_notes_page_content([_NOTE_POST], 1, 1)
+        assert "<h1>Notes</h1>" in html
 
-    def test_microblog_h1_inside_main(self):
-        html = render_microblog_page_content([_MICRO_POST], 1, 1)
-        assert html.index('<main>') < html.index('<h1>Microblog</h1>') < html.index('</main>')
+    def test_notes_h1_inside_main(self):
+        html = render_notes_page_content([_NOTE_POST], 1, 1)
+        assert html.index('<main>') < html.index('<h1>Notes</h1>') < html.index('</main>')
 
-    def test_microblog_h1_before_articles(self):
-        html = render_microblog_page_content([_MICRO_POST], 1, 1)
+    def test_notes_h1_before_articles(self):
+        html = render_notes_page_content([_NOTE_POST], 1, 1)
         assert html.index('<h1>') < html.index('<article')
 
-    def test_microblog_page_includes_post_articles(self):
+    def test_notes_page_includes_post_articles(self):
         p2 = Post(id=2, date="2026-05-25", date_uk="25 May 2026", title=None,
-                  url="2.html", body_html="<p>Another.</p>", images=[], is_micro=True)
-        html = render_microblog_page_content([_MICRO_POST, p2], 1, 1)
+                  url="2.html", body_html="<p>Another.</p>", images=[], post_type="note")
+        html = render_notes_page_content([_NOTE_POST, p2], 1, 1)
         assert html.count('<article') == 2
 
-    def test_microblog_page_has_back_to_homepage_link(self):
-        html = render_microblog_page_content([_MICRO_POST], 1, 1)
+    def test_notes_page_has_back_to_homepage_link(self):
+        html = render_notes_page_content([_NOTE_POST], 1, 1)
         assert 'href="index.html"' in html
 
-    def test_microblog_no_pagination_nav_when_single_page(self):
-        html = render_microblog_page_content([_MICRO_POST], 1, 1)
-        assert 'microblog-2.html' not in html
+    def test_notes_no_pagination_nav_when_single_page(self):
+        html = render_notes_page_content([_NOTE_POST], 1, 1)
+        assert 'notes-2.html' not in html
 
-    def test_microblog_older_link_present_on_page_1_of_2(self):
-        html = render_microblog_page_content([_MICRO_POST], 1, 2)
-        assert 'href="microblog-2.html"' in html
+    def test_notes_older_link_present_on_page_1_of_2(self):
+        html = render_notes_page_content([_NOTE_POST], 1, 2)
+        assert 'href="notes-2.html"' in html
 
-    def test_microblog_newer_link_present_on_page_2_of_2(self):
-        html = render_microblog_page_content([_MICRO_POST], 2, 2)
-        assert 'href="microblog.html"' in html
+    def test_notes_newer_link_present_on_page_2_of_2(self):
+        html = render_notes_page_content([_NOTE_POST], 2, 2)
+        assert 'href="notes.html"' in html
 
-    def test_microblog_no_newer_link_on_page_1(self):
-        html = render_microblog_page_content([_MICRO_POST], 1, 2)
+    def test_notes_no_newer_link_on_page_1(self):
+        html = render_notes_page_content([_NOTE_POST], 1, 2)
         assert 'class="newer"' not in html
 
-    def test_microblog_no_older_link_on_last_page(self):
-        html = render_microblog_page_content([_MICRO_POST], 2, 2)
+    def test_notes_no_older_link_on_last_page(self):
+        html = render_notes_page_content([_NOTE_POST], 2, 2)
         assert 'class="older"' not in html

@@ -11,8 +11,7 @@ DEFAULTS = {
     "image_max_dimension": 1600,
     "image_quality": 75,
     "posts_per_page": 12,
-    "micro_post_max_length": 180,
-    "micro_posts_per_page": 20,
+    "notes_per_page": 20,
     "index_meta_description": None,
     "index_title": None,
     "categories": {},
@@ -49,11 +48,8 @@ class TestDefaults:
     def test_posts_per_page_default(self, tmp_path):
         assert load_config(tmp_path / "config.yaml")["posts_per_page"] == 12
 
-    def test_micro_post_max_length_default(self, tmp_path):
-        assert load_config(tmp_path / "config.yaml")["micro_post_max_length"] == 180
-
-    def test_micro_posts_per_page_default(self, tmp_path):
-        assert load_config(tmp_path / "config.yaml")["micro_posts_per_page"] == 20
+    def test_notes_per_page_default(self, tmp_path):
+        assert load_config(tmp_path / "config.yaml")["notes_per_page"] == 20
 
     def test_index_meta_description_default(self, tmp_path):
         assert load_config(tmp_path / "config.yaml")["index_meta_description"] is None
@@ -88,13 +84,9 @@ class TestCustomValues:
         p = write_config(tmp_path, "posts_per_page: 6\n")
         assert load_config(p)["posts_per_page"] == 6
 
-    def test_micro_post_max_length_overridden(self, tmp_path):
-        p = write_config(tmp_path, "micro_post_max_length: 200\n")
-        assert load_config(p)["micro_post_max_length"] == 200
-
-    def test_micro_posts_per_page_overridden(self, tmp_path):
-        p = write_config(tmp_path, "micro_posts_per_page: 10\n")
-        assert load_config(p)["micro_posts_per_page"] == 10
+    def test_notes_per_page_overridden(self, tmp_path):
+        p = write_config(tmp_path, "notes_per_page: 10\n")
+        assert load_config(p)["notes_per_page"] == 10
 
     def test_index_meta_description_overridden(self, tmp_path):
         p = write_config(tmp_path, "index_meta_description: A blog about things.\n")
@@ -110,14 +102,14 @@ class TestCustomValues:
             "image_max_dimension: 1400\n"
             "image_quality: 68\n"
             "posts_per_page: 8\n"
-            "micro_post_max_length: 200\n"
+            "notes_per_page: 15\n"
         ))
         config = load_config(p)
         assert config["site_name"] == "Photos"
         assert config["image_max_dimension"] == 1400
         assert config["image_quality"] == 68
         assert config["posts_per_page"] == 8
-        assert config["micro_post_max_length"] == 200
+        assert config["notes_per_page"] == 15
 
     def test_partial_override_keeps_other_defaults(self, tmp_path):
         p = write_config(tmp_path, "site_name: My Photos\n")
@@ -132,13 +124,13 @@ class TestCustomValues:
         config = load_config(p)
         assert set(config.keys()) == set(DEFAULTS.keys())
 
-    def test_micro_posts_per_page_zero_raises_error(self, tmp_path):
-        p = write_config(tmp_path, "micro_posts_per_page: 0\n")
+    def test_notes_per_page_zero_raises_error(self, tmp_path):
+        p = write_config(tmp_path, "notes_per_page: 0\n")
         with pytest.raises(ValueError):
             load_config(p)
 
-    def test_micro_posts_per_page_negative_raises_error(self, tmp_path):
-        p = write_config(tmp_path, "micro_posts_per_page: -1\n")
+    def test_notes_per_page_negative_raises_error(self, tmp_path):
+        p = write_config(tmp_path, "notes_per_page: -1\n")
         with pytest.raises(ValueError):
             load_config(p)
 

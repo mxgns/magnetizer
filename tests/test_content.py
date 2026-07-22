@@ -59,6 +59,123 @@ class TestFrontmatterParsing:
         post = parse_post(make_md(title="Hello: World"), 1, [])
         assert post.title == "Hello: World"
 
+    def test_blank_title_treated_as_unset(self):
+        md = "---\ndate: 2026-05-24\ntitle:\n---\nSome body text\n"
+        post = parse_post(md, 1, [])
+        assert post.title is None
+
+    def test_whitespace_only_title_treated_as_unset(self):
+        md = "---\ndate: 2026-05-24\ntitle:   \n---\nSome body text\n"
+        post = parse_post(md, 1, [])
+        assert post.title is None
+
+
+# ---------------------------------------------------------------------------
+# name frontmatter field
+# ---------------------------------------------------------------------------
+
+class TestNameFrontmatter:
+
+    def test_name_extracted_when_present(self):
+        md = "---\ndate: 2026-05-24\nname: Sunset over the harbour\n---\n"
+        post = parse_post(md, 1, [])
+        assert post.name == "Sunset over the harbour"
+
+    def test_name_is_none_when_absent(self):
+        post = parse_post(make_md(), 1, [])
+        assert post.name is None
+
+    def test_name_key_does_not_trigger_unknown_key_warning(self, capsys):
+        md = "---\ndate: 2026-05-24\nname: A note\n---\n"
+        parse_post(md, 1, [])
+        assert "Warning" not in capsys.readouterr().out
+
+    def test_blank_name_treated_as_unset(self):
+        md = "---\ndate: 2026-05-24\nname:\n---\nSome body text\n"
+        post = parse_post(md, 1, [])
+        assert post.name is None
+
+    def test_whitespace_only_name_treated_as_unset(self):
+        md = "---\ndate: 2026-05-24\nname:   \n---\nSome body text\n"
+        post = parse_post(md, 1, [])
+        assert post.name is None
+
+    def test_name_still_stored_when_title_also_set(self):
+        # parse_post doesn't apply title/name precedence itself — it just
+        # reports what's in the frontmatter; the consumer decides which wins.
+        md = "---\ndate: 2026-05-24\ntitle: Real Title\nname: Fallback name\n---\n"
+        post = parse_post(md, 1, [])
+        assert post.title == "Real Title"
+        assert post.name == "Fallback name"
+
+
+# ---------------------------------------------------------------------------
+# Post type classification
+# ---------------------------------------------------------------------------
+
+class TestPostType:
+
+    def test_full_when_title_set(self):
+        post = parse_post(make_md(title="My Title"), 1, [])
+        assert post.post_type == "full"
+
+    def test_full_when_title_set_with_images_and_content(self):
+        post = parse_post(make_md(title="My Title", body="Some text"), 1, ["1-image-01.jpg"])
+        assert post.post_type == "full"
+
+    def test_full_when_title_set_with_no_images_or_content(self):
+        post = parse_post(make_md(title="My Title"), 1, [])
+        assert post.post_type == "full"
+
+    def test_image_when_no_title_and_top_level_image(self):
+        post = parse_post(make_md(), 1, ["1-image-01.jpg"])
+        assert post.post_type == "image"
+
+    def test_image_when_no_title_multiple_images_and_content(self):
+        post = parse_post(make_md(body="Caption"), 1, ["1-image-01.jpg", "1-image-02.jpg"])
+        assert post.post_type == "image"
+
+    def test_note_when_no_title_no_images_with_content(self):
+        post = parse_post(make_md(body="Just some thoughts."), 1, [])
+        assert post.post_type == "note"
+
+    def test_note_regardless_of_length(self):
+        # Notes have no length cap, unlike the old microblog classification.
+        post = parse_post(make_md(body="x" * 500), 1, [])
+        assert post.post_type == "note"
+
+    def test_note_when_only_inline_image_and_text(self):
+        md = "---\ndate: 2026-05-24\n---\nSome text.\n\n{{ image 1 }}\n"
+        post = parse_post(md, 1, ["1-image-01.jpg"])
+        assert post.post_type == "note"
+
+    def test_note_when_only_inline_image_and_no_other_text(self):
+        md = "---\ndate: 2026-05-24\n---\n{{ image 1 }}\n"
+        post = parse_post(md, 1, ["1-image-01.jpg"])
+        assert post.post_type == "note"
+
+    def test_image_when_top_level_image_alongside_inline_image(self):
+        md = "---\ndate: 2026-05-24\n---\n{{ image 1 }}\n"
+        post = parse_post(md, 1, ["1-image-01.jpg", "1-image-02.jpg"])
+        # image 2 is never referenced inline, so it's a top-level image
+        assert post.post_type == "image"
+
+    def test_blank_title_falls_back_to_classification(self):
+        md = "---\ndate: 2026-05-24\ntitle:\n---\nSome text.\n"
+        post = parse_post(md, 1, [])
+        assert post.post_type == "note"
+
+    def test_post_type_none_when_no_title_no_images_no_content(self):
+        # parse_post doesn't raise here — flagging this as invalid and
+        # erroring the build is the caller's responsibility.
+        post = parse_post(make_md(), 1, [])
+        assert post.post_type is None
+
+    def test_post_type_none_when_body_is_whitespace_only(self):
+        md = "---\ndate: 2026-05-24\n---\n   \n\n   \n"
+        post = parse_post(md, 1, [])
+        assert post.post_type is None
+
 
 # ---------------------------------------------------------------------------
 # UK date formatting
@@ -285,40 +402,16 @@ class TestFrontmatterKeyValidation:
 
 
 # ---------------------------------------------------------------------------
-# Micro-post detection
+# Character count
 # ---------------------------------------------------------------------------
 
-class TestMicroPost:
-
-    def test_is_micro_when_no_title_no_images_short_body(self):
-        post = parse_post(make_md(body="A short post."), 1, [])
-        assert post.is_micro is True
-
-    def test_not_micro_when_title_present(self):
-        post = parse_post(make_md(title="My Title", body="A short post."), 1, [])
-        assert post.is_micro is False
-
-    def test_not_micro_when_images_present(self):
-        post = parse_post(make_md(body="A short post."), 1, ["1-image-01.jpg"])
-        assert post.is_micro is False
-
-    def test_is_micro_at_exactly_180_characters(self):
-        post = parse_post(make_md(body="x" * 180), 1, [])
-        assert post.is_micro is True
-
-    def test_not_micro_at_181_characters(self):
-        post = parse_post(make_md(body="x" * 181), 1, [])
-        assert post.is_micro is False
+class TestCharCount:
 
     def test_character_count_uses_normalised_whitespace(self):
         # Extra newlines and spaces should not inflate the count
         body = "Short post.\n\n\n\n"
         post = parse_post(make_md(body=body), 1, [])
-        assert post.is_micro is True
-
-    def test_not_micro_when_body_is_empty(self):
-        post = parse_post(make_md(), 1, [])
-        assert post.is_micro is False
+        assert post.char_count == len("Short post.")
 
     def test_char_count_stored_on_post(self):
         post = parse_post(make_md(body="Hello world"), 1, [])
@@ -338,15 +431,11 @@ class TestMicroPost:
         post = parse_post(make_md(body="it's a test"), 1, [])
         assert post.char_count == 11
 
-    def test_is_micro_based_on_plain_text_not_raw_markdown(self):
-        # Raw length is 182 but plain text is 178 — should still be micro
+    def test_char_count_based_on_plain_text_not_raw_markdown(self):
+        # Raw length is 182 but plain text is 178
         body = "**" + "x" * 178 + "**"
         post = parse_post(make_md(body=body), 1, [])
-        assert post.is_micro is True
-
-    def test_is_micro_respects_custom_max_length(self):
-        post = parse_post(make_md(body="x" * 181), 1, [], micro_post_max_length=200)
-        assert post.is_micro is True
+        assert post.char_count == 178
 
 
 # ---------------------------------------------------------------------------

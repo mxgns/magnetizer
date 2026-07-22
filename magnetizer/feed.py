@@ -1,6 +1,7 @@
 import html as _html
 
 from magnetizer.content import resized_filename as _resized_filename
+from magnetizer.render import post_display_text
 
 
 def _rfc3339(date_str, post_id):
@@ -30,7 +31,7 @@ def render_feed(posts, config):
 
     for post in dated_posts:
         post_url = f"{site_url}/{post.url}"
-        title = _html.escape(post.title if post.title else post.date_uk)
+        title = _html.escape(post_display_text(post))
         images_html = ''.join(
             f'<figure><img src="{site_url}/{_resized_filename(img.filename)}"'
             f' alt="{_html.escape(img.alt, quote=True)}"></figure>'
