@@ -11,7 +11,13 @@
 
 ### 22/7/26
 
-- Replaced microblog posts with Full post / Image post / Note post types
+- New post types: Full post, Image post, and Note, replacing title/photo-based classification
+- `name` frontmatter field: fallback label for untitled posts
+- Untitled posts now always get a heading and meta title
+- Renamed microblog posts to Notes; removed the length cap
+- Archive link text now falls back through title → name → excerpt
+- New build error/warnings for invalid, title+name, and title-only posts
+- Renamed `micro_posts_per_page` config to `notes_per_page`
 
 ### 19/7/26
 
