@@ -7,17 +7,11 @@
 
 ### 23/7/26
 
-- Removed the unused `draft` frontmatter key and everything built on it: the index/category/feed/sitemap/archive/navigation exclusion and the `+` build-output prefix. Every post now always gets the neighbour-aware newer/older navigation and anchored back-link that non-draft posts already used.
+- Removed the unused `draft` feature
 
 ### 22/7/26
 
-- Post types: every post is now a Full post (has a title), Image post (no title, has images), or Note (no title, no images, has content) — replacing the old title/photo-based archive classification
-- New `name` frontmatter field: a fallback label for untitled posts, used in the heading, meta title, and archive link text
-- Every post now gets a heading and meta title (title → `name` → generated label, e.g. "Photo posted 22 July 2026"), instead of omitting it when untitled
-- Notes replace microblog posts: no more length cap, and the paginated page is `notes.html` instead of `microblog.html`
-- Archive link text now falls back through title → `name` → a 40-character excerpt → generated label, replacing the old 36-character/"Untitled" behaviour
-- Build now errors on a post with no title, no images, and no content; warns if `title` and `name` are both set, or if `title` is set with neither images nor content
-- Renamed `micro_posts_per_page` config to `notes_per_page`; removed `micro_post_max_length`
+- Replaced microblog posts with Full post / Image post / Note post types
 
 ### 19/7/26
 
