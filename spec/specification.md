@@ -221,7 +221,7 @@ Examples:
     **Normal output** (only posts with warnings are listed):
 
     ```text
-      002   +2.html    ⚠ No category
+      002   2.html    ⚠ No category
     30 created · 0 updated · 0 deleted
     updated    about, index(+3), categories(3), feed.xml
     resources  style.css
@@ -236,7 +236,7 @@ Examples:
       001   1.html
       002   2.html    [2 imgs]   ⚠ Title and name both set
       003   3.html    [1 img]
-      026   +26.html   [7 imgs]
+      026   26.html   [7 imgs]
 
     30 created · 0 updated · 0 deleted
     ⚠ 1 warning: 2.html
