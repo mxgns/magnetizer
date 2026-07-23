@@ -54,17 +54,17 @@ def _generated_post_label(post):
     return f"{kind} posted {post.date_uk}" if post.date_uk else kind
 
 
-def render_article(post, on_index_page, categories=None, ai_disclosure_html=None):
+def render_article(post, on_index_page, categories=None, ai_disclosure_html=None, images_per_post=2):
     article_class = "multiple-posts" if on_index_page else "single-post"
     if post.post_type in _POST_TYPE_CLASS:
         article_class += f" {_POST_TYPE_CLASS[post.post_type]}"
     parts = [f'<article id="post-{post.id}" class="{article_class}">']
 
     top_images = [image for image in post.images if image.filename not in post.inline_image_filenames]
+    images_to_show = top_images[:images_per_post] if on_index_page else top_images
 
-    if top_images:
+    if images_to_show:
         parts.append('<div class="post-images">')
-        images_to_show = top_images[:2] if on_index_page else top_images
         for image in images_to_show:
             resized = _resized_filename(image.filename)
             alt = f' alt="{_escape(image.alt, quote=True)}"'
@@ -80,7 +80,7 @@ def render_article(post, on_index_page, categories=None, ai_disclosure_html=None
     else:
         parts.append(f'<h1>{heading_text}</h1>')
 
-    hidden_top = max(0, len(top_images) - 2) if on_index_page else 0
+    hidden_top = max(0, len(top_images) - images_per_post) if on_index_page else 0
 
     ai_banner = _render_ai_disclosure(ai_disclosure_html) if post.is_ai_assisted else ''
 
@@ -134,8 +134,8 @@ def render_post_page_content(post, index_page_url, newer_url=None, older_url=Non
     return '\n'.join(parts)
 
 
-def render_index_page_content(posts, page_num, total_pages, categories=None, ai_disclosure_html=None):
-    articles = '\n'.join(render_article(p, on_index_page=True, categories=categories, ai_disclosure_html=ai_disclosure_html) for p in posts)
+def render_index_page_content(posts, page_num, total_pages, categories=None, ai_disclosure_html=None, images_per_post=2):
+    articles = '\n'.join(render_article(p, on_index_page=True, categories=categories, ai_disclosure_html=ai_disclosure_html, images_per_post=images_per_post) for p in posts)
     content = f'<main>\n{articles}\n</main>'
 
     if total_pages > 1:
@@ -151,8 +151,8 @@ def render_index_page_content(posts, page_num, total_pages, categories=None, ai_
     return content
 
 
-def render_category_page_content(posts, category_name, category_slug, page_num, total_pages, categories=None, ai_disclosure_html=None):
-    articles = '\n'.join(render_article(p, on_index_page=True, categories=categories, ai_disclosure_html=ai_disclosure_html) for p in posts)
+def render_category_page_content(posts, category_name, category_slug, page_num, total_pages, categories=None, ai_disclosure_html=None, images_per_post=2):
+    articles = '\n'.join(render_article(p, on_index_page=True, categories=categories, ai_disclosure_html=ai_disclosure_html, images_per_post=images_per_post) for p in posts)
     content = f'<main>\n<h1>{_escape(category_name)}</h1>\n{articles}\n</main>'
 
     if total_pages > 1:
@@ -169,8 +169,8 @@ def render_category_page_content(posts, category_name, category_slug, page_num, 
     return content
 
 
-def render_notes_page_content(posts, page_num, total_pages, categories=None, ai_disclosure_html=None):
-    articles = '\n'.join(render_article(p, on_index_page=True, categories=categories, ai_disclosure_html=ai_disclosure_html) for p in posts)
+def render_notes_page_content(posts, page_num, total_pages, categories=None, ai_disclosure_html=None, images_per_post=2):
+    articles = '\n'.join(render_article(p, on_index_page=True, categories=categories, ai_disclosure_html=ai_disclosure_html, images_per_post=images_per_post) for p in posts)
     content = f'<main>\n<h1>Notes</h1>\n{articles}\n</main>'
 
     if total_pages > 1:

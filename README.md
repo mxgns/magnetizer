@@ -29,6 +29,7 @@ manifest.json  Build state (created automatically)
 | `image_quality` | JPEG quality for resized images (0–95) | `75` |
 | `posts_per_page` | Posts shown per index page | `12` |
 | `notes_per_page` | Notes shown per notes page (`notes.html`, `notes-2.html`, …) | `20` |
+| `images_per_post` | Top-level images shown per post on multi-post pages (index, category, notes) — `0` shows none. The post's own page always shows all top-level images regardless. Inline images (`{{ image N }}`) aren't counted; use `<!-- more -->` to control those | `2` |
 | `index_meta_description` | `<meta name="description">` content on index pages (via `MAGNETIZER_METADATA` placeholder) | Not set |
 | `index_title` | When set, the title of `index.html` becomes `site_name - index_title` | Not set |
 | `categories` | Map of category slug to display name, e.g. `{photography: Photography}` | `{}` (no categories) |

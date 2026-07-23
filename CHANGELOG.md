@@ -8,6 +8,7 @@
 ### 23/7/26
 
 - Removed the unused `draft` feature
+- `images_per_post` config: how many top-level images to show per post on multi-post pages
 
 ### 22/7/26
 

@@ -368,6 +368,48 @@ class TestRenderArticleIndexPagePhotoLimit:
 
 
 # ---------------------------------------------------------------------------
+# render_article — configurable images_per_post limit
+# ---------------------------------------------------------------------------
+
+class TestRenderArticleConfigurableImagesPerPost:
+
+    def test_default_limit_is_still_two(self):
+        images = ["1-image-01.jpg", "1-image-02.jpg", "1-image-03.jpg"]
+        html = render_article(make_post(post_id=1, images=images), on_index_page=True)
+        assert html.count("<figure>") == 2
+
+    def test_custom_limit_shows_more_images(self):
+        images = ["1-image-01.jpg", "1-image-02.jpg", "1-image-03.jpg"]
+        html = render_article(make_post(post_id=1, images=images), on_index_page=True, images_per_post=3)
+        assert html.count("<figure>") == 3
+        assert 'class="more-photos"' not in html
+
+    def test_custom_limit_hides_beyond_it(self):
+        images = ["1-image-01.jpg", "1-image-02.jpg", "1-image-03.jpg", "1-image-04.jpg"]
+        html = render_article(make_post(post_id=1, images=images), on_index_page=True, images_per_post=1)
+        assert html.count("<figure>") == 1
+        assert "3 more photos" in html
+
+    def test_limit_of_zero_shows_no_images_on_index_page(self):
+        images = ["1-image-01.jpg", "1-image-02.jpg"]
+        html = render_article(make_post(post_id=1, images=images), on_index_page=True, images_per_post=0)
+        assert "post-images" not in html
+        assert "2 more photos" in html
+
+    def test_limit_does_not_affect_post_page(self):
+        images = ["1-image-01.jpg", "1-image-02.jpg", "1-image-03.jpg"]
+        html = render_article(make_post(post_id=1, images=images), on_index_page=False, images_per_post=1)
+        assert html.count("<figure>") == 3
+        assert 'class="more-photos"' not in html
+
+    def test_custom_limit_folds_into_read_more_count(self):
+        images = ["1-image-01.jpg", "1-image-02.jpg", "1-image-03.jpg"]
+        post = make_post(images=images, body_html="<p>Full body</p>", excerpt_html="<p>Intro</p>")
+        html = render_article(post, on_index_page=True, images_per_post=1)
+        assert '<a href="1.html" class="read-more">Read more (+2 photos)</a>' in html
+
+
+# ---------------------------------------------------------------------------
 # render_article — images used inline via {{ image N }} excluded from top strip
 # ---------------------------------------------------------------------------
 
@@ -612,6 +654,12 @@ class TestRenderIndexPageContent:
         posts = [make_post(post_id=1, title="T")]
         html = render_index_page_content(posts, page_num=1, total_pages=1)
         assert '<h2><a href="1.html">T</a></h2>' in html
+
+    def test_images_per_post_threaded_to_articles(self):
+        images = ["1-image-01.jpg", "1-image-02.jpg", "1-image-03.jpg"]
+        posts = [make_post(post_id=1, images=images)]
+        html = render_index_page_content(posts, page_num=1, total_pages=1, images_per_post=3)
+        assert html.count("<figure>") == 3
 
     def test_nav_present_when_multiple_pages(self):
         posts = [make_post()]
@@ -1581,6 +1629,12 @@ class TestRenderCategoryPage:
         html = render_category_page_content(posts, "Photography", "photography", 1, 1)
         assert html.count('<article') == 2
 
+    def test_images_per_post_threaded_to_articles(self):
+        images = ["1-image-01.jpg", "1-image-02.jpg", "1-image-03.jpg"]
+        posts = [make_post(post_id=1, images=images)]
+        html = render_category_page_content(posts, "Photography", "photography", 1, 1, images_per_post=3)
+        assert html.count("<figure>") == 3
+
     def test_category_page_has_back_to_homepage_link(self):
         html = render_category_page_content([make_post()], "Photography", "photography", 1, 1)
         assert 'href="index.html"' in html
@@ -1660,6 +1714,13 @@ class TestRenderNotesPage:
                   url="2.html", body_html="<p>Another.</p>", images=[], post_type="note")
         html = render_notes_page_content([_NOTE_POST, p2], 1, 1)
         assert html.count('<article') == 2
+
+    def test_images_per_post_threaded_to_articles(self):
+        images = [Image(f"1-image-0{n}.jpg") for n in (1, 2, 3)]
+        post = Post(id=1, date="2026-05-24", date_uk="24 May 2026", title=None,
+                    url="1.html", body_html="", images=images, post_type="note")
+        html = render_notes_page_content([post], 1, 1, images_per_post=3)
+        assert html.count("<figure>") == 3
 
     def test_notes_page_has_back_to_homepage_link(self):
         html = render_notes_page_content([_NOTE_POST], 1, 1)

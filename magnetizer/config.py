@@ -10,6 +10,7 @@ DEFAULTS = {
     "image_quality": 75,
     "posts_per_page": 12,
     "notes_per_page": 20,
+    "images_per_post": 2,
     "index_meta_description": None,
     "index_title": None,
     "categories": {},
@@ -31,4 +32,6 @@ def load_config(path):
                 config[key] = data[key]
     if config["notes_per_page"] < 1:
         raise ValueError("notes_per_page must be a positive integer")
+    if config["images_per_post"] < 0:
+        raise ValueError("images_per_post must not be negative")
     return config

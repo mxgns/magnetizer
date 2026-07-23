@@ -194,7 +194,7 @@ def _write_index_pages(posts_sorted_desc, dist_dir, config, template, categories
 
     for page_num in range(1, total_pages + 1):
         slice_ = posts_sorted_desc[(page_num - 1) * per_page: page_num * per_page]
-        content_html = render_index_page_content(slice_, page_num, total_pages, categories=categories, ai_disclosure_html=config["ai_disclosure_html"])
+        content_html = render_index_page_content(slice_, page_num, total_pages, categories=categories, ai_disclosure_html=config["ai_disclosure_html"], images_per_post=config["images_per_post"])
         title = render_page_title(config["site_name"], None, page_num=page_num, index_title=config["index_title"])
         filename = index_page_url(page_num)
         html = render_template(template, title=title, content=content_html,
@@ -226,7 +226,7 @@ def _write_category_pages(posts_sorted_desc, dist_dir, config, template):
             slice_ = category_posts[(page_num - 1) * per_page: page_num * per_page]
             content_html = render_category_page_content(
                 slice_, display_name, slug, page_num, total_pages, categories=categories,
-                ai_disclosure_html=config["ai_disclosure_html"]
+                ai_disclosure_html=config["ai_disclosure_html"], images_per_post=config["images_per_post"]
             )
             title = render_page_title(config["site_name"], display_name, page_num=None)
             filename = category_page_url(slug, page_num)
@@ -246,7 +246,7 @@ def _write_notes_pages(posts_sorted_desc, dist_dir, config, template):
     categories = config["categories"]
     for page_num in range(1, total_pages + 1):
         slice_ = note_posts[(page_num - 1) * per_page: page_num * per_page]
-        content_html = render_notes_page_content(slice_, page_num, total_pages, categories=categories, ai_disclosure_html=config["ai_disclosure_html"])
+        content_html = render_notes_page_content(slice_, page_num, total_pages, categories=categories, ai_disclosure_html=config["ai_disclosure_html"], images_per_post=config["images_per_post"])
         title = render_page_title(config["site_name"], "Notes", page_num=None)
         filename = notes_page_url(page_num)
         html = render_template(template, title=title, content=content_html,
