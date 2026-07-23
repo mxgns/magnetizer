@@ -45,8 +45,6 @@ def _error(msg):
 
 
 def _check_no_invalid_posts(published_posts_sorted_desc, special_page_posts):
-    # Draft posts are exempt — they're explicitly not-ready-for-publication,
-    # so an empty one mid-draft shouldn't block an unrelated build.
     for post in published_posts_sorted_desc:
         if post.post_type is None:
             _error(f"post {post.id} has no title, no images and no content — it needs at least one")
@@ -178,8 +176,8 @@ def _adjacent_post_urls(post_id, post_ids_sorted_desc):
     return newer_url, older_url
 
 
-def _write_post_html(post, index_page_url, dist_dir, config, template, newer_url=None, older_url=None, back_url=None, categories=None):
-    content_html = render_post_page_content(post, index_page_url, newer_url=newer_url, older_url=older_url, back_url=back_url, categories=categories, ai_disclosure_html=config["ai_disclosure_html"])
+def _write_post_html(post, index_page_url, dist_dir, config, template, newer_url=None, older_url=None, categories=None):
+    content_html = render_post_page_content(post, index_page_url, newer_url=newer_url, older_url=older_url, categories=categories, ai_disclosure_html=config["ai_disclosure_html"])
     title = render_page_title(config["site_name"], post_display_text(post), page_num=None)
     filename = f"{post.id}.html"
     html = render_template(template, title=title, content=content_html,
@@ -365,7 +363,7 @@ def _load_content(content_dir, config):
 
     published_post_ids_sorted_desc = [
         pid for pid in all_post_ids_sorted_desc
-        if pid in posts_cache and not posts_cache[pid].is_draft
+        if pid in posts_cache
     ]
     published_posts_sorted_desc = [posts_cache[pid] for pid in published_post_ids_sorted_desc]
 
@@ -490,16 +488,10 @@ def _build_changed_posts(post_ids_to_build, changed_post_ids, posts_cache, manif
                 resized_name = f"{stem}-resized.{ext}"
                 dest_size = (dist_dir / resized_name).stat().st_size
                 log(("RESIZED", resized_name, src_sizes[image.filename], dest_size))
-        if post.is_draft:
-            newer_url, older_url = None, None
-            idx_url = "index.html"
-            back_url = "index.html"
-        else:
-            newer_url, older_url = _adjacent_post_urls(post_id, published_post_ids_sorted_desc)
-            idx_url = _post_index_page_url(post_id, published_post_ids_sorted_desc, config["posts_per_page"])
-            back_url = None
-        _write_post_html(post, idx_url, dist_dir, config, template, newer_url=newer_url, older_url=older_url, back_url=back_url, categories=config["categories"])
-        log((action, f"{post_id}.html", post.char_count, post.post_type == "note", len(post.images), post.is_draft))
+        newer_url, older_url = _adjacent_post_urls(post_id, published_post_ids_sorted_desc)
+        idx_url = _post_index_page_url(post_id, published_post_ids_sorted_desc, config["posts_per_page"])
+        _write_post_html(post, idx_url, dist_dir, config, template, newer_url=newer_url, older_url=older_url, categories=config["categories"])
+        log((action, f"{post_id}.html", post.char_count, post.post_type == "note", len(post.images)))
 
     return created, updated, deleted
 

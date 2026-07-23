@@ -25,7 +25,7 @@ def _c(code, text):
 
 
 def _post_entries(log):
-    return [e for e in log if len(e) >= 6 and e[1].endswith(".html") and e[1][:-5].isdigit()]
+    return [e for e in log if len(e) >= 5 and e[1].endswith(".html") and e[1][:-5].isdigit()]
 
 
 def _page_entries(log):
@@ -134,19 +134,14 @@ def _print_output(outcome, config, dist_path, verbose):
         if posts:
             ids = [_post_id(e) for e in posts]
             id_w = max(3, max(len(str(i)) for i in ids))
-
-            def display_name(e):
-                return f"+{e[1]}" if e[5] else e[1]
-
-            name_w = max(len(display_name(e)) for e in posts)
+            name_w = max(len(e[1]) for e in posts)
 
             for entry in sorted(posts, key=_post_id):
                 pid = _post_id(entry)
-                _, name, _, _, n_imgs, is_draft = entry
-                dname = f"+{name}" if is_draft else name
+                _, name, _, _, n_imgs = entry
                 post_warns = warns_by_file.get(name, [])
 
-                line = f"  {pid:0{id_w}d}   {dname:<{name_w}}"
+                line = f"  {pid:0{id_w}d}   {name:<{name_w}}"
                 if n_imgs:
                     img_label = f"[{n_imgs} img{'s' if n_imgs > 1 else ''}]"
                     line += f"   {img_label}"
@@ -162,13 +157,12 @@ def _print_output(outcome, config, dist_path, verbose):
         if posts_with_warns:
             ids = [_post_id(e) for e in posts_with_warns]
             id_w = max(3, max(len(str(i)) for i in ids))
-            name_w = max(len(f"+{e[1]}" if e[5] else e[1]) for e in posts_with_warns)
+            name_w = max(len(e[1]) for e in posts_with_warns)
             for entry in sorted(posts_with_warns, key=_post_id):
                 pid = _post_id(entry)
                 name = entry[1]
-                dname = f"+{name}" if entry[5] else name
                 post_warns = warns_by_file.get(name, [])
-                print(_c(_YELLOW, f"  {pid:0{id_w}d}   {dname:<{name_w}}   ⚠ {', '.join(post_warns)}"))
+                print(_c(_YELLOW, f"  {pid:0{id_w}d}   {name:<{name_w}}   ⚠ {', '.join(post_warns)}"))
         _print_non_post_warnings(warns_by_file, posts)
 
     c, u, d = outcome["created"], outcome["updated"], outcome["deleted"]

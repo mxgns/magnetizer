@@ -1071,19 +1071,6 @@ class TestVerboseLog:
         entry = next(e for e in log if e[0] == "CREATED" and e[1] == "1.html")
         assert entry[4] == 2
 
-    def test_post_log_entry_is_draft_false_for_published_post(self, tmp_path):
-        p = make_project(tmp_path, posts={1: MINIMAL_MD})
-        log = build(p)["log"]
-        entry = next(e for e in log if e[0] == "CREATED" and e[1] == "1.html")
-        assert entry[5] is False
-
-    def test_post_log_entry_is_draft_true_for_draft_post(self, tmp_path):
-        draft_md = "---\ndate: 2026-05-24\ndraft: true\n---\n\nDraft content\n"
-        p = make_project(tmp_path, posts={1: draft_md})
-        log = build(p)["log"]
-        entry = next(e for e in log if e[0] == "CREATED" and e[1] == "1.html")
-        assert entry[5] is True
-
     def test_removed_post_in_log(self, tmp_path):
         p = make_project(tmp_path, posts={1: MINIMAL_MD, 2: MINIMAL_MD})
         build(p)
@@ -1471,12 +1458,6 @@ class TestInvalidPostError:
         build(p)
         assert (p / "dist" / "1.html").exists()
 
-    def test_no_error_for_empty_draft_post(self, tmp_path):
-        md = "---\ndate: 2026-05-24\ndraft: true\n---\n"
-        p = make_project(tmp_path, posts={1: md})
-        build(p)
-        assert (p / "dist" / "1.html").exists()
-
     def test_error_when_special_page_has_no_title_no_image_no_content(self, tmp_path):
         config = (
             "site_name: Test Blog\nsite_url: https://example.github.io\n"
@@ -1707,79 +1688,6 @@ class TestArchiveCategoriesList:
         build(p)
         assert "<h2>Categories</h2>" not in (p / "dist" / "archive.html").read_text()
 
-
-# ---------------------------------------------------------------------------
-# Draft posts
-# ---------------------------------------------------------------------------
-
-_DRAFT_MD = "---\ndate: 2026-05-24\ntitle: Draft Post\ndraft: true\n---\n\nDraft content\n"
-
-
-class TestDraftPosts:
-
-    def test_draft_post_html_is_still_built(self, tmp_path):
-        p = make_project(tmp_path, posts={1: _DRAFT_MD})
-        build(p)
-        assert (p / "dist" / "1.html").exists()
-
-    def test_draft_post_excluded_from_index_page(self, tmp_path):
-        p = make_project(tmp_path, posts={1: _DRAFT_MD})
-        build(p)
-        assert "Draft content" not in (p / "dist" / "index.html").read_text()
-
-    def test_draft_post_excluded_from_category_page(self, tmp_path):
-        md = "---\ndate: 2026-05-24\ntitle: Draft Post\ndraft: true\ncategory: photography\n---\n\nDraft content\n"
-        p = make_project(tmp_path, posts={1: md}, config=_CATEGORIES_CONFIG)
-        build(p)
-        assert not (p / "dist" / "photography.html").exists()
-
-    def test_draft_post_excluded_from_feed(self, tmp_path):
-        p = make_project(tmp_path, posts={1: _DRAFT_MD})
-        build(p)
-        assert "Draft content" not in (p / "dist" / "feed.xml").read_text()
-
-    def test_draft_post_excluded_from_sitemap(self, tmp_path):
-        p = make_project(tmp_path, posts={1: _DRAFT_MD})
-        build(p)
-        assert "1.html" not in (p / "dist" / "sitemap.xml").read_text()
-
-    def test_draft_post_excluded_from_archive(self, tmp_path):
-        p = make_project(tmp_path, posts={1: _DRAFT_MD})
-        build(p)
-        assert "Draft Post" not in (p / "dist" / "archive.html").read_text()
-
-    def test_draft_post_skipped_in_post_navigation(self, tmp_path):
-        # Posts 1, 3 are published; post 2 is draft — post 3's older link must point to 1
-        p = make_project(tmp_path, posts={1: MINIMAL_MD, 2: _DRAFT_MD, 3: MINIMAL_MD})
-        build(p)
-        assert "1.html" in (p / "dist" / "3.html").read_text()
-        assert "3.html" in (p / "dist" / "1.html").read_text()
-
-    def test_non_draft_post_not_excluded(self, tmp_path):
-        md = "---\ndate: 2026-05-24\ntitle: Published\ndraft: false\n---\n\nPublished content\n"
-        p = make_project(tmp_path, posts={1: md})
-        build(p)
-        assert "Published content" in (p / "dist" / "index.html").read_text()
-
-    def test_draft_post_back_link_has_no_anchor_fragment(self, tmp_path):
-        p = make_project(tmp_path, posts={1: _DRAFT_MD})
-        build(p)
-        assert 'href="index.html#post-1"' not in (p / "dist" / "1.html").read_text()
-
-    def test_incremental_rebuild_updates_nav_when_consecutive_draft_published(self, tmp_path):
-        p = make_project(tmp_path, posts={
-            1: MINIMAL_MD,
-            2: _DRAFT_MD,
-            3: _DRAFT_MD,
-            4: MINIMAL_MD,
-        })
-        build(p)
-        assert "4.html" in (p / "dist" / "1.html").read_text()
-        (p / "content" / "3.md").write_text(
-            "---\ndate: 2026-05-24\ntitle: Now Published\n---\n\nContent\n"
-        )
-        build(p)
-        assert "3.html" in (p / "dist" / "1.html").read_text()
 
 
 # ---------------------------------------------------------------------------
