@@ -14,7 +14,7 @@ _IMAGE_EXT_RE = "|".join(IMAGE_EXTENSIONS)
 def special_page_image_pattern(name):
     return re.compile(rf'^{re.escape(name)}-image-(\d{{2}})\.({_IMAGE_EXT_RE})$')
 
-_ALLOWED_FRONTMATTER_KEYS = frozenset({'date', 'title', 'name', 'images', 'favourite', 'category', 'draft', 'ai_assisted', 'noindex'})
+_ALLOWED_FRONTMATTER_KEYS = frozenset({'date', 'title', 'name', 'images', 'favourite', 'category', 'ai_assisted', 'noindex'})
 _MARKDOWN_EXTENSIONS = ['pymdownx.mark', 'smarty', 'magnetizer.containers']
 
 _IMAGE_TOKEN_BLOCK_RE = re.compile(r'^\{\{\s*image\s+(\d+)\s*\}\}$')
@@ -45,7 +45,6 @@ class Post:
     name: str | None = None
     post_type: str | None = None
     is_favourite: bool = False
-    is_draft: bool = False
     is_ai_assisted: bool = False
     is_noindex: bool = False
     category: str | None = None
@@ -139,8 +138,6 @@ def parse_post(md_text, post_id, image_filenames):
     alt_texts = fm.get('images') or []
     favourite_raw = fm.get('favourite', 'false')
     is_favourite = isinstance(favourite_raw, str) and favourite_raw.lower() == 'true'
-    draft_raw = fm.get('draft', 'false')
-    is_draft = isinstance(draft_raw, str) and draft_raw.lower() == 'true'
     ai_assisted_raw = fm.get('ai_assisted', 'false')
     is_ai_assisted = isinstance(ai_assisted_raw, str) and ai_assisted_raw.lower() == 'true'
     noindex_raw = fm.get('noindex', 'false')
@@ -199,7 +196,6 @@ def parse_post(md_text, post_id, image_filenames):
         name=name,
         post_type=post_type,
         is_favourite=is_favourite,
-        is_draft=is_draft,
         is_ai_assisted=is_ai_assisted,
         is_noindex=is_noindex,
         category=category,

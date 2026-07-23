@@ -221,7 +221,7 @@ Examples:
     **Normal output** (only posts with warnings are listed):
 
     ```text
-      002   +2.html    ⚠ No category
+      002   2.html    ⚠ No category
     30 created · 0 updated · 0 deleted
     updated    about, index(+3), categories(3), feed.xml
     resources  style.css
@@ -236,7 +236,7 @@ Examples:
       001   1.html
       002   2.html    [2 imgs]   ⚠ Title and name both set
       003   3.html    [1 img]
-      026   +26.html   [7 imgs]
+      026   26.html   [7 imgs]
 
     30 created · 0 updated · 0 deleted
     ⚠ 1 warning: 2.html
@@ -247,7 +247,7 @@ Examples:
     DONE with warnings
     ```
 
-    Draft posts are shown with a `+` prefix (e.g. `+26.html`) in both normal and verbose output. The final status line is `DONE` (green) on success, `DONE with warnings` (yellow, `DONE` in colour) when warnings were raised, or `ERROR` (red) if the build failed. Warnings are collected and shown in-line — per post, or on their own `{page}.html   ⚠ {message}` line for a special page or a sitewide (non-page) issue — and never interrupt the build. Deleted posts are counted in the totals line but never appear in the pages summary. Category pages are summarised as `categories(N)` — the total number of category pages built across every category, not listed individually — the same way paginated index pages are summarised as `index(+N)`. The `Generating {site_name} → dist/` header line is only printed in verbose mode.
+    The final status line is `DONE` (green) on success, `DONE with warnings` (yellow, `DONE` in colour) when warnings were raised, or `ERROR` (red) if the build failed. Warnings are collected and shown in-line — per post, or on their own `{page}.html   ⚠ {message}` line for a special page or a sitewide (non-page) issue — and never interrupt the build. Deleted posts are counted in the totals line but never appear in the pages summary. Category pages are summarised as `categories(N)` — the total number of category pages built across every category, not listed individually — the same way paginated index pages are summarised as `index(+N)`. The `Generating {site_name} → dist/` header line is only printed in verbose mode.
 
 ### Configuration
 
@@ -482,25 +482,9 @@ This is the single overview of every frontmatter key a post or special page can 
 | `name` | Posts, special pages | Plain text | Not set | [Post types](#post-types) |
 | `images` | Posts, special pages | List of alt text strings, one per image file, in file order | `[]` | [Alt texts](#alt-texts) |
 | `category` | Posts | A slug from `categories` in `config.yaml` | Not set | [Categories](#categories) |
-| `draft` | Posts | `true` / `false` | `false` | [Draft posts](#draft-posts) |
 | `favourite` | Posts | `true` / `false` | `false` | [Favourite posts](#favourite-posts) |
 | `ai_assisted` | Posts, special pages | `true` / `false` | `false` | [AI-assisted disclosure](#ai-assisted-disclosure) |
 | `noindex` | Posts, special pages | `true` / `false` | `false` | [Noindex posts](#noindex-posts) |
-
-### Draft posts
-
-A post can be marked as a draft by setting `draft: true` in its frontmatter:
-
-```yaml
----
-date: 2026-05-21
-draft: true
----
-```
-
-Draft posts are excluded from index pages, category pages, the Atom feed, the sitemap, the archive, and next/previous post navigation. They can only be reached by navigating directly to their individual post URL (e.g. `5.html`). The HTML page for a draft post is still generated on every build.
-
-If `draft` is absent or set to `false`, the post is treated as published.
 
 ### Favourite posts
 
@@ -566,7 +550,7 @@ noindex: true
 ---
 ```
 
-A noindex post is excluded from `sitemap.xml`, and its own page gets a `<meta name="robots" content="noindex">` tag via `MAGNETIZER_METADATA` (see [Metadata](#metadata)) — this is what actually tells search engines not to index the page; a robots.txt `Disallow` alone doesn't, since a disallowed page can still be indexed (without its content) if it's discovered through other links, and would also stop crawlers from ever seeing the noindex tag itself. It's otherwise treated as a normal published post — it still appears on index pages, category pages, the Atom feed, the archive, and post navigation, and its HTML page is generated as usual. This is different from `draft`, which hides a post everywhere except its own direct URL.
+A noindex post is excluded from `sitemap.xml`, and its own page gets a `<meta name="robots" content="noindex">` tag via `MAGNETIZER_METADATA` (see [Metadata](#metadata)) — this is what actually tells search engines not to index the page; a robots.txt `Disallow` alone doesn't, since a disallowed page can still be indexed (without its content) if it's discovered through other links, and would also stop crawlers from ever seeing the noindex tag itself. It's otherwise treated as a normal published post — it still appears on index pages, category pages, the Atom feed, the archive, and post navigation, and its HTML page is generated as usual.
 
 `noindex` works the same way on special pages (see [Special pages](#special-pages)) as on regular posts.
 
@@ -819,7 +803,7 @@ An unknown shortcode name (matching the `{{ ... }}` pattern but not one of the n
 | `{{ today }}` | date string | The build date, formatted `D/M/YY` (no leading zeros on day/month, two-digit year), e.g. `17/7/26` |
 | `{{ ai_post_list }}` | HTML block | `<ul>` of posts with `ai_assisted: true`, newest first |
 
-`post_count`, `word_count` and `image_count` draw only from **published posts**: markdown files that render to an individual post page and are not drafts. Special pages and generated pages (index, category, notes, archive) are never counted by these three.
+`post_count`, `word_count` and `image_count` draw only from **published posts**: markdown files that render to an individual post page. Special pages and generated pages (index, category, notes, archive) are never counted by these three.
 
 `{{ ai_post_list }}` is the one exception: a special page with `ai_assisted: true` also appears in the list (sorted alongside qualifying posts by the same rules), even though it's never counted by `post_count` or any other value. Generated pages (index, category, notes, archive) never contribute to it regardless.
 
@@ -1034,7 +1018,7 @@ Where:
 - `POST_DATE` is the post date in RFC 3339 format, e.g. `2026-05-24T00:00:00Z`
 - `POST_BODY_HTML` is the HTML generated from the post's Markdown body
 
-Posts are listed in reverse chronological order (highest post ID first). Only published posts are included (draft posts are excluded).
+Posts are listed in reverse chronological order (highest post ID first).
 
 ## Sitemap
 
@@ -1044,7 +1028,7 @@ Magnetizer generates an XML sitemap at `dist/sitemap.xml` and a `dist/robots.txt
 
 | Page | Condition |
 | --- | --- |
-| `{post-id}.html` | All published (non-draft) posts, in reverse chronological order, excluding posts with `noindex: true` |
+| `{post-id}.html` | All published posts, in reverse chronological order, excluding posts with `noindex: true` |
 | `index.html`, `index-2.html`, … | All index pages |
 | `{slug}.html`, `{slug}-2.html`, … | All pages for each category that has at least one matching post |
 | `notes.html`, `notes-2.html`, … | All notes pages, if at least one Note exists |

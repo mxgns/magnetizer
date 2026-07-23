@@ -244,19 +244,6 @@ class TestCLIVerbose:
         result = run_build(["--verbose"], cwd=p)
         assert "[1 img]" in result.stdout
 
-    def test_verbose_shows_plus_prefix_for_draft_post(self, tmp_path):
-        draft_md = "---\ndate: 2026-05-24\ndraft: true\n---\n\nDraft\n"
-        p = make_project(tmp_path, posts={1: draft_md})
-        result = run_build(["--verbose"], cwd=p)
-        assert "+1.html" in result.stdout
-
-    def test_non_verbose_warning_shows_plus_prefix_for_draft(self, tmp_path):
-        draft_md = "---\ndate: 2026-05-24\ndraft: true\n---\n\nDraft\n"
-        config = "site_name: Test Blog\nsite_url: https://example.github.io\nposts_per_page: 2\ncategories:\n  news: News\n"
-        p = make_project(tmp_path, posts={1: draft_md}, config=config)
-        result = run_build([], cwd=p)
-        assert "+1.html" in result.stdout
-
     def test_verbose_compatible_with_single_file(self, tmp_path):
         p = make_project(tmp_path, posts={1: MINIMAL_MD, 2: MINIMAL_MD})
         result = run_build(["1.md", "--verbose"], cwd=p)

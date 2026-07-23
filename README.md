@@ -147,7 +147,6 @@ This is the single reference for every frontmatter key a post or special page ca
 | `name` | Posts, special pages | Plain text | Not set |
 | `images` | Posts, special pages | List of alt text strings, one per image file, in file order | `[]` |
 | `category` | Posts | A slug from `categories` in `config.yaml` | Not set |
-| `draft` | Posts | `true` / `false` | `false` |
 | `favourite` | Posts | `true` / `false` | `false` |
 | `ai_assisted` | Posts, special pages | `true` / `false` | `false` |
 | `noindex` | Posts, special pages | `true` / `false` | `false` |
@@ -157,10 +156,9 @@ This is the single reference for every frontmatter key a post or special page ca
 - **`name`** — fallback label for a post with no `title` (an Image post or a Note), used for the heading and page `<title>`, and as the archive link text immediately after `title` — it wins over an excerpt of the post's own content, not just when there's no content to excerpt. Ignored (with a build warning) if `title` is also set. See [Post types](#post-types).
 - **`images`** — alt text for each image file belonging to the post (`{post-id}-image-{nn}.*`), matched to image files in filename order. If the list is absent or has fewer entries than image files, the remaining images get `alt=""` (decorative). An incomplete list triggers a "Missing alt text" build warning.
 - **`category`** — assigns the post to a category. Matching against `categories` in `config.yaml` is case-insensitive and the value is normalised to lowercase. Adds a category link to the post's footer and includes the post on that category's page (`{slug}.html`). If `categories` is configured, a build warning is printed for posts with no category or with a category not found in `categories`.
-- **`draft`** — generates the post's HTML page as usual, but excludes it from index pages, category pages, the Atom feed, the sitemap, the archive, and next/previous navigation. A draft post is only reachable via its direct URL.
 - **`favourite`** — adds an additional `favourite` CSS class to the post's entry in the archive.
 - **`ai_assisted`** — inserts a disclosure banner at the top of the content, wherever it's shown (individual page, and index/category excerpts or full body). The banner text comes from `ai_disclosure_html` in `config.yaml` (raw HTML, so it can include a link) — Magnetizer falls back to a generic sentence if `ai_disclosure_html` isn't set. The banner needs the `.container-brown` and `.ai-disclosure` CSS rules to be present in the project's `resources/` directory — the icon itself is a CSS background image, base64-encoded in the project's own stylesheet, same as every other icon on the site.
-- **`noindex`** — excludes the page from `sitemap.xml` and adds a `<meta name="robots" content="noindex">` tag via `MAGNETIZER_METADATA`, but is otherwise treated normally (still shown on index pages, category pages, the feed, the archive, and post navigation). Unlike `draft`, it doesn't hide the page anywhere except search indexing. Works the same way on special pages as on posts.
+- **`noindex`** — excludes the page from `sitemap.xml` and adds a `<meta name="robots" content="noindex">` tag via `MAGNETIZER_METADATA`, but is otherwise treated normally (still shown on index pages, category pages, the feed, the archive, and post navigation) — it only affects search indexing. Works the same way on special pages as on posts.
 
 ## Building the site
 
@@ -249,7 +247,7 @@ Whitespace inside the braces is optional (`{{post_count}}` and `{{ post_count }}
 | `{{ today }}` | The build date, as `D/M/YY` (e.g. `17/7/26`) |
 | `{{ ai_post_list }}` | A `<ul>` of posts with `ai_assisted: true`, newest first |
 
-"Published posts" means non-draft posts with their own page — special pages, index/category/archive pages don't count. The three counts (`post_count`, `word_count`, `image_count`) are drawn only from that set. `{{ ai_post_list }}` is the one exception — a special page with `ai_assisted: true` shows up there too, alongside qualifying posts, even though it's never counted. Numbers 1,000 and above render with a comma thousands-separator (e.g. `12,345`).
+"Published posts" means posts with their own page — special pages, index/category/archive pages don't count. The three counts (`post_count`, `word_count`, `image_count`) are drawn only from that set. `{{ ai_post_list }}` is the one exception — a special page with `ai_assisted: true` shows up there too, alongside qualifying posts, even though it's never counted. Numbers 1,000 and above render with a comma thousands-separator (e.g. `12,345`).
 
 Each expanded value is wrapped for styling: scalars in `<span class="post-count">42</span>` (underscores in the name become hyphens in the class); `{{ ai_post_list }}` renders its own `<ul class="ai-post-list">`, or `<ul class="ai-post-list"><li>(none)</li></ul>` if no posts qualify. Put `{{ ai_post_list }}` on its own line (blank lines before and after) so it isn't trapped inside a `<p>`.
 

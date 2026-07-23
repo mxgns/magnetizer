@@ -5,6 +5,10 @@
 
 ## Released changes
 
+### 23/7/26
+
+- Removed the unused `draft` frontmatter key and everything built on it: the index/category/feed/sitemap/archive/navigation exclusion and the `+` build-output prefix. Every post now always gets the neighbour-aware newer/older navigation and anchored back-link that non-draft posts already used.
+
 ### 22/7/26
 
 - Post types: every post is now a Full post (has a title), Image post (no title, has images), or Note (no title, no images, has content) — replacing the old title/photo-based archive classification
