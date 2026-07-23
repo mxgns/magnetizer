@@ -391,38 +391,38 @@ class TestCLIDeletedPost:
 
 
 # ---------------------------------------------------------------------------
-# Microblog pages
+# Notes pages
 # ---------------------------------------------------------------------------
 
-MICRO_MD = "---\ndate: 2026-05-24\n---\n\nShort micro post.\n"
+NOTE_MD = "---\ndate: 2026-05-24\n---\n\nShort note post.\n"
 TITLED_MD = "---\ndate: 2026-05-24\ntitle: A Regular Post\n---\n\nThis is a regular post.\n"
 
-class TestCLIMicroblogPages:
+class TestCLINotesPages:
 
-    def test_microblog_html_created_when_micro_posts_exist(self, tmp_path):
-        p = make_project(tmp_path, posts={1: MICRO_MD})
+    def test_notes_html_created_when_notes_exist(self, tmp_path):
+        p = make_project(tmp_path, posts={1: NOTE_MD})
         run_build([], cwd=p)
-        assert (p / "dist" / "microblog.html").exists()
+        assert (p / "dist" / "notes.html").exists()
 
-    def test_microblog_html_not_created_when_no_micro_posts(self, tmp_path):
+    def test_notes_html_not_created_when_no_notes(self, tmp_path):
         p = make_project(tmp_path, posts={1: TITLED_MD})
         run_build([], cwd=p)
-        assert not (p / "dist" / "microblog.html").exists()
+        assert not (p / "dist" / "notes.html").exists()
 
-    def test_microblog_page_2_created_when_more_posts_than_per_page(self, tmp_path):
+    def test_notes_page_2_created_when_more_posts_than_per_page(self, tmp_path):
         config = (
             "site_name: Test Blog\nsite_url: https://example.github.io\n"
-            "posts_per_page: 10\nmicro_posts_per_page: 1\n"
+            "posts_per_page: 10\nnotes_per_page: 1\n"
         )
-        p = make_project(tmp_path, posts={1: MICRO_MD, 2: MICRO_MD}, config=config)
+        p = make_project(tmp_path, posts={1: NOTE_MD, 2: NOTE_MD}, config=config)
         run_build([], cwd=p)
-        assert (p / "dist" / "microblog-2.html").exists()
+        assert (p / "dist" / "notes-2.html").exists()
 
-    def test_microblog_html_contains_micro_post_body(self, tmp_path):
-        p = make_project(tmp_path, posts={1: MICRO_MD})
+    def test_notes_html_contains_note_body(self, tmp_path):
+        p = make_project(tmp_path, posts={1: NOTE_MD})
         run_build([], cwd=p)
-        content = (p / "dist" / "microblog.html").read_text()
-        assert "Short micro post." in content
+        content = (p / "dist" / "notes.html").read_text()
+        assert "Short note post." in content
 
 
 # ---------------------------------------------------------------------------

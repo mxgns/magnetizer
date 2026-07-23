@@ -9,8 +9,7 @@ DEFAULTS = {
     "image_max_dimension": 1600,
     "image_quality": 75,
     "posts_per_page": 12,
-    "micro_post_max_length": 180,
-    "micro_posts_per_page": 20,
+    "notes_per_page": 20,
     "index_meta_description": None,
     "index_title": None,
     "categories": {},
@@ -30,6 +29,6 @@ def load_config(path):
         for key in DEFAULTS:
             if key in data:
                 config[key] = data[key]
-    if config["micro_posts_per_page"] < 1:
-        raise ValueError("micro_posts_per_page must be a positive integer")
+    if config["notes_per_page"] < 1:
+        raise ValueError("notes_per_page must be a positive integer")
     return config

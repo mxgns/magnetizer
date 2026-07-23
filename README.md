@@ -28,8 +28,7 @@ manifest.json  Build state (created automatically)
 | `image_max_dimension` | Long-edge pixel limit when resizing images | `1600` |
 | `image_quality` | JPEG quality for resized images (0–95) | `75` |
 | `posts_per_page` | Posts shown per index page | `12` |
-| `micro_post_max_length` | Max plain-text characters for a post to be treated as a microblog post | `180` |
-| `micro_posts_per_page` | Posts shown per microblog page (`microblog.html`, `microblog-2.html`, …) | `20` |
+| `notes_per_page` | Notes shown per notes page (`notes.html`, `notes-2.html`, …) | `20` |
 | `index_meta_description` | `<meta name="description">` content on index pages (via `MAGNETIZER_METADATA` placeholder) | Not set |
 | `index_title` | When set, the title of `index.html` becomes `site_name - index_title` | Not set |
 | `categories` | Map of category slug to display name, e.g. `{photography: Photography}` | `{}` (no categories) |
@@ -45,7 +44,6 @@ site_url: https://example.github.io
 posts_per_page: 12
 image_max_dimension: 1600
 image_quality: 75
-micro_post_max_length: 180
 categories:
   photography: Photography
   travel: Travel
@@ -84,9 +82,7 @@ Post body goes here. Standard Markdown is supported.
 
 The `title` field is optional — see [Frontmatter reference](#frontmatter-reference) below for `title` and every other supported key.
 
-A post with no title, no images, and a plain-text body of `micro_post_max_length` characters or fewer is treated as a microblog post and rendered with an additional `micro-post` CSS class. Microblog posts also get a `<a href="microblog.html" class="microblog">Microblog</a>` link in their footer (before the category link, if any), linking to the paginated microblog page.
-
-The post `title` is rendered as the page's `<h1>` on an individual post page, or `<h2>` when shown alongside other posts (index and category pages). Use `###` (`<h3>`) or lower for any headings inside the post body — the build prints a warning if a post contains a `#` or `##` heading, since those levels are already used by the title.
+The post's heading is rendered as the page's `<h1>` on an individual post page, or `<h2>` when shown alongside other posts (index and category pages). Use `###` (`<h3>`) or lower for any headings inside the post body — the build prints a warning if a post contains a `#` or `##` heading, since those levels are already used by the post's own heading. See [Post types](#post-types) below for what the heading contains when the post has no `title`.
 
 Wrap part of a post body in a `<div>` with a fenced container:
 
@@ -110,6 +106,36 @@ More text.
 
 It must be on its own line with a blank line before and after (its own paragraph, not just its own line within one) — used inline with other text, or referencing an image number that doesn't exist for the post, is a build error. The image is rendered as `<figure><img src="..." alt="..."></figure>` using its frontmatter alt text, and is excluded from the top-of-post image strip since it's already shown in the body. On index pages, if it falls after a `<!-- more -->` marker (so isn't part of the shown excerpt), it's counted into the "Read more (+N photo(s))" link text — see below.
 
+## Post types
+
+Every post is one of three types, based on its `title`, top-level images, and body content:
+
+| Type | Type class | Criteria |
+|---|---|---|
+| Full post | `full-post` | Has a `title` |
+| Image post | `image-post` | No `title`, one or more top-level images |
+| Note | `note` | No `title`, no top-level images, has body content |
+
+The type class is appended to the `<article>` alongside its existing `single-post`/`multiple-posts` layout class, not instead of it — e.g. `class="single-post note"` on an individual Note's own page, or `class="multiple-posts image-post"` for an Image post shown on the index.
+
+A blank or whitespace-only `title`, `name`, or body counts as unset for all of this — classification, the warnings/errors below, and the heading/title/archive fallback text. `title: "   "` behaves exactly like no `title` at all.
+
+Images placed inline via `{{ image N }}` don't count as top-level images for this — a post with only inline images and no title is a Note, not an Image post. All in-post features (`<!-- more -->`, `{{ image N }}`, container blocks, dynamic values) work the same way across all three types; Magnetizer doesn't restrict any of them by post type.
+
+Notes replace what used to be called microblog posts. The behaviour is the same except there's no length cap any more, and the paginated listing page is `notes.html` (was `microblog.html`). Notes get a `<a href="notes.html" class="notes">Notes</a>` link in their footer, before the category link if any.
+
+A post with no `title`, no images and no content is invalid — the build exits with an error. A post with a `title` but no images and no content triggers a build warning (it doesn't make much use of its own page), as does a post with both `title` and `name` set — the `title` wins and `name` is ignored. ("Images" here means any image, including one used only inline via `{{ image N }}` — unlike the Full/Image/Note classification above, these two checks don't distinguish top-level from inline.)
+
+Every post gets a non-empty heading and page `<title>`, built from the same priority order:
+
+1. `title`, if set
+2. `name`, if set — a frontmatter field used only as a fallback label when there's no `title`
+3. Otherwise, a generated fallback based on post type and top-level image count: `Note posted {date}`, `Photo posted {date}` (one image), or `Photos posted {date}` (more than one)
+
+For an Image post or Note, the heading exists in the HTML (for the document outline and screen readers, since the index/category pages mix titled and untitled posts) but isn't shown visually — hiding it is left to your own `resources/` CSS, keyed off the `full-post`/`image-post`/`note` class on the `<article>`; Magnetizer itself never hides it.
+
+The archive's link text for each post follows the same priority order, except it falls back to an excerpt of the post's own first paragraph (plaintext, tags stripped, truncated to 40 characters after the last full word) before reaching the generated fallback text — see [Archive page](#archive-page).
+
 ## Frontmatter reference
 
 This is the single reference for every frontmatter key a post or special page can set. Any other key produces a build warning naming the post and the unknown key.
@@ -118,6 +144,7 @@ This is the single reference for every frontmatter key a post or special page ca
 |---|---|---|---|
 | `date` | Posts (required), special pages (optional) | `YYYY-MM-DD` | — |
 | `title` | Posts, special pages | Plain text | Not set |
+| `name` | Posts, special pages | Plain text | Not set |
 | `images` | Posts, special pages | List of alt text strings, one per image file, in file order | `[]` |
 | `category` | Posts | A slug from `categories` in `config.yaml` | Not set |
 | `draft` | Posts | `true` / `false` | `false` |
@@ -126,7 +153,8 @@ This is the single reference for every frontmatter key a post or special page ca
 | `noindex` | Posts, special pages | `true` / `false` | `false` |
 
 - **`date`** — publish date. Required on posts; optional on special pages (omit it and no date footer is rendered). Shown in the footer as `D Month YYYY` and used for the Atom feed, sitemap `lastmod`, and archive month grouping.
-- **`title`** — rendered as the page's `<h1>` on its own page, or `<h2>` when shown alongside other posts (index and category pages). Omit it for an untitled, photo-only, or microblog post.
+- **`title`** — rendered as the page's `<h1>` on its own page, or `<h2>` when shown alongside other posts (index and category pages). Omit it for an Image post or a Note — see [Post types](#post-types).
+- **`name`** — fallback label for a post with no `title` (an Image post or a Note), used for the heading and page `<title>`, and as the archive link text immediately after `title` — it wins over an excerpt of the post's own content, not just when there's no content to excerpt. Ignored (with a build warning) if `title` is also set. See [Post types](#post-types).
 - **`images`** — alt text for each image file belonging to the post (`{post-id}-image-{nn}.*`), matched to image files in filename order. If the list is absent or has fewer entries than image files, the remaining images get `alt=""` (decorative). An incomplete list triggers a "Missing alt text" build warning.
 - **`category`** — assigns the post to a category. Matching against `categories` in `config.yaml` is case-insensitive and the value is normalised to lowercase. Adds a category link to the post's footer and includes the post on that category's page (`{slug}.html`). If `categories` is configured, a build warning is printed for posts with no category or with a category not found in `categories`.
 - **`draft`** — generates the post's HTML page as usual, but excludes it from index pages, category pages, the Atom feed, the sitemap, the archive, and next/previous navigation. A draft post is only reachable via its direct URL.
@@ -147,9 +175,9 @@ Run `build.py` from your project directory.
 | `build.py --verbose` | Build and print a detailed post log plus summarised pages/resources sections |
 | `build.py 1.md` | Preview a single post or special page (does not update index pages) |
 
-Use `--flush` after editing templates. Resource file changes (CSS, JS) are picked up automatically on the next build. A `.` is printed for each file generated so you can see progress — in normal mode the dots are erased when the build finishes; in `--verbose` mode they remain. Warnings (missing title, alt text, etc.) are always shown inline next to the affected post, with the whole row coloured yellow in a terminal for visibility, e.g. `037   37.html   ⚠ No title`. Fatal errors are prefixed with a red `ERROR` label.
+Use `--flush` after editing templates. Resource file changes (CSS, JS) are picked up automatically on the next build. A `.` is printed for each file generated so you can see progress — in normal mode the dots are erased when the build finishes; in `--verbose` mode they remain. Warnings (missing alt text, missing category, etc.) are always shown inline next to the affected post, with the whole row coloured yellow in a terminal for visibility, e.g. `037   37.html   ⚠ Missing alt text`. Fatal errors are prefixed with a red `ERROR` label.
 
-Every full build also generates `dist/sitemap.xml` (all published posts, index, category, microblog, special, and archive pages with `lastmod` dates) and `dist/robots.txt` (pointing to the sitemap). These are not generated on single-file preview builds.
+Every full build also generates `dist/sitemap.xml` (all published posts, index, category, notes, special, and archive pages with `lastmod` dates) and `dist/robots.txt` (pointing to the sitemap). These are not generated on single-file preview builds.
 
 ## Templates
 
@@ -231,7 +259,7 @@ Because a page like this can go stale purely from *other* content changing (a ne
 
 ## Archive page
 
-The archive page (`dist/archive.html`) lists all dated blog posts grouped by month (microblog posts are excluded from this list). It opens with an `<h1>Archive</h1>` heading:
+The archive page (`dist/archive.html`) lists all dated blog posts grouped by month (Notes are excluded from this list). It opens with an `<h1>Archive</h1>` heading:
 
 ```html
 <main>
@@ -239,7 +267,7 @@ The archive page (`dist/archive.html`) lists all dated blog posts grouped by mon
   <section>
     <h2>May 2026</h2>
     <ul>
-      <li class="text-post"><span class="day">16</span><a href="42.html">Post title</a></li>
+      <li class="full-post"><span class="day">16</span><a href="42.html">Post title</a></li>
       ...
     </ul>
   </section>
@@ -247,7 +275,9 @@ The archive page (`dist/archive.html`) lists all dated blog posts grouped by mon
 </main>
 ```
 
-If `categories` is configured and at least one category has a matching post, a categories list is inserted after the `<h1>`. If microblog posts exist, a `<h2>Microblog</h2>` section with a link to `microblog.html` is inserted after the categories. When either (or both) sections appear, a `<h2>Blog Posts</h2>` heading is shown before the monthly sections:
+Each `<li>` gets the post's type class (`full-post` or `image-post` — Notes never appear here) and its link text follows the title → `name` → excerpt → generated-fallback priority order described in [Post types](#post-types).
+
+If `categories` is configured and at least one category has a matching post, a categories list is inserted after the `<h1>`. If any Notes exist, a `<h2>Notes</h2>` section with a link to `notes.html` is inserted after the categories. When either (or both) sections appear, a `<h2>Blog Posts</h2>` heading is shown before the monthly sections:
 
 ```html
 <main>
@@ -257,9 +287,9 @@ If `categories` is configured and at least one category has a matching post, a c
     <li><a href="photography.html">Photography</a> (34)</li>
     <li><a href="travel.html">Travel</a> (12)</li>
   </ul>
-  <h2>Microblog</h2>
+  <h2>Notes</h2>
   <ul>
-    <li><a href="microblog.html">All microblog posts</a></li>
+    <li><a href="notes.html">All notes</a></li>
   </ul>
   <h2>Blog Posts</h2>
   ...

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import argparse
 import re
+import shutil
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -236,7 +237,16 @@ def main():
         if args.verbose:
             print()
         else:
-            sys.stdout.write("\r" + " " * dot_count + "\r")
+            # Dots are printed with no newlines, so once dot_count exceeds the
+            # terminal width the line wraps onto multiple rows — a single "\r"
+            # only rewinds to the start of the last row, so each wrapped row
+            # needs to be cleared individually.
+            width = shutil.get_terminal_size((80, 24)).columns
+            rows = -(-dot_count // width)  # ceil division
+            for i in range(rows):
+                sys.stdout.write("\r\033[K")
+                if i < rows - 1:
+                    sys.stdout.write("\033[A")
             sys.stdout.flush()
 
     try:

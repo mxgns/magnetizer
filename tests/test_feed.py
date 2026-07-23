@@ -114,12 +114,17 @@ class TestEntryStructure:
         entry = _req(root.find(el("entry")))
         assert _req(entry.find(el("title"))).text == "My Great Post"
 
-    def test_entry_title_falls_back_to_uk_date_for_untitled_post(self):
+    def test_entry_title_falls_back_to_generated_label_for_untitled_post(self):
         post = Post(id=1, date="2026-05-24", date_uk="24 May 2026",
                     title=None, url="1.html", body_html="", images=[])
         root = parse([post])
         entry = _req(root.find(el("entry")))
-        assert _req(entry.find(el("title"))).text == "24 May 2026"
+        assert _req(entry.find(el("title"))).text == "Note posted 24 May 2026"
+
+    def test_entry_title_uses_name_when_no_title(self):
+        root = parse([make_post(title=None, name="A quiet morning")])
+        entry = _req(root.find(el("entry")))
+        assert _req(entry.find(el("title"))).text == "A quiet morning"
 
     def test_entry_link_href_is_absolute_url(self):
         root = parse([make_post(post_id=5)])

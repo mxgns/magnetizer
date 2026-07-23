@@ -1,5 +1,6 @@
 import re
 import shutil
+import sys
 import time
 from datetime import date as _date
 from datetime import datetime as _datetime
@@ -20,11 +21,12 @@ from magnetizer.render import (
     canonical_url,
     category_page_url,
     index_page_url,
-    microblog_page_url,
+    notes_page_url,
+    post_display_text,
     render_archive_page_content,
     render_category_page_content,
     render_index_page_content,
-    render_microblog_page_content,
+    render_notes_page_content,
     render_navigation,
     render_page_title,
     render_post_page_content,
@@ -35,6 +37,22 @@ from magnetizer.sitemap import render_sitemap, render_robots_txt
 from magnetizer.validate import validate_config, validate_content, validate_project
 
 _FLUSH_PRESERVE = {'.git', 'CNAME', '.nojekyll'}
+
+
+def _error(msg):
+    print(f"\033[31mERROR\033[0m: {msg}", file=sys.stderr)
+    sys.exit(1)
+
+
+def _check_no_invalid_posts(published_posts_sorted_desc, special_page_posts):
+    # Draft posts are exempt — they're explicitly not-ready-for-publication,
+    # so an empty one mid-draft shouldn't block an unrelated build.
+    for post in published_posts_sorted_desc:
+        if post.post_type is None:
+            _error(f"post {post.id} has no title, no images and no content — it needs at least one")
+    for post in special_page_posts:
+        if post.post_type is None:
+            _error(f"special page '{post.id}' has no title, no images and no content — it needs at least one")
 
 
 def _lastmod(paths):
@@ -60,11 +78,11 @@ def _image_filenames_for_post(content_dir, post_id):
     )
 
 
-def _load_post(content_dir, post_id, micro_post_max_length=180):
+def _load_post(content_dir, post_id):
     md_path = content_dir / f"{post_id}.md"
     md_text = md_path.read_text()
     images = _image_filenames_for_post(content_dir, post_id)
-    return parse_post(md_text, post_id, images, micro_post_max_length)
+    return parse_post(md_text, post_id, images)
 
 
 def _delete_post_files(dist_dir, post_id):
@@ -129,11 +147,16 @@ def _warn_if_missing_alt_texts(post):
     return None
 
 
-def _warn_if_missing_title(post):
-    has_text = bool(post.body_html and post.body_html.strip())
-    is_photo_only = bool(post.images) and not has_text
-    if not post.is_micro and not is_photo_only and (has_text or post.images) and not post.title:
-        return "No title"
+def _warn_if_title_and_name_set(post):
+    if post.title and post.name:
+        return "Title and name both set"
+    return None
+
+
+def _warn_if_title_without_image_or_content(post):
+    has_content = bool(post.body_html and post.body_html.strip())
+    if post.title and not post.images and not has_content:
+        return "Title but no image or content"
     return None
 
 
@@ -157,7 +180,7 @@ def _adjacent_post_urls(post_id, post_ids_sorted_desc):
 
 def _write_post_html(post, index_page_url, dist_dir, config, template, newer_url=None, older_url=None, back_url=None, categories=None):
     content_html = render_post_page_content(post, index_page_url, newer_url=newer_url, older_url=older_url, back_url=back_url, categories=categories, ai_disclosure_html=config["ai_disclosure_html"])
-    title = render_page_title(config["site_name"], post.title, page_num=None, post_id=post.id)
+    title = render_page_title(config["site_name"], post_display_text(post), page_num=None)
     filename = f"{post.id}.html"
     html = render_template(template, title=title, content=content_html,
                            canonical=canonical_url(config["site_url"], filename),
@@ -215,19 +238,19 @@ def _write_category_pages(posts_sorted_desc, dist_dir, config, template):
             (dist_dir / filename).write_text(html)
 
 
-def _write_microblog_pages(posts_sorted_desc, dist_dir, config, template):
-    micro_posts = [p for p in posts_sorted_desc if p.is_micro]
-    if not micro_posts:
+def _write_notes_pages(posts_sorted_desc, dist_dir, config, template):
+    note_posts = [p for p in posts_sorted_desc if p.post_type == "note"]
+    if not note_posts:
         return
-    per_page = config["micro_posts_per_page"]
-    total = len(micro_posts)
+    per_page = config["notes_per_page"]
+    total = len(note_posts)
     total_pages = max(1, (total + per_page - 1) // per_page)
     categories = config["categories"]
     for page_num in range(1, total_pages + 1):
-        slice_ = micro_posts[(page_num - 1) * per_page: page_num * per_page]
-        content_html = render_microblog_page_content(slice_, page_num, total_pages, categories=categories, ai_disclosure_html=config["ai_disclosure_html"])
-        title = render_page_title(config["site_name"], "Microblog", page_num=None)
-        filename = microblog_page_url(page_num)
+        slice_ = note_posts[(page_num - 1) * per_page: page_num * per_page]
+        content_html = render_notes_page_content(slice_, page_num, total_pages, categories=categories, ai_disclosure_html=config["ai_disclosure_html"])
+        title = render_page_title(config["site_name"], "Notes", page_num=None)
+        filename = notes_page_url(page_num)
         html = render_template(template, title=title, content=content_html,
                                canonical=canonical_url(config["site_url"], filename),
                                navigation=render_navigation(config["navigation"], filename))
@@ -266,7 +289,7 @@ def _build_special_page(name, content_dir, dist_dir, config, template, values, w
             )
 
     content_html = render_post_page_content(post, "index.html", back_url="index.html", ai_disclosure_html=config["ai_disclosure_html"])
-    title = render_page_title(config["site_name"], post.title, page_num=None)
+    title = render_page_title(config["site_name"], post_display_text(post), page_num=None)
     filename = f"{name}.html"
     html = render_template(template, title=title, content=content_html,
                            canonical=canonical_url(config["site_url"], filename),
@@ -338,7 +361,7 @@ def _load_content(content_dir, config):
     posts_cache = {}
     for pid in all_post_ids_sorted_desc:
         if (content_dir / f"{pid}.md").exists():
-            posts_cache[pid] = _load_post(content_dir, pid, config["micro_post_max_length"])
+            posts_cache[pid] = _load_post(content_dir, pid)
 
     published_post_ids_sorted_desc = [
         pid for pid in all_post_ids_sorted_desc
@@ -450,7 +473,8 @@ def _build_changed_posts(post_ids_to_build, changed_post_ids, posts_cache, manif
         post_warnings = [
             w for w in [
                 _warn_if_missing_alt_texts(post),
-                _warn_if_missing_title(post),
+                _warn_if_title_and_name_set(post),
+                _warn_if_title_without_image_or_content(post),
                 _warn_if_missing_category(post, config["categories"]),
                 _warn_if_invalid_category(post, config["categories"]),
                 _warn_if_heading_too_high(post),
@@ -475,7 +499,7 @@ def _build_changed_posts(post_ids_to_build, changed_post_ids, posts_cache, manif
             idx_url = _post_index_page_url(post_id, published_post_ids_sorted_desc, config["posts_per_page"])
             back_url = None
         _write_post_html(post, idx_url, dist_dir, config, template, newer_url=newer_url, older_url=older_url, back_url=back_url, categories=config["categories"])
-        log((action, f"{post_id}.html", post.char_count, post.is_micro, len(post.images), post.is_draft))
+        log((action, f"{post_id}.html", post.char_count, post.post_type == "note", len(post.images), post.is_draft))
 
     return created, updated, deleted
 
@@ -511,12 +535,12 @@ def _write_generated_pages(published_posts_sorted_desc, dist_dir, config, templa
     for slug, _, _, total_cat_pages in _category_pages(published_posts_sorted_desc, categories, per_page):
         for page_num in range(1, total_cat_pages + 1):
             log(("UPDATED", category_page_url(slug, page_num)))
-    micro_posts = [p for p in published_posts_sorted_desc if p.is_micro]
-    _write_microblog_pages(published_posts_sorted_desc, dist_dir, config, template)
-    micro_per_page = config["micro_posts_per_page"]
-    total_micro_pages = max(1, (len(micro_posts) + micro_per_page - 1) // micro_per_page) if micro_posts else 0
-    for page_num in range(1, total_micro_pages + 1):
-        log(("UPDATED", microblog_page_url(page_num)))
+    note_posts = [p for p in published_posts_sorted_desc if p.post_type == "note"]
+    _write_notes_pages(published_posts_sorted_desc, dist_dir, config, template)
+    notes_per_page = config["notes_per_page"]
+    total_notes_pages = max(1, (len(note_posts) + notes_per_page - 1) // notes_per_page) if note_posts else 0
+    for page_num in range(1, total_notes_pages + 1):
+        log(("UPDATED", notes_page_url(page_num)))
     (dist_dir / "feed.xml").write_text(render_feed(published_posts_sorted_desc, config))
     log(("UPDATED", "feed.xml"))
     archive_html = render_template(
@@ -554,13 +578,13 @@ def _write_sitemap_and_robots(published_post_ids_sorted_desc, published_posts_so
             ])
             for page_num in range(1, total_cat_pages + 1):
                 sitemap_pages.append((category_page_url(slug, page_num), cat_lastmod))
-    micro_posts_all = [p for p in published_posts_sorted_desc if p.is_micro]
-    if micro_posts_all:
-        micro_lastmod = _lastmod([content_dir / f"{p.id}.md" for p in micro_posts_all])
-        micro_per_page_sitemap = config["micro_posts_per_page"]
-        total_micro_pages_sitemap = max(1, (len(micro_posts_all) + micro_per_page_sitemap - 1) // micro_per_page_sitemap)
-        for page_num in range(1, total_micro_pages_sitemap + 1):
-            sitemap_pages.append((microblog_page_url(page_num), micro_lastmod))
+    note_posts_all = [p for p in published_posts_sorted_desc if p.post_type == "note"]
+    if note_posts_all:
+        notes_lastmod = _lastmod([content_dir / f"{p.id}.md" for p in note_posts_all])
+        notes_per_page_sitemap = config["notes_per_page"]
+        total_notes_pages_sitemap = max(1, (len(note_posts_all) + notes_per_page_sitemap - 1) // notes_per_page_sitemap)
+        for page_num in range(1, total_notes_pages_sitemap + 1):
+            sitemap_pages.append((notes_page_url(page_num), notes_lastmod))
     for name in config["special_pages"]:
         if special_page_posts_by_name[name].is_noindex:
             continue
@@ -608,6 +632,8 @@ def build(cwd, filename=None, flush=False, resources=False, on_progress=None):
         published_post_ids_sorted_desc, published_posts_sorted_desc,
         special_page_posts, special_page_posts_by_name,
     ) = _load_content(content_dir, config)
+
+    _check_no_invalid_posts(published_posts_sorted_desc, special_page_posts)
 
     # Sitewide dynamic-value computation runs unconditionally (even for a single-page
     # preview build) so that any shortcodes on the page(s) being built expand correctly.

@@ -1044,14 +1044,14 @@ class TestVerboseLog:
         entry = next(e for e in log if e[0] == "CREATED" and e[1] == "1.html")
         assert isinstance(entry[2], int) and entry[2] > 0
 
-    def test_post_log_entry_is_micro_true_for_micro_post(self, tmp_path):
-        p = make_project(tmp_path, posts={1: MINIMAL_MD})  # "Hello world" — micro
+    def test_post_log_entry_is_note_true_for_note(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD})  # "Hello world" — a Note
         log = build(p)["log"]
         entry = next(e for e in log if e[0] == "CREATED" and e[1] == "1.html")
         assert entry[3] is True
 
-    def test_post_log_entry_is_micro_false_for_regular_post(self, tmp_path):
-        regular_md = "---\ndate: 2026-05-24\ntitle: My Post\n---\n\nNot micro.\n"
+    def test_post_log_entry_is_note_false_for_regular_post(self, tmp_path):
+        regular_md = "---\ndate: 2026-05-24\ntitle: My Post\n---\n\nNot a note.\n"
         p = make_project(tmp_path, posts={1: regular_md})
         log = build(p)["log"]
         entry = next(e for e in log if e[0] == "CREATED" and e[1] == "1.html")
@@ -1411,50 +1411,132 @@ class TestAltTextWarnings:
 
 
 # ---------------------------------------------------------------------------
-# Micro post detection
+# Note detection
 # ---------------------------------------------------------------------------
 
-class TestMicroPostDetection:
+class TestNoteDetection:
 
-    def test_micro_post_classification_uses_config_on_incremental_build(self, tmp_path):
+    def test_note_classification_correct_on_incremental_build(self, tmp_path):
         import time
-        # Body is 190 chars: micro with max_length=200 but not with default 180
-        body = "x" * 190
-        micro_md = f"---\ndate: 2026-06-01\n---\n\n{body}\n"
+        note_md = "---\ndate: 2026-06-01\n---\n\nA quick thought.\n"
         normal_md = "---\ndate: 2026-06-06\ntitle: Normal Post\n---\n\nContent\n"
-        config = "site_name: Test Blog\nsite_url: https://example.github.io\nposts_per_page: 10\nmicro_post_max_length: 200\n"
-        # Posts 1-4; post 1 is the micro post.  Changing post 4 makes the
-        # builder rebuild posts 3 and 4 (changed + its neighbour) but NOT post 1,
-        # so post 1 is loaded fresh for the archive without going through posts_cache.
-        p = make_project(tmp_path, posts={1: micro_md, 2: normal_md, 3: normal_md, 4: normal_md}, config=config)
+        config = "site_name: Test Blog\nsite_url: https://example.github.io\nposts_per_page: 10\n"
+        # Posts 1-4; post 1 is the Note. Changing post 4 makes the builder
+        # rebuild posts 3 and 4 (changed + its neighbour) but NOT post 1, so
+        # post 1 is loaded fresh for the archive without going through posts_cache.
+        p = make_project(tmp_path, posts={1: note_md, 2: normal_md, 3: normal_md, 4: normal_md}, config=config)
         build(p)
 
         time.sleep(0.01)
         (p / "content" / "4.md").write_text("---\ndate: 2026-06-06\ntitle: Normal Post\n---\n\nUpdated\n")
         build(p)
 
-        assert '<h2>Microblog</h2>' in (p / "dist" / "archive.html").read_text()
+        assert '<h2>Notes</h2>' in (p / "dist" / "archive.html").read_text()
 
 
 # ---------------------------------------------------------------------------
-# Missing title warnings
+# Post type validation — invalid posts, title/name warnings
 # ---------------------------------------------------------------------------
 
-class TestMissingTitleWarnings:
+class TestInvalidPostError:
 
-    def test_warning_for_long_text_post_without_title(self, tmp_path):
-        long_body = "Word " * 50
-        md = f"---\ndate: 2026-05-24\n---\n\n{long_body}\n"
+    def test_error_when_post_has_no_title_no_image_no_content(self, tmp_path):
+        md = "---\ndate: 2026-05-24\n---\n"
+        p = make_project(tmp_path, posts={1: md})
+        with pytest.raises(SystemExit):
+            build(p)
+
+    def test_error_message_mentions_post_id(self, tmp_path, capsys):
+        md = "---\ndate: 2026-05-24\n---\n"
+        p = make_project(tmp_path, posts={1: md})
+        with pytest.raises(SystemExit):
+            build(p)
+        assert "1" in capsys.readouterr().err
+
+    def test_no_error_when_only_title_set(self, tmp_path):
+        md = "---\ndate: 2026-05-24\ntitle: Just a title\n---\n"
+        p = make_project(tmp_path, posts={1: md})
+        build(p)
+        assert (p / "dist" / "1.html").exists()
+
+    def test_no_error_when_only_image_set(self, tmp_path):
+        md = "---\ndate: 2026-05-24\n---\n"
+        p = make_project(tmp_path, posts={1: md})
+        make_jpg(p / "content" / "1-image-01.jpg")
+        build(p)
+        assert (p / "dist" / "1.html").exists()
+
+    def test_no_error_when_only_content_set(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD})
+        build(p)
+        assert (p / "dist" / "1.html").exists()
+
+    def test_no_error_for_empty_draft_post(self, tmp_path):
+        md = "---\ndate: 2026-05-24\ndraft: true\n---\n"
+        p = make_project(tmp_path, posts={1: md})
+        build(p)
+        assert (p / "dist" / "1.html").exists()
+
+    def test_error_when_special_page_has_no_title_no_image_no_content(self, tmp_path):
+        config = (
+            "site_name: Test Blog\nsite_url: https://example.github.io\n"
+            "posts_per_page: 2\nspecial_pages:\n  - about\n"
+        )
+        p = make_project(tmp_path, posts={1: MINIMAL_MD}, config=config)
+        (p / "content" / "about.md").write_text("---\ndate: 2026-05-24\n---\n")
+        with pytest.raises(SystemExit):
+            build(p)
+
+
+class TestTitleAndNameWarnings:
+
+    def test_warning_when_title_and_name_both_set(self, tmp_path):
+        md = "---\ndate: 2026-05-24\ntitle: Real Title\nname: Fallback name\n---\n\nContent.\n"
+        p = make_project(tmp_path, posts={1: md})
+        warnings = build(p)["warnings"]
+        assert any(f == "1.html" and "name" in msg.lower() for f, msg in warnings)
+
+    def test_no_warning_when_only_title_set(self, tmp_path):
+        p = make_project(tmp_path, posts={1: TITLED_MD})
+        assert not any("name" in msg.lower() for _, msg in build(p)["warnings"])
+
+    def test_no_warning_when_only_name_set(self, tmp_path):
+        md = "---\ndate: 2026-05-24\nname: A quiet morning\n---\n\nContent.\n"
+        p = make_project(tmp_path, posts={1: md})
+        assert not any("name" in msg.lower() for _, msg in build(p)["warnings"])
+
+
+class TestTitleWithoutImageOrContentWarning:
+
+    def test_warning_when_title_set_with_no_image_or_content(self, tmp_path):
+        md = "---\ndate: 2026-05-24\ntitle: Just a title\n---\n"
         p = make_project(tmp_path, posts={1: md})
         warnings = build(p)["warnings"]
         assert any(f == "1.html" and "title" in msg.lower() for f, msg in warnings)
 
-    def test_no_warning_for_micro_post(self, tmp_path):
-        p = make_project(tmp_path, posts={1: MINIMAL_MD})
+    def test_no_warning_when_title_set_with_content(self, tmp_path):
+        p = make_project(tmp_path, posts={1: TITLED_MD})
         assert not any("title" in msg.lower() for _, msg in build(p)["warnings"])
 
-    def test_no_warning_when_post_has_title(self, tmp_path):
-        p = make_project(tmp_path, posts={1: TITLED_MD})
+    def test_no_warning_when_title_set_with_image(self, tmp_path):
+        md = "---\ndate: 2026-05-24\ntitle: Just a title\n---\n"
+        p = make_project(tmp_path, posts={1: md})
+        make_jpg(p / "content" / "1-image-01.jpg")
+        assert not any("title" in msg.lower() for _, msg in build(p)["warnings"])
+
+    def test_no_warning_for_long_untitled_text_post(self, tmp_path):
+        # Previously warned as "No title" — now a legitimate, unbounded-length Note.
+        long_body = "Word " * 50
+        md = f"---\ndate: 2026-05-24\n---\n\n{long_body}\n"
+        p = make_project(tmp_path, posts={1: md})
+        assert not any("title" in msg.lower() for _, msg in build(p)["warnings"])
+
+    def test_no_warning_for_untitled_post_with_image_and_text(self, tmp_path):
+        # Previously warned as "mixed post without title" — now a legitimate Image post.
+        long_body = "Word " * 50
+        md = f"---\ndate: 2026-05-24\nimages:\n  - Alt\n---\n\n{long_body}\n"
+        p = make_project(tmp_path, posts={1: md})
+        make_jpg(p / "content" / "1-image-01.jpg")
         assert not any("title" in msg.lower() for _, msg in build(p)["warnings"])
 
     def test_no_warning_for_photo_only_post(self, tmp_path):
@@ -1462,14 +1544,6 @@ class TestMissingTitleWarnings:
         p = make_project(tmp_path, posts={1: md})
         make_jpg(p / "content" / "1-image-01.jpg")
         assert not any("title" in msg.lower() for _, msg in build(p)["warnings"])
-
-    def test_warning_for_mixed_post_without_title(self, tmp_path):
-        long_body = "Word " * 50
-        md = f"---\ndate: 2026-05-24\nimages:\n  - Alt\n---\n\n{long_body}\n"
-        p = make_project(tmp_path, posts={1: md})
-        make_jpg(p / "content" / "1-image-01.jpg")
-        warnings = build(p)["warnings"]
-        assert any(f == "1.html" and "title" in msg.lower() for f, msg in warnings)
 
 
 # ---------------------------------------------------------------------------
@@ -1808,29 +1882,15 @@ class TestNoindexPosts:
 # Warnings
 # ---------------------------------------------------------------------------
 
-_LONG_MD = "---\ndate: 2026-05-24\n---\n\n" + "a" * 200 + "\n"
-_TITLED_LONG_MD = "---\ndate: 2026-05-24\ntitle: My Post\n---\n\n" + "a" * 200 + "\n"
-
-
 class TestWarnings:
 
     def test_outcome_has_warnings_key(self, tmp_path):
         p = make_project(tmp_path, posts={1: MINIMAL_MD})
         assert "warnings" in build(p)
 
-    def test_no_warnings_for_clean_micro_post(self, tmp_path):
+    def test_no_warnings_for_clean_note(self, tmp_path):
         p = make_project(tmp_path, posts={1: MINIMAL_MD})
         assert build(p)["warnings"] == []
-
-    def test_missing_title_produces_warning(self, tmp_path):
-        p = make_project(tmp_path, posts={1: _LONG_MD})
-        warnings = build(p)["warnings"]
-        assert any(filename == "1.html" and "title" in msg.lower() for filename, msg in warnings)
-
-    def test_no_title_warning_for_post_with_title(self, tmp_path):
-        p = make_project(tmp_path, posts={1: _TITLED_LONG_MD})
-        warnings = build(p)["warnings"]
-        assert not any(filename == "1.html" and "title" in msg.lower() for filename, msg in warnings)
 
     def test_missing_alt_text_produces_warning(self, tmp_path):
         p = make_project(tmp_path, posts={1: MINIMAL_MD})
@@ -1864,7 +1924,8 @@ class TestWarnings:
         assert any(filename == "1.html" and "heading" in msg.lower() for filename, msg in warnings)
 
     def test_warning_is_tuple_of_filename_and_message(self, tmp_path):
-        p = make_project(tmp_path, posts={1: _LONG_MD})
+        p = make_project(tmp_path, posts={1: MINIMAL_MD})
+        make_jpg(p / "content" / "1-image-01.jpg")
         warnings = build(p)["warnings"]
         assert len(warnings) > 0
         filename, msg = warnings[0]
@@ -1872,7 +1933,9 @@ class TestWarnings:
         assert isinstance(msg, str)
 
     def test_multiple_warnings_for_same_post(self, tmp_path):
-        p = make_project(tmp_path, posts={1: _LONG_MD})
+        # Title+name both set, and the image has no alt text — two independent warnings.
+        md = "---\ndate: 2026-05-24\ntitle: My Post\nname: Fallback\n---\n\nContent\n"
+        p = make_project(tmp_path, posts={1: md})
         make_jpg(p / "content" / "1-image-01.jpg")
         warnings = build(p)["warnings"]
         post_warnings = [msg for f, msg in warnings if f == "1.html"]
@@ -1963,10 +2026,10 @@ class TestNavigation:
         assert '<a href="archive.html" class="nav-archive">Archive</a>' in html
         assert 'current' not in html
 
-    def test_navigation_rendered_on_microblog_page(self, tmp_path):
+    def test_navigation_rendered_on_notes_page(self, tmp_path):
         p = make_project(tmp_path, posts={1: MINIMAL_MD}, config=_NAVIGATION_CONFIG)
         build(p)
-        html = (p / "dist" / "microblog.html").read_text()
+        html = (p / "dist" / "notes.html").read_text()
         assert '<a href="index.html" class="nav-index">Home</a>' in html
         assert '<a href="archive.html" class="nav-archive">Archive</a>' in html
         assert 'current' not in html

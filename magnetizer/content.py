@@ -14,7 +14,7 @@ _IMAGE_EXT_RE = "|".join(IMAGE_EXTENSIONS)
 def special_page_image_pattern(name):
     return re.compile(rf'^{re.escape(name)}-image-(\d{{2}})\.({_IMAGE_EXT_RE})$')
 
-_ALLOWED_FRONTMATTER_KEYS = frozenset({'date', 'title', 'images', 'favourite', 'category', 'draft', 'ai_assisted', 'noindex'})
+_ALLOWED_FRONTMATTER_KEYS = frozenset({'date', 'title', 'name', 'images', 'favourite', 'category', 'draft', 'ai_assisted', 'noindex'})
 _MARKDOWN_EXTENSIONS = ['pymdownx.mark', 'smarty', 'magnetizer.containers']
 
 _IMAGE_TOKEN_BLOCK_RE = re.compile(r'^\{\{\s*image\s+(\d+)\s*\}\}$')
@@ -42,7 +42,8 @@ class Post:
     body_html: str
     images: list
     excerpt_html: str | None = None
-    is_micro: bool = False
+    name: str | None = None
+    post_type: str | None = None
     is_favourite: bool = False
     is_draft: bool = False
     is_ai_assisted: bool = False
@@ -125,7 +126,7 @@ def _substitute_image_tokens(body, images, post_id):
     return new_body, used_filenames
 
 
-def parse_post(md_text, post_id, image_filenames, micro_post_max_length=180):
+def parse_post(md_text, post_id, image_filenames):
     fm, body = _parse_frontmatter(md_text)
 
     for key in fm:
@@ -134,6 +135,7 @@ def parse_post(md_text, post_id, image_filenames, micro_post_max_length=180):
 
     date_str = fm.get('date') or None
     title = fm.get('title') or None
+    name = fm.get('name') or None
     alt_texts = fm.get('images') or []
     favourite_raw = fm.get('favourite', 'false')
     is_favourite = isinstance(favourite_raw, str) and favourite_raw.lower() == 'true'
@@ -170,7 +172,20 @@ def parse_post(md_text, post_id, image_filenames, micro_post_max_length=180):
         excerpt_html = None
 
     char_count = len(_plain_text(body_html))
-    is_micro = title is None and not image_filenames and 0 < char_count <= micro_post_max_length
+
+    top_level_image_count = len(images) - len(inline_image_filenames)
+    has_content = char_count > 0
+    has_any_image = len(images) > 0
+    if title:
+        post_type = "full"
+    elif top_level_image_count > 0:
+        post_type = "image"
+    elif has_content or has_any_image:
+        post_type = "note"
+    else:
+        # No title, no images (top-level or inline), no content — the caller
+        # decides what to do with this (see the build's invalid-post error).
+        post_type = None
 
     return Post(
         id=post_id,
@@ -181,7 +196,8 @@ def parse_post(md_text, post_id, image_filenames, micro_post_max_length=180):
         body_html=body_html,
         images=images,
         excerpt_html=excerpt_html,
-        is_micro=is_micro,
+        name=name,
+        post_type=post_type,
         is_favourite=is_favourite,
         is_draft=is_draft,
         is_ai_assisted=is_ai_assisted,
