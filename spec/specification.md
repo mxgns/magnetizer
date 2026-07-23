@@ -392,7 +392,7 @@ Notes:
 - If the post is displayed on a multi-post page, the heading and `<time>` contain a link to the post page. On the individual post page, no links are included.
 - Magnetizer prints a warning during the build if a post's Markdown body contains a heading more prominent than `<h3>` (i.e. an `<h1>` or `<h2>`, from `#` or `##`), since the post heading already occupies that level of the document outline:
 
-```
+```text
 Warning: Post {post-id} has heading(s) more prominent than <h3> in its body: <h1>, <h2>
 ```
 
@@ -411,9 +411,10 @@ Every post is classified into exactly one of three types, based on its `title`, 
 - A blank or whitespace-only `title`, `name`, or body counts as unset/empty throughout — for classification, for the invalid-post and warning checks below, and for the heading/meta-title/archive fallback logic. A post with `title: "   "` is treated exactly like one with no `title` at all.
 - Images placed inline in the body via `{{ image N }}` (see [Inline images](#inline-images)) don't count as top-level images for this classification — a post with only inline images and no title is a Note, not an Image post.
 - All in-post features — `<!-- more -->`, `{{ image N }}`, container blocks, dynamic values — work the same way regardless of post type. Magnetizer doesn't restrict which features a Full post, Image post or Note can use.
-- A post with no `title`, no top-level images, and no body content is invalid. The build exits with an error.
+- A post with no `title`, no images, and no body content is invalid. The build exits with an error.
 - A post with both `title` and `name` set uses the `title` and ignores `name`. A build warning is printed naming the post.
-- A post with a `title` but no top-level images and no body content doesn't make good use of its own page. A build warning is printed naming the post.
+- A post with a `title` but no images and no body content doesn't make good use of its own page. A build warning is printed naming the post.
+- These two checks count any image, including one used only inline via `{{ image N }}` — unlike the Full/Image/Note classification above, they don't distinguish top-level from inline. A post with only an inline image and no other text is a Note (see the previous bullet), not invalid.
 - Notes replace what was previously called microblog posts. Compared to the old microblog behaviour, there is no longer a maximum length — any untitled, image-less post with body content is a Note, however long — and the paginated listing page is `notes.html` instead of `microblog.html` (see [Notes pages](#notes-pages)).
 
 Notes get a link to `notes.html` in their `<footer>`, before the category link (if any):

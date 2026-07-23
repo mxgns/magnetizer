@@ -36,11 +36,11 @@ class TestRenderArticleStructure:
         assert 'id="post-7"' in html
 
     def test_article_has_single_post_class_on_post_page(self):
-        html = render_article(make_post(), on_index_page=False)
+        html = render_article(make_post(post_type=None), on_index_page=False)
         assert 'class="single-post"' in html
 
     def test_article_has_multiple_posts_class_on_index_page(self):
-        html = render_article(make_post(), on_index_page=True)
+        html = render_article(make_post(post_type=None), on_index_page=True)
         assert 'class="multiple-posts"' in html
 
     def test_full_post_type_class(self):

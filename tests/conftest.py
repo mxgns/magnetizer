@@ -6,6 +6,7 @@ TEMPLATE = (
 )
 MINIMAL_MD = "---\ndate: 2026-05-24\n---\n\nHello world\n"
 _DEFAULT_CONFIG = "site_name: Test Blog\nsite_url: https://example.github.io\nposts_per_page: 2\n"
+_UNSET_POST_TYPE = object()
 
 
 def make_project(tmp_path, posts=None, config=_DEFAULT_CONFIG):
@@ -32,7 +33,7 @@ def make_post(
     excerpt_html=None,
     images=None,
     category: str | None = None,
-    post_type: str | None = None,
+    post_type: str | None = _UNSET_POST_TYPE,
     is_ai_assisted: bool = False,
     inline_image_filenames=frozenset(),
     excerpt_inline_image_filenames=frozenset(),
@@ -41,6 +42,12 @@ def make_post(
         img if isinstance(img, Image) else Image(filename=img, alt="")
         for img in (images or [])
     ]
+    if post_type is _UNSET_POST_TYPE:
+        # Match parse_post()'s classification for the common case, so a
+        # fixture built from default/title+image args isn't silently out of
+        # sync with what real content would produce. Pass post_type=None
+        # explicitly for tests that need an unset/unclassified post.
+        post_type = "full" if title else ("image" if image_objects else None)
     return Post(
         id=post_id,
         date=date,
