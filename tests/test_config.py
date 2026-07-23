@@ -12,6 +12,7 @@ DEFAULTS = {
     "image_quality": 75,
     "posts_per_page": 12,
     "notes_per_page": 20,
+    "images_per_post": 2,
     "index_meta_description": None,
     "index_title": None,
     "categories": {},
@@ -51,6 +52,9 @@ class TestDefaults:
     def test_notes_per_page_default(self, tmp_path):
         assert load_config(tmp_path / "config.yaml")["notes_per_page"] == 20
 
+    def test_images_per_post_default(self, tmp_path):
+        assert load_config(tmp_path / "config.yaml")["images_per_post"] == 2
+
     def test_index_meta_description_default(self, tmp_path):
         assert load_config(tmp_path / "config.yaml")["index_meta_description"] is None
 
@@ -88,6 +92,14 @@ class TestCustomValues:
         p = write_config(tmp_path, "notes_per_page: 10\n")
         assert load_config(p)["notes_per_page"] == 10
 
+    def test_images_per_post_overridden(self, tmp_path):
+        p = write_config(tmp_path, "images_per_post: 4\n")
+        assert load_config(p)["images_per_post"] == 4
+
+    def test_images_per_post_zero_is_valid(self, tmp_path):
+        p = write_config(tmp_path, "images_per_post: 0\n")
+        assert load_config(p)["images_per_post"] == 0
+
     def test_index_meta_description_overridden(self, tmp_path):
         p = write_config(tmp_path, "index_meta_description: A blog about things.\n")
         assert load_config(p)["index_meta_description"] == "A blog about things."
@@ -103,6 +115,7 @@ class TestCustomValues:
             "image_quality: 68\n"
             "posts_per_page: 8\n"
             "notes_per_page: 15\n"
+            "images_per_post: 3\n"
         ))
         config = load_config(p)
         assert config["site_name"] == "Photos"
@@ -110,6 +123,7 @@ class TestCustomValues:
         assert config["image_quality"] == 68
         assert config["posts_per_page"] == 8
         assert config["notes_per_page"] == 15
+        assert config["images_per_post"] == 3
 
     def test_partial_override_keeps_other_defaults(self, tmp_path):
         p = write_config(tmp_path, "site_name: My Photos\n")
@@ -131,6 +145,11 @@ class TestCustomValues:
 
     def test_notes_per_page_negative_raises_error(self, tmp_path):
         p = write_config(tmp_path, "notes_per_page: -1\n")
+        with pytest.raises(ValueError):
+            load_config(p)
+
+    def test_images_per_post_negative_raises_error(self, tmp_path):
+        p = write_config(tmp_path, "images_per_post: -1\n")
         with pytest.raises(ValueError):
             load_config(p)
 

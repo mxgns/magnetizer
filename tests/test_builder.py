@@ -1159,6 +1159,46 @@ class TestVerboseLog:
 
 
 # ---------------------------------------------------------------------------
+# images_per_post config
+# ---------------------------------------------------------------------------
+
+class TestImagesPerPostConfig:
+
+    def test_default_shows_two_images_on_index(self, tmp_path):
+        md = "---\ndate: 2026-05-24\n---\n\nCaption\n"
+        p = make_project(tmp_path, posts={1: md})
+        make_jpg(p / "content" / "1-image-01.jpg")
+        make_jpg(p / "content" / "1-image-02.jpg")
+        make_jpg(p / "content" / "1-image-03.jpg")
+        build(p)
+        html = (p / "dist" / "index.html").read_text()
+        assert html.count("<figure>") == 2
+        assert "1 more photo" in html
+
+    def test_custom_images_per_post_shows_more_on_index(self, tmp_path):
+        md = "---\ndate: 2026-05-24\n---\n\nCaption\n"
+        config = "site_name: Test Blog\nsite_url: https://example.github.io\nposts_per_page: 2\nimages_per_post: 3\n"
+        p = make_project(tmp_path, posts={1: md}, config=config)
+        make_jpg(p / "content" / "1-image-01.jpg")
+        make_jpg(p / "content" / "1-image-02.jpg")
+        make_jpg(p / "content" / "1-image-03.jpg")
+        build(p)
+        html = (p / "dist" / "index.html").read_text()
+        assert html.count("<figure>") == 3
+        assert "more photo" not in html
+
+    def test_images_per_post_does_not_limit_individual_post_page(self, tmp_path):
+        md = "---\ndate: 2026-05-24\n---\n\nCaption\n"
+        config = "site_name: Test Blog\nsite_url: https://example.github.io\nposts_per_page: 2\nimages_per_post: 1\n"
+        p = make_project(tmp_path, posts={1: md}, config=config)
+        make_jpg(p / "content" / "1-image-01.jpg")
+        make_jpg(p / "content" / "1-image-02.jpg")
+        build(p)
+        html = (p / "dist" / "1.html").read_text()
+        assert html.count("<figure>") == 2
+
+
+# ---------------------------------------------------------------------------
 # Build ID placeholder
 # ---------------------------------------------------------------------------
 

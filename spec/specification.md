@@ -261,6 +261,7 @@ Examples:
 | `image_quality` | Image quality, when resizing images | `75` |
 | `posts_per_page` | Number of posts per page when generating the index files | `12` |
 | `notes_per_page` | Number of Notes per page when generating the notes pages | `20` |
+| `images_per_post` | Number of top-level images shown per post on multi-post pages (index, category, notes) — 0 is valid and shows none. Never limits an individual post's own page, where all top-level images are always shown. Inline images (via `{{ image N }}`) aren't counted; those are governed by `<!-- more -->` instead. | `2` |
 | `index_meta_description` | Content for the `<meta name="description">` tag on index pages, via the `MAGNETIZER_METADATA` template placeholder | Not set — line is omitted |
 | `index_title` | When set, the title of `index.html` becomes `site_name - index_title` instead of just `site_name` | Not set — `index.html` title is just `site_name` |
 | `categories` | A map of category slug to display name, e.g. `{photography: Photography}`. See [Categories](#categories). | `{}` (no categories) |
@@ -673,7 +674,7 @@ If a post's Markdown body contains `<!-- more -->`, the content is split at that
 </div>
 ```
 
-If the post has undisplayed images — top-of-post images beyond the first two, or [inline images](#inline-images) placed via `{{ image N }}` that fall after the marker (and so aren't part of the shown excerpt) — their count is folded into the link text instead of a separate link:
+If the post has undisplayed images — top-of-post images beyond `images_per_post` (see [Configuration](#configuration)), or [inline images](#inline-images) placed via `{{ image N }}` that fall after the marker (and so aren't part of the shown excerpt) — their count is folded into the link text instead of a separate link:
 
 ```html
 <a href="POST_URL" class="read-more">Read more (+N photo(s))</a>
@@ -709,14 +710,14 @@ Note: The following differences apply to `<article>` elements when they appear o
 - `POST_LAYOUT_CLASS` is `multiple-posts` instead of `single-post` — the post-type class (`full-post`, `image-post` or `note`) is still appended alongside it, e.g. `class="multiple-posts note"`
 - The title is an `<h2>` instead of `<h1>` — see [Posts](#posts)
 - Each `<img>` is wrapped in an `<a>` pointing to the individual post page
-- Only the first two images are shown
-- If a post has more than two images and **no** `<!-- more -->` marker, a "N more photo(s)" link is rendered between the post body and the date footer:
+- Only the first `images_per_post` images are shown (see [Configuration](#configuration) — default `2`; `0` shows none)
+- If a post has more top-level images than `images_per_post` and **no** `<!-- more -->` marker, a "N more photo(s)" link is rendered between the post body and the date footer:
 
 ```html
 <a href="POST_URL" class="more-photos">N more photo(s)</a>
 ```
 
-Where `N` is the number of hidden top-of-post images (total minus two). The text uses "photo" for one hidden image and "photos" for two or more. Images used via [inline images](#inline-images) are excluded from the top-of-post strip and don't count here — a bare `{{ image N }}` post with no marker shows all its content, inline images included, so nothing is hidden.
+Where `N` is the number of hidden top-of-post images (total minus `images_per_post`). The text uses "photo" for one hidden image and "photos" for two or more. Images used via [inline images](#inline-images) are excluded from the top-of-post strip and don't count here — a bare `{{ image N }}` post with no marker shows all its content, inline images included, so nothing is hidden.
 
 If a `<!-- more -->` marker **is** present, undisplayed images (top-strip overflow, plus any inline images that fall after the marker) are folded into the "Read more" link's text instead — see [Read more](#read-more). Exactly one of "Read more" or "N more photo(s)" is ever shown for a given post, never both.
 
