@@ -1,6 +1,6 @@
 # Magnetizer
 
-A static site generator for a personal photo blog. Takes Markdown and image files as input and outputs a ready-to-publish HTML site.
+A static site generator for a photo blog. Takes Markdown and image files as input and outputs a ready-to-publish HTML site.
 
 ## Project structure
 
