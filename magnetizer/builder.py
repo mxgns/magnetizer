@@ -121,12 +121,6 @@ def _neighbor_post_ids(post_id, all_post_ids_sorted_desc):
         return [p for p in [newer, older] if p is not None]
 
 
-def _post_index_page_url(post_id, post_ids_sorted_desc, posts_per_page):
-    pos = post_ids_sorted_desc.index(post_id)
-    page = pos // posts_per_page + 1
-    return index_page_url(page)
-
-
 def _warn_if_missing_category(post, categories):
     if categories and not post.category:
         return "No category"
@@ -176,8 +170,8 @@ def _adjacent_post_urls(post_id, post_ids_sorted_desc):
     return newer_url, older_url
 
 
-def _write_post_html(post, index_page_url, dist_dir, config, template, newer_url=None, older_url=None, categories=None):
-    content_html = render_post_page_content(post, index_page_url, newer_url=newer_url, older_url=older_url, categories=categories, ai_disclosure_html=config["ai_disclosure_html"])
+def _write_post_html(post, dist_dir, config, template, newer_url=None, older_url=None, categories=None):
+    content_html = render_post_page_content(post, newer_url=newer_url, older_url=older_url, categories=categories, ai_disclosure_html=config["ai_disclosure_html"])
     title = render_page_title(config["site_name"], post_display_text(post), page_num=None)
     filename = f"{post.id}.html"
     html = render_template(template, title=title, content=content_html,
@@ -286,7 +280,7 @@ def _build_special_page(name, content_dir, dist_dir, config, template, values, w
                 quality=config["image_quality"],
             )
 
-    content_html = render_post_page_content(post, "index.html", back_url="index.html", ai_disclosure_html=config["ai_disclosure_html"])
+    content_html = render_post_page_content(post, ai_disclosure_html=config["ai_disclosure_html"])
     title = render_page_title(config["site_name"], post_display_text(post), page_num=None)
     filename = f"{name}.html"
     html = render_template(template, title=title, content=content_html,
@@ -489,8 +483,7 @@ def _build_changed_posts(post_ids_to_build, changed_post_ids, posts_cache, manif
                 dest_size = (dist_dir / resized_name).stat().st_size
                 log(("RESIZED", resized_name, src_sizes[image.filename], dest_size))
         newer_url, older_url = _adjacent_post_urls(post_id, published_post_ids_sorted_desc)
-        idx_url = _post_index_page_url(post_id, published_post_ids_sorted_desc, config["posts_per_page"])
-        _write_post_html(post, idx_url, dist_dir, config, template, newer_url=newer_url, older_url=older_url, categories=config["categories"])
+        _write_post_html(post, dist_dir, config, template, newer_url=newer_url, older_url=older_url, categories=config["categories"])
         log((action, f"{post_id}.html", post.char_count, post.post_type == "note", len(post.images)))
 
     return created, updated, deleted

@@ -207,20 +207,14 @@ class TestIndexPages:
         pos2 = html.index('id="post-2"')
         assert pos3 < pos2
 
-    def test_post_page_back_link_points_to_correct_index_page(self, tmp_path):
-        # posts_per_page=2: post 1 is on index-2.html, posts 2+3 on index.html
+    def test_post_page_back_link_points_to_site_root(self, tmp_path):
+        # posts_per_page=2: post 1 is on index-2.html, posts 2+3 on index.html —
+        # the back link ignores pagination and always points at "index.html".
         posts = {i: MINIMAL_MD for i in range(1, 4)}
         p = make_project(tmp_path, posts=posts)
         build(p)
         html = (p / "dist" / "1.html").read_text()
-        assert 'href="index-2.html#post-1"' in html
-
-    def test_post_on_first_index_page_has_correct_back_link(self, tmp_path):
-        posts = {i: MINIMAL_MD for i in range(1, 4)}
-        p = make_project(tmp_path, posts=posts)
-        build(p)
-        html = (p / "dist" / "3.html").read_text()
-        assert 'href="index.html#post-3"' in html
+        assert '<a href="index.html">Blog home</a>' in html
 
 
 # ---------------------------------------------------------------------------
@@ -743,18 +737,6 @@ class TestAboutPage:
         assert "about.html" not in (p / "dist" / "1.html").read_text()
         assert "about.html" not in (p / "dist" / "2.html").read_text()
 
-    def test_about_back_link_points_to_index(self, tmp_path):
-        p = make_project(tmp_path, posts={1: MINIMAL_MD}, config=_ABOUT_CONFIG)
-        (p / "content" / "about.md").write_text(ABOUT_MD)
-        build(p)
-        assert 'href="index.html"' in (p / "dist" / "about.html").read_text()
-
-    def test_about_back_link_has_no_anchor(self, tmp_path):
-        p = make_project(tmp_path, posts={1: MINIMAL_MD}, config=_ABOUT_CONFIG)
-        (p / "content" / "about.md").write_text(ABOUT_MD)
-        build(p)
-        assert 'href="index.html#' not in (p / "dist" / "about.html").read_text()
-
     def test_single_file_build_about(self, tmp_path):
         p = make_project(tmp_path, posts={1: MINIMAL_MD}, config=_ABOUT_CONFIG)
         (p / "content" / "about.md").write_text(ABOUT_MD)
@@ -866,18 +848,6 @@ class TestCookiesPage:
         build(p)
         assert "cookies.html" not in (p / "dist" / "1.html").read_text()
         assert "cookies.html" not in (p / "dist" / "2.html").read_text()
-
-    def test_cookies_back_link_points_to_index(self, tmp_path):
-        p = make_project(tmp_path, posts={1: MINIMAL_MD}, config=_COOKIES_CONFIG)
-        (p / "content" / "cookies.md").write_text(COOKIES_MD)
-        build(p)
-        assert 'href="index.html"' in (p / "dist" / "cookies.html").read_text()
-
-    def test_cookies_back_link_has_no_anchor(self, tmp_path):
-        p = make_project(tmp_path, posts={1: MINIMAL_MD}, config=_COOKIES_CONFIG)
-        (p / "content" / "cookies.md").write_text(COOKIES_MD)
-        build(p)
-        assert 'href="index.html#' not in (p / "dist" / "cookies.html").read_text()
 
     def test_single_file_build_cookies(self, tmp_path):
         p = make_project(tmp_path, posts={1: MINIMAL_MD}, config=_COOKIES_CONFIG)
