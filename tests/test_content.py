@@ -315,6 +315,12 @@ class TestExternalLinks:
         assert 'target="_blank"' in post.body_html
         assert 'rel="noopener"' in post.body_html
 
+    def test_uppercase_anchor_attributes_are_detected_and_merged(self):
+        body = 'A <A HREF="https://example.com" REL="nofollow" TARGET="_self">link</A>.'
+        post = parse_post(make_md(body=body), 1, [], site_url="https://mxgns.uk")
+        assert 'target="_blank"' in post.body_html
+        assert 'rel="nofollow noopener"' in post.body_html
+
     def test_existing_rel_gains_noopener_without_duplicating_attribute(self):
         body = 'A <a href="https://example.com" rel="nofollow">link</a>.'
         post = parse_post(make_md(body=body), 1, [], site_url="https://mxgns.uk")
