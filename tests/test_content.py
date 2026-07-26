@@ -291,6 +291,48 @@ class TestExternalLinks:
         post = parse_post(make_md(body=body), 1, [])
         assert 'target="_blank"' in post.body_html
 
+    def test_protocol_relative_link_to_another_host_is_external(self):
+        body = 'A <a href="//example.com">link</a>.'
+        post = parse_post(make_md(body=body), 1, [], site_url="https://mxgns.uk")
+        assert 'target="_blank"' in post.body_html
+        assert 'rel="noopener"' in post.body_html
+
+    def test_protocol_relative_link_to_own_host_is_untouched(self):
+        body = 'A <a href="//mxgns.uk/5.html">link</a>.'
+        post = parse_post(make_md(body=body), 1, [], site_url="https://mxgns.uk")
+        assert 'target="_blank"' not in post.body_html
+
+    def test_lookalike_subdomain_is_still_external(self):
+        # A naive startswith(site_url) check would wrongly treat this as
+        # internal since the string "https://mxgns.uk" is a prefix of it.
+        body = "[click](https://mxgns.uk.evil.com/phish)"
+        post = parse_post(make_md(body=body), 1, [], site_url="https://mxgns.uk")
+        assert 'target="_blank"' in post.body_html
+
+    def test_single_quoted_href_is_detected(self):
+        body = "A <a href='https://example.com'>link</a>."
+        post = parse_post(make_md(body=body), 1, [], site_url="https://mxgns.uk")
+        assert 'target="_blank"' in post.body_html
+        assert 'rel="noopener"' in post.body_html
+
+    def test_existing_rel_gains_noopener_without_duplicating_attribute(self):
+        body = 'A <a href="https://example.com" rel="nofollow">link</a>.'
+        post = parse_post(make_md(body=body), 1, [], site_url="https://mxgns.uk")
+        assert post.body_html.count('rel=') == 1
+        assert 'rel="nofollow noopener"' in post.body_html
+
+    def test_existing_rel_already_containing_noopener_is_untouched(self):
+        body = 'A <a href="https://example.com" rel="noopener">link</a>.'
+        post = parse_post(make_md(body=body), 1, [], site_url="https://mxgns.uk")
+        assert post.body_html.count('rel=') == 1
+        assert 'rel="noopener"' in post.body_html
+
+    def test_existing_target_is_overridden_without_duplicating_attribute(self):
+        body = 'A <a href="https://example.com" target="_self">link</a>.'
+        post = parse_post(make_md(body=body), 1, [], site_url="https://mxgns.uk")
+        assert post.body_html.count('target=') == 1
+        assert 'target="_blank"' in post.body_html
+
 
 # ---------------------------------------------------------------------------
 # Images

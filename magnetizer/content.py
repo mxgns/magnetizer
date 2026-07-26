@@ -4,6 +4,7 @@ import sys
 from dataclasses import dataclass
 from datetime import date as _date
 from typing import NoReturn
+from urllib.parse import urlsplit
 import markdown as _markdown
 
 
@@ -20,10 +21,11 @@ _MARKDOWN_EXTENSIONS = ['pymdownx.mark', 'smarty', 'magnetizer.containers']
 _IMAGE_TOKEN_BLOCK_RE = re.compile(r'^\{\{\s*image\s+(\d+)\s*\}\}$')
 _IMAGE_TOKEN_LOOSE_RE = re.compile(r'\{\{\s*image\s+\d+\s*\}\}')
 
-_A_TAG_RE = re.compile(r'<a\s+([^>]*)>')
-_HREF_ATTR_RE = re.compile(r'href\s*=\s*"([^"]*)"')
-_CLASS_ATTR_RE = re.compile(r'class\s*=\s*"([^"]*)"')
-_URL_SCHEME_RE = re.compile(r'^[a-zA-Z][a-zA-Z0-9+.\-]*:')
+_A_TAG_RE = re.compile(r'<a\s+([^>]*)>', re.IGNORECASE)
+_HREF_ATTR_RE = re.compile(r'href\s*=\s*(["\'])(.*?)\1', re.IGNORECASE)
+_CLASS_ATTR_RE = re.compile(r'class\s*=\s*(["\'])(.*?)\1', re.IGNORECASE)
+_TARGET_ATTR_RE = re.compile(r'target\s*=\s*(["\'])(.*?)\1', re.IGNORECASE)
+_REL_ATTR_RE = re.compile(r'rel\s*=\s*(["\'])(.*?)\1', re.IGNORECASE)
 
 
 def _error(msg) -> NoReturn:
@@ -108,27 +110,54 @@ def _format_date_uk(date_str):
 
 
 def _is_external_href(href, site_url):
-    """A link is external if it's not relative (i.e. it has a URL scheme,
-    like http:// or mailto:) and doesn't point at this site's own site_url."""
-    if not _URL_SCHEME_RE.match(href):
+    """A link is external if it points at a different host than site_url.
+    Relative references (paths, fragments, queries — anything with no host
+    of its own) are never external, whether or not they have a scheme:
+    mailto:/tel: links have no host either, so they're treated the same way."""
+    netloc = urlsplit(href).netloc
+    if not netloc:
         return False
-    return not (site_url and href.startswith(site_url))
+    site_netloc = urlsplit(site_url).netloc if site_url else ''
+    return netloc.lower() != site_netloc.lower()
 
 
 def _mark_external_links(body_html, site_url):
     """Add target="_blank" rel="noopener" and an external-link class to every
-    <a> tag whose href is external, so post content can safely link out."""
+    <a> tag whose href is external, so post content can safely link out.
+    Merges into any target/rel/class the tag already has rather than
+    appending duplicate attributes."""
     def _replace(m):
         attrs = m.group(1)
         href_match = _HREF_ATTR_RE.search(attrs)
-        if not href_match or not _is_external_href(href_match.group(1), site_url):
+        if not href_match or not _is_external_href(href_match.group(2), site_url):
             return m.group(0)
+
         class_match = _CLASS_ATTR_RE.search(attrs)
         if class_match:
-            attrs = _CLASS_ATTR_RE.sub(f'class="{class_match.group(1)} external-link"', attrs, count=1)
+            quote = class_match.group(1)
+            new_class = f'{class_match.group(2)} external-link'
+            attrs = _CLASS_ATTR_RE.sub(f'class={quote}{new_class}{quote}', attrs, count=1)
         else:
             attrs = f'{attrs} class="external-link"'
-        return f'<a {attrs} target="_blank" rel="noopener">'
+
+        target_match = _TARGET_ATTR_RE.search(attrs)
+        if target_match:
+            quote = target_match.group(1)
+            attrs = _TARGET_ATTR_RE.sub(f'target={quote}_blank{quote}', attrs, count=1)
+        else:
+            attrs = f'{attrs} target="_blank"'
+
+        rel_match = _REL_ATTR_RE.search(attrs)
+        if rel_match:
+            quote = rel_match.group(1)
+            tokens = rel_match.group(2).split()
+            if 'noopener' not in tokens:
+                tokens.append('noopener')
+            attrs = _REL_ATTR_RE.sub(f'rel={quote}{" ".join(tokens)}{quote}', attrs, count=1)
+        else:
+            attrs = f'{attrs} rel="noopener"'
+
+        return f'<a {attrs}>'
     return _A_TAG_RE.sub(_replace, body_html)
 
 
