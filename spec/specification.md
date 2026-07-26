@@ -614,7 +614,7 @@ ARTICLE
     <li class="older"><a href="{slug}-3.html">Older posts</a></li>
   </ul>
 </nav>
-<nav><a href="index.html">Back to homepage</a></nav>
+<nav><a href="/">Blog home</a></nav>
 ```
 
 The pagination `<nav>` follows the same rules as index pages (see [Index pages](#index-pages)) — omitted entirely on a single-page category, and each `<li>` omitted at the corresponding boundary.
@@ -739,22 +739,20 @@ The `MAGNETIZER_CONTENT` has the following structure on individual post pages:
     <li class=”older”><a href=”OLDER_POST_URL”>Older post</a></li>
   </ul>
 </nav>
-<nav><a href=”POST_INDEX_PAGE_URL#POST_HTML_ID”>Back to homepage</a></nav>
+<nav><a href=”/”>Blog home</a></nav>
 ```
 
 Where:
 
 - `NEWER_POST_URL` is the URL of the next newer post (higher post ID), e.g. `5.html`
 - `OLDER_POST_URL` is the URL of the next older post (lower post ID), e.g. `3.html`
-- `POST_INDEX_PAGE_URL` is the url of the index page that contains this specific post (e.g. “index-2.html”)
-- `POST_HTML_ID`  is the anchor of the post in the index page
 
 Notes:
 
 - The `<li class=”newer”>` is omitted when this is the newest post
 - The `<li class=”older”>` is omitted when this is the oldest post
 - The entire first `<nav>` is omitted when there is only one post
-- The “Back to homepage” link returns the user to the exact position in the index where the post appears.
+- The "Blog home" link always points at the site root (`/`), regardless of which index/category/notes page the post would appear on — the user may have arrived from any of them, so there's no single "correct" page to return to.
 
 ### Special pages
 
@@ -779,10 +777,8 @@ The `MAGNETIZER_CONTENT` has the following structure:
 <main>
   <article class=”single-post”>...</article>
 </main>
-<nav><a href=”index.html”>Back to homepage</a></nav>
+<nav><a href=”/”>Blog home</a></nav>
 ```
-
-The back link always points to `index.html` with no anchor, since a special page has no position in the index.
 
 ### Dynamic values
 
@@ -866,7 +862,7 @@ The `MAGNETIZER_CONTENT` has the following structure:
   </section>
   ...
 </main>
-<nav><a href="index.html">Back to homepage</a></nav>
+<nav><a href="/">Blog home</a></nav>
 ```
 
 Where:
@@ -900,12 +896,12 @@ The `MAGNETIZER_CONTENT` has the following structure:
   <li class="newer"><a href="notes.html">Newer posts</a></li>
   <li class="older"><a href="notes-2.html">Older posts</a></li>
 </ul></nav>
-<nav><a href="index.html">Back to homepage</a></nav>
+<nav><a href="/">Blog home</a></nav>
 ```
 
 Where:
 - The `<nav>` with newer/older links is only included when there is more than one page. The "Newer posts" `<li>` is omitted on the first page; the "Older posts" `<li>` is omitted on the last page.
-- The "Back to homepage" nav is always present.
+- The "Blog home" nav is always present.
 - Notes pages are included in `sitemap.xml`. The `<lastmod>` date is derived from the most recent modification time across all Note source files.
 
 

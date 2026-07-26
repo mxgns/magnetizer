@@ -532,47 +532,45 @@ class TestRenderArticleTitleEscaping:
 class TestRenderPostPageContent:
 
     def test_article_wrapped_in_main(self):
-        html = render_post_page_content(make_post(), index_page_url="index.html")
+        html = render_post_page_content(make_post())
         assert "<main>" in html
         assert "</main>" in html
 
     def test_article_inside_main(self):
-        html = render_post_page_content(make_post(post_id=1), index_page_url="index.html")
+        html = render_post_page_content(make_post(post_id=1))
         main_start = html.index("<main>")
         article_start = html.index("<article")
         main_end = html.index("</main>")
         assert main_start < article_start < main_end
 
     def test_nav_present(self):
-        html = render_post_page_content(make_post(), index_page_url="index.html")
+        html = render_post_page_content(make_post())
         assert "<nav>" in html
 
-    def test_back_link_url_includes_index_page_and_anchor(self):
-        html = render_post_page_content(make_post(post_id=5), index_page_url="index-2.html")
-        assert 'href="index-2.html#post-5"' in html
+    def test_back_link_href_is_site_root(self):
+        html = render_post_page_content(make_post(post_id=5))
+        assert 'href="/"' in html
 
     def test_back_link_text(self):
-        html = render_post_page_content(make_post(), index_page_url="index.html")
-        assert "Back to homepage" in html
+        html = render_post_page_content(make_post())
+        assert "Blog home" in html
 
     def test_back_link_has_no_utf_symbol(self):
-        html = render_post_page_content(make_post(), index_page_url="index.html")
+        html = render_post_page_content(make_post())
         assert "⌂" not in html
 
     def test_article_rendered_without_links(self):
-        html = render_post_page_content(make_post(post_id=1, title="T"), index_page_url="index.html")
+        html = render_post_page_content(make_post(post_id=1, title="T"))
         assert '<h1>T</h1>' in html
 
     def test_ai_disclosure_html_threaded_through(self):
         custom = 'Custom disclosure with a <a href="48.html">link</a>.'
-        html = render_post_page_content(make_post(is_ai_assisted=True), index_page_url="index.html",
-                                        ai_disclosure_html=custom)
+        html = render_post_page_content(make_post(is_ai_assisted=True), ai_disclosure_html=custom)
         assert custom in html
 
     def test_back_link_in_separate_nav_from_post_navigation(self):
-        html = render_post_page_content(make_post(), index_page_url="index.html",
-                                        newer_url="2.html", older_url="1.html")
-        back_pos = html.index("Back to homepage")
+        html = render_post_page_content(make_post(), newer_url="2.html", older_url="1.html")
+        back_pos = html.index("Blog home")
         older_pos = html.index("Older post")
         last_nav_before_back = html.rindex("<nav>", 0, back_pos)
         assert last_nav_before_back > older_pos
@@ -581,56 +579,47 @@ class TestRenderPostPageContent:
 class TestRenderPostPageNavigation:
 
     def test_no_post_nav_when_only_post(self):
-        html = render_post_page_content(make_post(), index_page_url="index.html")
+        html = render_post_page_content(make_post())
         assert "Newer post" not in html
         assert "Older post" not in html
 
     def test_newer_link_present_when_newer_exists(self):
-        html = render_post_page_content(make_post(), index_page_url="index.html",
-                                        newer_url="2.html")
+        html = render_post_page_content(make_post(), newer_url="2.html")
         assert "Newer post" in html
         assert "←" not in html
 
     def test_older_link_present_when_older_exists(self):
-        html = render_post_page_content(make_post(), index_page_url="index.html",
-                                        older_url="1.html")
+        html = render_post_page_content(make_post(), older_url="1.html")
         assert "Older post" in html
         assert "→" not in html
 
     def test_newer_link_href(self):
-        html = render_post_page_content(make_post(), index_page_url="index.html",
-                                        newer_url="5.html")
+        html = render_post_page_content(make_post(), newer_url="5.html")
         assert 'href="5.html"' in html
 
     def test_older_link_href(self):
-        html = render_post_page_content(make_post(), index_page_url="index.html",
-                                        older_url="3.html")
+        html = render_post_page_content(make_post(), older_url="3.html")
         assert 'href="3.html"' in html
 
     def test_newer_link_has_newer_class(self):
-        html = render_post_page_content(make_post(), index_page_url="index.html",
-                                        newer_url="2.html")
+        html = render_post_page_content(make_post(), newer_url="2.html")
         assert 'class="newer"' in html
 
     def test_older_link_has_older_class(self):
-        html = render_post_page_content(make_post(), index_page_url="index.html",
-                                        older_url="1.html")
+        html = render_post_page_content(make_post(), older_url="1.html")
         assert 'class="older"' in html
 
     def test_newer_link_omitted_when_no_newer_post(self):
-        html = render_post_page_content(make_post(), index_page_url="index.html",
-                                        older_url="1.html")
+        html = render_post_page_content(make_post(), older_url="1.html")
         assert "Newer post" not in html
 
     def test_older_link_omitted_when_no_older_post(self):
-        html = render_post_page_content(make_post(), index_page_url="index.html",
-                                        newer_url="2.html")
+        html = render_post_page_content(make_post(), newer_url="2.html")
         assert "Older post" not in html
 
     def test_post_nav_appears_before_back_link(self):
-        html = render_post_page_content(make_post(), index_page_url="index.html",
-                                        newer_url="2.html", older_url="1.html")
-        assert html.index("Newer post") < html.index("Back to homepage")
+        html = render_post_page_content(make_post(), newer_url="2.html", older_url="1.html")
+        assert html.index("Newer post") < html.index("Blog home")
 
 
 # ---------------------------------------------------------------------------
@@ -1058,8 +1047,8 @@ class TestRenderArchivePageContent:
 
     def test_has_back_link_to_homepage(self):
         html = render_archive_page_content([make_dated_post(1, "2026-05-24")])
-        assert 'href="index.html"' in html
-        assert "Back to homepage" in html
+        assert 'href="/"' in html
+        assert "Blog home" in html
 
     def test_month_heading(self):
         html = render_archive_page_content([make_dated_post(1, "2026-05-24")])
@@ -1637,7 +1626,8 @@ class TestRenderCategoryPage:
 
     def test_category_page_has_back_to_homepage_link(self):
         html = render_category_page_content([make_post()], "Photography", "photography", 1, 1)
-        assert 'href="index.html"' in html
+        assert 'href="/"' in html
+        assert "Blog home" in html
 
     def test_category_page_no_pagination_nav_when_single_page(self):
         html = render_category_page_content([make_post()], "Photography", "photography", 1, 1)
@@ -1724,7 +1714,8 @@ class TestRenderNotesPage:
 
     def test_notes_page_has_back_to_homepage_link(self):
         html = render_notes_page_content([_NOTE_POST], 1, 1)
-        assert 'href="index.html"' in html
+        assert 'href="/"' in html
+        assert "Blog home" in html
 
     def test_notes_no_pagination_nav_when_single_page(self):
         html = render_notes_page_content([_NOTE_POST], 1, 1)

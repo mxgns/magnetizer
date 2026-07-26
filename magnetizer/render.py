@@ -116,9 +116,8 @@ def render_article(post, on_index_page, categories=None, ai_disclosure_html=None
     return '\n'.join(parts)
 
 
-def render_post_page_content(post, index_page_url, newer_url=None, older_url=None, back_url=None, categories=None, ai_disclosure_html=None):
+def render_post_page_content(post, newer_url=None, older_url=None, categories=None, ai_disclosure_html=None):
     article = render_article(post, on_index_page=False, categories=categories, ai_disclosure_html=ai_disclosure_html)
-    back_url = back_url or f"{index_page_url}#post-{post.id}"
 
     parts = [f'<main>\n{article}\n</main>']
 
@@ -130,7 +129,7 @@ def render_post_page_content(post, index_page_url, newer_url=None, older_url=Non
             nav_items.append(f'<li class="older"><a href="{older_url}">Older post</a></li>')
         parts.append(f'<nav><ul>{"".join(nav_items)}</ul></nav>')
 
-    parts.append(f'<nav><a href="{back_url}">Back to homepage</a></nav>')
+    parts.append('<nav><a href="/">Blog home</a></nav>')
     return '\n'.join(parts)
 
 
@@ -165,7 +164,7 @@ def render_category_page_content(posts, category_name, category_slug, page_num, 
             nav_items.append(f'<li class="older"><a href="{next_url}">Older posts</a></li>')
         content += f'\n<nav><ul>{"".join(nav_items)}</ul></nav>'
 
-    content += '\n<nav><a href="index.html">Back to homepage</a></nav>'
+    content += '\n<nav><a href="/">Blog home</a></nav>'
     return content
 
 
@@ -183,7 +182,7 @@ def render_notes_page_content(posts, page_num, total_pages, categories=None, ai_
             nav_items.append(f'<li class="older"><a href="{next_url}">Older posts</a></li>')
         content += f'\n<nav><ul>{"".join(nav_items)}</ul></nav>'
 
-    content += '\n<nav><a href="index.html">Back to homepage</a></nav>'
+    content += '\n<nav><a href="/">Blog home</a></nav>'
     return content
 
 
@@ -317,6 +316,6 @@ def render_archive_page_content(posts, categories=None):
         parts.append('</ul>')
         parts.append('</section>')
     parts.append('</main>')
-    parts.append('<nav><a href="index.html">Back to homepage</a></nav>')
+    parts.append('<nav><a href="/">Blog home</a></nav>')
 
     return '\n'.join(parts)
