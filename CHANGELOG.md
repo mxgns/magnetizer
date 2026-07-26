@@ -8,7 +8,7 @@
 ### 26/7/26
 
 - External post links now open in a new tab with `rel="noopener"` and an `external-link` class
-- Post/archive/category/notes "Back to homepage" link simplified to a "Blog home" link to site root
+- Simplified "Back to homepage" links to a single "Blog home" link
 
 ### 23/7/26
 
