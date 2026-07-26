@@ -5,6 +5,10 @@
 
 ## Released changes
 
+### 26/7/26
+
+- External post links now open in a new tab with `rel="noopener"` and an `external-link` class
+
 ### 23/7/26
 
 - Removed the unused `draft` feature

@@ -76,11 +76,11 @@ def _image_filenames_for_post(content_dir, post_id):
     )
 
 
-def _load_post(content_dir, post_id):
+def _load_post(content_dir, post_id, site_url=""):
     md_path = content_dir / f"{post_id}.md"
     md_text = md_path.read_text()
     images = _image_filenames_for_post(content_dir, post_id)
-    return parse_post(md_text, post_id, images)
+    return parse_post(md_text, post_id, images, site_url)
 
 
 def _delete_post_files(dist_dir, post_id):
@@ -260,14 +260,14 @@ def _special_page_image_filenames(content_dir, name):
     return sorted(f.name for f in content_dir.iterdir() if pattern.match(f.name))
 
 
-def _load_special_page_post(content_dir, name):
+def _load_special_page_post(content_dir, name, site_url=""):
     md_text = (content_dir / f"{name}.md").read_text()
     images = _special_page_image_filenames(content_dir, name)
-    return parse_post(md_text, name, images)
+    return parse_post(md_text, name, images, site_url)
 
 
 def _build_special_page(name, content_dir, dist_dir, config, template, values, warn):
-    post = _load_special_page_post(content_dir, name)
+    post = _load_special_page_post(content_dir, name, config["site_url"])
     w = _warn_if_heading_too_high(post)
 
     expanded_body, used_names = expand_shortcodes(post.body_html, values, f"{name}.md", warn)
@@ -359,7 +359,7 @@ def _load_content(content_dir, config):
     posts_cache = {}
     for pid in all_post_ids_sorted_desc:
         if (content_dir / f"{pid}.md").exists():
-            posts_cache[pid] = _load_post(content_dir, pid)
+            posts_cache[pid] = _load_post(content_dir, pid, config["site_url"])
 
     published_post_ids_sorted_desc = [
         pid for pid in all_post_ids_sorted_desc
@@ -370,7 +370,7 @@ def _load_content(content_dir, config):
     # {{ ai_post_list }} also draws on ai_assisted special pages (e.g. an About page) —
     # every other dynamic value stays scoped to published posts only.
     special_page_posts = [
-        _load_special_page_post(content_dir, name)
+        _load_special_page_post(content_dir, name, config["site_url"])
         for name in config["special_pages"]
         if (content_dir / f"{name}.md").exists()
     ]

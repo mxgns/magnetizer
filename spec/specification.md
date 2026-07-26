@@ -472,6 +472,10 @@ This renders as:
 
 The class name is optional — a bare `:::` fence renders `<div class="container">`. When a class name is given, it's appended after the default `container` class. Content between the fences is itself parsed as Markdown. An opening `:::` with no matching closing `:::` is left as ordinary text. Container blocks don't nest.
 
+### External links
+
+Every `<a>` tag in a post's rendered body or excerpt — whether from Markdown link syntax or raw HTML passed through — is checked against `site_url` from config. A link is external if its host doesn't match `site_url`'s host: this covers ordinary absolute URLs, protocol-relative URLs (`//example.com`), and lookalike hosts (`https://example.com.evil.example` isn't fooled by a naive prefix match). A link with no host at all — a relative path, a fragment, a query string, or a `mailto:`/`tel:` link — is never external. External links get `target="_blank" rel="noopener"` added automatically, so they open in a new tab without a `window.opener` reference back to the page, along with an `external-link` class. Any `class`, `target`, or `rel` the `<a>` tag already has (e.g. a raw-HTML `download-link`) is merged into rather than duplicated — an existing `rel` keeps its other values with `noopener` added, and an existing `target` is overridden to `_blank`. If `site_url` isn't set, every link with a host is treated as external, since there's nothing to compare it against.
+
 ### Frontmatter reference
 
 This is the single overview of every frontmatter key a post or special page can set. Any other key produces a build warning naming the post and the unknown key. Sections below give the full behaviour for each key; this table is the at-a-glance summary.

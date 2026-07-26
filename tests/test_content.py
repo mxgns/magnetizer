@@ -247,6 +247,100 @@ class TestBodyHtml:
 
 
 # ---------------------------------------------------------------------------
+# External links
+# ---------------------------------------------------------------------------
+
+class TestExternalLinks:
+
+    def test_absolute_link_gets_target_blank_and_rel_noopener(self):
+        body = "[click](https://example.com)"
+        post = parse_post(make_md(body=body), 1, [], site_url="https://mxgns.uk")
+        assert 'target="_blank"' in post.body_html
+        assert 'rel="noopener"' in post.body_html
+
+    def test_absolute_link_gets_external_link_class(self):
+        body = "[click](https://example.com)"
+        post = parse_post(make_md(body=body), 1, [], site_url="https://mxgns.uk")
+        assert 'class="external-link"' in post.body_html
+
+    def test_relative_link_is_untouched(self):
+        body = "[click](/about.html)"
+        post = parse_post(make_md(body=body), 1, [], site_url="https://mxgns.uk")
+        assert post.body_html == '<p><a href="/about.html">click</a></p>'
+
+    def test_link_starting_with_site_url_is_untouched(self):
+        body = "[click](https://mxgns.uk/5.html)"
+        post = parse_post(make_md(body=body), 1, [], site_url="https://mxgns.uk")
+        assert post.body_html == '<p><a href="https://mxgns.uk/5.html">click</a></p>'
+
+    def test_raw_html_link_with_existing_class_keeps_it_and_gains_external_link(self):
+        body = 'Get it <a href="https://example.com/file.zip" class="download-link">here</a>.'
+        post = parse_post(make_md(body=body), 1, [], site_url="https://mxgns.uk")
+        assert 'class="download-link external-link"' in post.body_html
+
+    def test_excerpt_html_also_marks_external_links(self):
+        body = "Before [click](https://example.com)<!-- more -->After"
+        post = parse_post(make_md(body=body), 1, [], site_url="https://mxgns.uk")
+        assert post.excerpt_html is not None
+        assert 'target="_blank"' in post.excerpt_html
+
+    def test_no_site_url_still_marks_absolute_links_external(self):
+        # Without a configured site_url there's nothing to compare against,
+        # so any absolute link is treated as external.
+        body = "[click](https://example.com)"
+        post = parse_post(make_md(body=body), 1, [])
+        assert 'target="_blank"' in post.body_html
+
+    def test_protocol_relative_link_to_another_host_is_external(self):
+        body = 'A <a href="//example.com">link</a>.'
+        post = parse_post(make_md(body=body), 1, [], site_url="https://mxgns.uk")
+        assert 'target="_blank"' in post.body_html
+        assert 'rel="noopener"' in post.body_html
+
+    def test_protocol_relative_link_to_own_host_is_untouched(self):
+        body = 'A <a href="//mxgns.uk/5.html">link</a>.'
+        post = parse_post(make_md(body=body), 1, [], site_url="https://mxgns.uk")
+        assert 'target="_blank"' not in post.body_html
+
+    def test_lookalike_subdomain_is_still_external(self):
+        # A naive startswith(site_url) check would wrongly treat this as
+        # internal since the string "https://mxgns.uk" is a prefix of it.
+        body = "[click](https://mxgns.uk.evil.com/phish)"
+        post = parse_post(make_md(body=body), 1, [], site_url="https://mxgns.uk")
+        assert 'target="_blank"' in post.body_html
+
+    def test_single_quoted_href_is_detected(self):
+        body = "A <a href='https://example.com'>link</a>."
+        post = parse_post(make_md(body=body), 1, [], site_url="https://mxgns.uk")
+        assert 'target="_blank"' in post.body_html
+        assert 'rel="noopener"' in post.body_html
+
+    def test_uppercase_anchor_attributes_are_detected_and_merged(self):
+        body = 'A <A HREF="https://example.com" REL="nofollow" TARGET="_self">link</A>.'
+        post = parse_post(make_md(body=body), 1, [], site_url="https://mxgns.uk")
+        assert 'target="_blank"' in post.body_html
+        assert 'rel="nofollow noopener"' in post.body_html
+
+    def test_existing_rel_gains_noopener_without_duplicating_attribute(self):
+        body = 'A <a href="https://example.com" rel="nofollow">link</a>.'
+        post = parse_post(make_md(body=body), 1, [], site_url="https://mxgns.uk")
+        assert post.body_html.count('rel=') == 1
+        assert 'rel="nofollow noopener"' in post.body_html
+
+    def test_existing_rel_already_containing_noopener_is_untouched(self):
+        body = 'A <a href="https://example.com" rel="noopener">link</a>.'
+        post = parse_post(make_md(body=body), 1, [], site_url="https://mxgns.uk")
+        assert post.body_html.count('rel=') == 1
+        assert 'rel="noopener"' in post.body_html
+
+    def test_existing_target_is_overridden_without_duplicating_attribute(self):
+        body = 'A <a href="https://example.com" target="_self">link</a>.'
+        post = parse_post(make_md(body=body), 1, [], site_url="https://mxgns.uk")
+        assert post.body_html.count('target=') == 1
+        assert 'target="_blank"' in post.body_html
+
+
+# ---------------------------------------------------------------------------
 # Images
 # ---------------------------------------------------------------------------
 
