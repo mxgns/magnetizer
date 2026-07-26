@@ -209,12 +209,12 @@ class TestIndexPages:
 
     def test_post_page_back_link_points_to_site_root(self, tmp_path):
         # posts_per_page=2: post 1 is on index-2.html, posts 2+3 on index.html —
-        # the back link ignores pagination and always points at "/index.html".
+        # the back link ignores pagination and always points at "index.html".
         posts = {i: MINIMAL_MD for i in range(1, 4)}
         p = make_project(tmp_path, posts=posts)
         build(p)
         html = (p / "dist" / "1.html").read_text()
-        assert '<a href="/index.html">Blog home</a>' in html
+        assert '<a href="index.html">Blog home</a>' in html
 
 
 # ---------------------------------------------------------------------------

@@ -614,7 +614,7 @@ ARTICLE
     <li class="older"><a href="{slug}-3.html">Older posts</a></li>
   </ul>
 </nav>
-<nav><a href="/index.html">Blog home</a></nav>
+<nav><a href="index.html">Blog home</a></nav>
 ```
 
 The pagination `<nav>` follows the same rules as index pages (see [Index pages](#index-pages)) — omitted entirely on a single-page category, and each `<li>` omitted at the corresponding boundary.
@@ -739,7 +739,7 @@ The `MAGNETIZER_CONTENT` has the following structure on individual post pages:
     <li class=”older”><a href=”OLDER_POST_URL”>Older post</a></li>
   </ul>
 </nav>
-<nav><a href=”/index.html”>Blog home</a></nav>
+<nav><a href=”index.html”>Blog home</a></nav>
 ```
 
 Where:
@@ -752,7 +752,7 @@ Notes:
 - The `<li class=”newer”>` is omitted when this is the newest post
 - The `<li class=”older”>` is omitted when this is the oldest post
 - The entire first `<nav>` is omitted when there is only one post
-- The "Blog home" link always points at `/index.html`, regardless of which page the reader arrived from.
+- The "Blog home" link always points at `index.html`, regardless of which page the reader arrived from.
 
 ### Special pages
 
@@ -777,7 +777,7 @@ The `MAGNETIZER_CONTENT` has the following structure:
 <main>
   <article class=”single-post”>...</article>
 </main>
-<nav><a href=”/index.html”>Blog home</a></nav>
+<nav><a href=”index.html”>Blog home</a></nav>
 ```
 
 ### Dynamic values
@@ -862,7 +862,7 @@ The `MAGNETIZER_CONTENT` has the following structure:
   </section>
   ...
 </main>
-<nav><a href="/index.html">Blog home</a></nav>
+<nav><a href="index.html">Blog home</a></nav>
 ```
 
 Where:
@@ -896,7 +896,7 @@ The `MAGNETIZER_CONTENT` has the following structure:
   <li class="newer"><a href="notes.html">Newer posts</a></li>
   <li class="older"><a href="notes-2.html">Older posts</a></li>
 </ul></nav>
-<nav><a href="/index.html">Blog home</a></nav>
+<nav><a href="index.html">Blog home</a></nav>
 ```
 
 Where:

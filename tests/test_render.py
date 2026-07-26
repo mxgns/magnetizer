@@ -549,7 +549,7 @@ class TestRenderPostPageContent:
 
     def test_back_link(self):
         html = render_post_page_content(make_post(post_id=5))
-        assert '<a href="/index.html">Blog home</a>' in html
+        assert '<a href="index.html">Blog home</a>' in html
 
     def test_back_link_has_no_utf_symbol(self):
         html = render_post_page_content(make_post())
@@ -1039,7 +1039,7 @@ class TestRenderArchivePageContent:
 
     def test_has_back_link_to_homepage(self):
         html = render_archive_page_content([make_dated_post(1, "2026-05-24")])
-        assert '<a href="/index.html">Blog home</a>' in html
+        assert '<a href="index.html">Blog home</a>' in html
 
     def test_month_heading(self):
         html = render_archive_page_content([make_dated_post(1, "2026-05-24")])
@@ -1617,7 +1617,7 @@ class TestRenderCategoryPage:
 
     def test_category_page_has_back_to_homepage_link(self):
         html = render_category_page_content([make_post()], "Photography", "photography", 1, 1)
-        assert '<a href="/index.html">Blog home</a>' in html
+        assert '<a href="index.html">Blog home</a>' in html
 
     def test_category_page_no_pagination_nav_when_single_page(self):
         html = render_category_page_content([make_post()], "Photography", "photography", 1, 1)
@@ -1704,7 +1704,7 @@ class TestRenderNotesPage:
 
     def test_notes_page_has_back_to_homepage_link(self):
         html = render_notes_page_content([_NOTE_POST], 1, 1)
-        assert '<a href="/index.html">Blog home</a>' in html
+        assert '<a href="index.html">Blog home</a>' in html
 
     def test_notes_no_pagination_nav_when_single_page(self):
         html = render_notes_page_content([_NOTE_POST], 1, 1)

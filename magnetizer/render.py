@@ -129,7 +129,7 @@ def render_post_page_content(post, newer_url=None, older_url=None, categories=No
             nav_items.append(f'<li class="older"><a href="{older_url}">Older post</a></li>')
         parts.append(f'<nav><ul>{"".join(nav_items)}</ul></nav>')
 
-    parts.append('<nav><a href="/index.html">Blog home</a></nav>')
+    parts.append('<nav><a href="index.html">Blog home</a></nav>')
     return '\n'.join(parts)
 
 
@@ -164,7 +164,7 @@ def render_category_page_content(posts, category_name, category_slug, page_num, 
             nav_items.append(f'<li class="older"><a href="{next_url}">Older posts</a></li>')
         content += f'\n<nav><ul>{"".join(nav_items)}</ul></nav>'
 
-    content += '\n<nav><a href="/index.html">Blog home</a></nav>'
+    content += '\n<nav><a href="index.html">Blog home</a></nav>'
     return content
 
 
@@ -182,7 +182,7 @@ def render_notes_page_content(posts, page_num, total_pages, categories=None, ai_
             nav_items.append(f'<li class="older"><a href="{next_url}">Older posts</a></li>')
         content += f'\n<nav><ul>{"".join(nav_items)}</ul></nav>'
 
-    content += '\n<nav><a href="/index.html">Blog home</a></nav>'
+    content += '\n<nav><a href="index.html">Blog home</a></nav>'
     return content
 
 
@@ -316,6 +316,6 @@ def render_archive_page_content(posts, categories=None):
         parts.append('</ul>')
         parts.append('</section>')
     parts.append('</main>')
-    parts.append('<nav><a href="/index.html">Blog home</a></nav>')
+    parts.append('<nav><a href="index.html">Blog home</a></nav>')
 
     return '\n'.join(parts)
