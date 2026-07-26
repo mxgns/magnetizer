@@ -20,6 +20,11 @@ _MARKDOWN_EXTENSIONS = ['pymdownx.mark', 'smarty', 'magnetizer.containers']
 _IMAGE_TOKEN_BLOCK_RE = re.compile(r'^\{\{\s*image\s+(\d+)\s*\}\}$')
 _IMAGE_TOKEN_LOOSE_RE = re.compile(r'\{\{\s*image\s+\d+\s*\}\}')
 
+_A_TAG_RE = re.compile(r'<a\s+([^>]*)>')
+_HREF_ATTR_RE = re.compile(r'href\s*=\s*"([^"]*)"')
+_CLASS_ATTR_RE = re.compile(r'class\s*=\s*"([^"]*)"')
+_URL_SCHEME_RE = re.compile(r'^[a-zA-Z][a-zA-Z0-9+.\-]*:')
+
 
 def _error(msg) -> NoReturn:
     print(f"\033[31mERROR\033[0m: {msg}", file=sys.stderr)
@@ -102,6 +107,31 @@ def _format_date_uk(date_str):
     return f"{d.day} {d.strftime('%B %Y')}"
 
 
+def _is_external_href(href, site_url):
+    """A link is external if it's not relative (i.e. it has a URL scheme,
+    like http:// or mailto:) and doesn't point at this site's own site_url."""
+    if not _URL_SCHEME_RE.match(href):
+        return False
+    return not (site_url and href.startswith(site_url))
+
+
+def _mark_external_links(body_html, site_url):
+    """Add target="_blank" rel="noopener" and an external-link class to every
+    <a> tag whose href is external, so post content can safely link out."""
+    def _replace(m):
+        attrs = m.group(1)
+        href_match = _HREF_ATTR_RE.search(attrs)
+        if not href_match or not _is_external_href(href_match.group(1), site_url):
+            return m.group(0)
+        class_match = _CLASS_ATTR_RE.search(attrs)
+        if class_match:
+            attrs = _CLASS_ATTR_RE.sub(f'class="{class_match.group(1)} external-link"', attrs, count=1)
+        else:
+            attrs = f'{attrs} class="external-link"'
+        return f'<a {attrs} target="_blank" rel="noopener">'
+    return _A_TAG_RE.sub(_replace, body_html)
+
+
 def _substitute_image_tokens(body, images, post_id):
     blocks = body.split('\n\n')
     used_filenames = set()
@@ -125,7 +155,7 @@ def _substitute_image_tokens(body, images, post_id):
     return new_body, used_filenames
 
 
-def parse_post(md_text, post_id, image_filenames):
+def parse_post(md_text, post_id, image_filenames, site_url=""):
     fm, body = _parse_frontmatter(md_text)
 
     for key in fm:
@@ -160,12 +190,12 @@ def parse_post(md_text, post_id, image_filenames):
         part0, excerpt_inline_image_filenames = _substitute_image_tokens(more_parts[0], images, post_id)
         part1, used1 = _substitute_image_tokens(more_parts[1], images, post_id)
         inline_image_filenames = excerpt_inline_image_filenames | used1
-        body_html = _markdown.markdown(part0 + '\n\n' + part1, extensions=_MARKDOWN_EXTENSIONS)
-        excerpt_html = _markdown.markdown(part0.strip(), extensions=_MARKDOWN_EXTENSIONS)
+        body_html = _mark_external_links(_markdown.markdown(part0 + '\n\n' + part1, extensions=_MARKDOWN_EXTENSIONS), site_url)
+        excerpt_html = _mark_external_links(_markdown.markdown(part0.strip(), extensions=_MARKDOWN_EXTENSIONS), site_url)
     else:
         body, inline_image_filenames = _substitute_image_tokens(body, images, post_id)
         excerpt_inline_image_filenames = inline_image_filenames
-        body_html = _markdown.markdown(body, extensions=_MARKDOWN_EXTENSIONS) if body else ''
+        body_html = _mark_external_links(_markdown.markdown(body, extensions=_MARKDOWN_EXTENSIONS), site_url) if body else ''
         excerpt_html = None
 
     char_count = len(_plain_text(body_html))

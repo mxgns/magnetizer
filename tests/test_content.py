@@ -247,6 +247,52 @@ class TestBodyHtml:
 
 
 # ---------------------------------------------------------------------------
+# External links
+# ---------------------------------------------------------------------------
+
+class TestExternalLinks:
+
+    def test_absolute_link_gets_target_blank_and_rel_noopener(self):
+        body = "[click](https://example.com)"
+        post = parse_post(make_md(body=body), 1, [], site_url="https://mxgns.uk")
+        assert 'target="_blank"' in post.body_html
+        assert 'rel="noopener"' in post.body_html
+
+    def test_absolute_link_gets_external_link_class(self):
+        body = "[click](https://example.com)"
+        post = parse_post(make_md(body=body), 1, [], site_url="https://mxgns.uk")
+        assert 'class="external-link"' in post.body_html
+
+    def test_relative_link_is_untouched(self):
+        body = "[click](/about.html)"
+        post = parse_post(make_md(body=body), 1, [], site_url="https://mxgns.uk")
+        assert post.body_html == '<p><a href="/about.html">click</a></p>'
+
+    def test_link_starting_with_site_url_is_untouched(self):
+        body = "[click](https://mxgns.uk/5.html)"
+        post = parse_post(make_md(body=body), 1, [], site_url="https://mxgns.uk")
+        assert post.body_html == '<p><a href="https://mxgns.uk/5.html">click</a></p>'
+
+    def test_raw_html_link_with_existing_class_keeps_it_and_gains_external_link(self):
+        body = 'Get it <a href="https://example.com/file.zip" class="download-link">here</a>.'
+        post = parse_post(make_md(body=body), 1, [], site_url="https://mxgns.uk")
+        assert 'class="download-link external-link"' in post.body_html
+
+    def test_excerpt_html_also_marks_external_links(self):
+        body = "Before [click](https://example.com)<!-- more -->After"
+        post = parse_post(make_md(body=body), 1, [], site_url="https://mxgns.uk")
+        assert post.excerpt_html is not None
+        assert 'target="_blank"' in post.excerpt_html
+
+    def test_no_site_url_still_marks_absolute_links_external(self):
+        # Without a configured site_url there's nothing to compare against,
+        # so any absolute link is treated as external.
+        body = "[click](https://example.com)"
+        post = parse_post(make_md(body=body), 1, [])
+        assert 'target="_blank"' in post.body_html
+
+
+# ---------------------------------------------------------------------------
 # Images
 # ---------------------------------------------------------------------------
 

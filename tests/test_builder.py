@@ -1297,6 +1297,38 @@ class TestCanonicalUrls:
 
 
 # ---------------------------------------------------------------------------
+# External links
+# ---------------------------------------------------------------------------
+
+class TestExternalLinks:
+
+    def test_absolute_link_to_another_site_opens_in_new_tab(self, tmp_path):
+        md = "---\ndate: 2026-05-24\n---\n\n[click](https://example.com)\n"
+        p = make_project(tmp_path, posts={1: md})
+        build(p)
+        html = (p / "dist" / "1.html").read_text()
+        assert 'target="_blank"' in html
+        assert 'rel="noopener"' in html
+        assert 'class="external-link"' in html
+
+    def test_absolute_link_matching_site_url_stays_untouched(self, tmp_path):
+        md = "---\ndate: 2026-05-24\n---\n\n[click](https://example.github.io/2.html)\n"
+        p = make_project(tmp_path, posts={1: md, 2: MINIMAL_MD})
+        build(p)
+        html = (p / "dist" / "1.html").read_text()
+        assert 'href="https://example.github.io/2.html"' in html
+        assert 'target="_blank"' not in html
+
+    def test_relative_link_stays_untouched(self, tmp_path):
+        md = "---\ndate: 2026-05-24\n---\n\n[click](2.html)\n"
+        p = make_project(tmp_path, posts={1: md, 2: MINIMAL_MD})
+        build(p)
+        html = (p / "dist" / "1.html").read_text()
+        assert 'href="2.html"' in html
+        assert 'target="_blank"' not in html
+
+
+# ---------------------------------------------------------------------------
 # Index meta description
 # ---------------------------------------------------------------------------
 
