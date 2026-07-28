@@ -36,6 +36,8 @@ manifest.json  Build state (created automatically)
 | `navigation` | Map of page filename to nav label, e.g. `{index.html: Home}`, in display order | `{}` (no navigation) |
 | `special_pages` | List of standalone page names, each backed by a `content/{name}.md` file — see [Special pages](#special-pages) | `[]` (no special pages) |
 | `ai_disclosure_html` | Raw HTML (not escaped, so it may include a link) shown in the disclosure banner when a post or special page sets `ai_assisted: true` — see the `ai_assisted` entry in [Frontmatter reference](#frontmatter-reference) | Not set — falls back to a generic disclosure sentence |
+| `404-page-input-filename` | `content/` markdown filename for the 404 page, e.g. `error-404.md` — optional, but requires `404-page-output-filename` too — see [404 page](#404-page) | Not set — no 404 page generated |
+| `404-page-output-filename` | `dist/` output filename for the 404 page, e.g. `404.html` — optional, but requires `404-page-input-filename` too — see [404 page](#404-page) | Not set — no 404 page generated |
 
 Example:
 
@@ -231,6 +233,17 @@ special_pages:
 For each name listed, Magnetizer requires a matching `content/{name}.md` and generates `dist/{name}.html` — the build errors out if the `.md` file is missing. Each special page supports the same frontmatter and images as a regular post (`date` is optional; omit it and no date footer is rendered), and is rebuilt whenever its `.md` or images change on a full or partial build. Single-file preview builds work too, e.g. `build.py about.md` — and only touch that one page, never any other special page.
 
 Special pages are never linked to automatically — add them to `navigation` if you want a link in your template — and they're excluded from index pages, category pages, the archive, the feed, and post navigation.
+
+## 404 page
+
+GitHub Pages serves `404.html` at the site root as a custom error page. Post id `404` is always rejected (the build errors if `content/404.md` exists), and you can author a 404 page under a different filename via two config keys — set both, or neither:
+
+```yaml
+404-page-input-filename: error-404.md
+404-page-output-filename: 404.html
+```
+
+It behaves just like a special page (same frontmatter/image support, rebuild-on-change, single-file preview builds) except it's also excluded from `sitemap.xml`.
 
 ## Dynamic values
 

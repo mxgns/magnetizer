@@ -44,13 +44,22 @@ def _error(msg):
     sys.exit(1)
 
 
-def _check_no_invalid_posts(published_posts_sorted_desc, special_page_posts):
+def _check_no_invalid_posts(published_posts_sorted_desc, special_page_posts, not_found_post=None):
     for post in published_posts_sorted_desc:
         if post.post_type is None:
             _error(f"post {post.id} has no title, no images and no content — it needs at least one")
     for post in special_page_posts:
         if post.post_type is None:
             _error(f"special page '{post.id}' has no title, no images and no content — it needs at least one")
+    if not_found_post is not None and not_found_post.post_type is None:
+        _error(f"the 404 page '{not_found_post.id}' has no title, no images and no content — it needs at least one")
+
+
+def _not_found_page_name(config):
+    """The 404 page's content-file stem (e.g. "error-404" for
+    404-page-input-filename: error-404.md), or None if not configured."""
+    input_filename = config.get("404-page-input-filename")
+    return Path(input_filename).stem if input_filename else None
 
 
 def _lastmod(paths):
@@ -260,7 +269,7 @@ def _load_special_page_post(content_dir, name, site_url=""):
     return parse_post(md_text, name, images, site_url)
 
 
-def _build_special_page(name, content_dir, dist_dir, config, template, values, warn):
+def _build_special_page(name, content_dir, dist_dir, config, template, values, warn, output_filename=None):
     post = _load_special_page_post(content_dir, name, config["site_url"])
     w = _warn_if_heading_too_high(post)
 
@@ -282,7 +291,7 @@ def _build_special_page(name, content_dir, dist_dir, config, template, values, w
 
     content_html = render_post_page_content(post, ai_disclosure_html=config["ai_disclosure_html"])
     title = render_page_title(config["site_name"], post_display_text(post), page_num=None)
-    filename = f"{name}.html"
+    filename = output_filename or f"{name}.html"
     html = render_template(template, title=title, content=content_html,
                            canonical=canonical_url(config["site_url"], filename),
                            navigation=render_navigation(config["navigation"], filename),
@@ -370,10 +379,16 @@ def _load_content(content_dir, config):
     ]
     special_page_posts_by_name = {p.id: p for p in special_page_posts}
 
+    not_found_name = _not_found_page_name(config)
+    not_found_post = (
+        _load_special_page_post(content_dir, not_found_name, config["site_url"])
+        if not_found_name else None
+    )
+
     return (
         all_post_ids_sorted_desc, posts_cache,
         published_post_ids_sorted_desc, published_posts_sorted_desc,
-        special_page_posts, special_page_posts_by_name,
+        special_page_posts, special_page_posts_by_name, not_found_post,
     )
 
 
@@ -400,6 +415,17 @@ def _build_requested_special_page(stem, content_dir, dist_dir, config, template,
     pages_dynamic_updates[filename_html] = {"dynamic": dynamic_flag}
 
 
+def _build_requested_not_found_page(name, output_filename, content_dir, dist_dir, config, template, values, pages_dynamic_updates, warnings, log):
+    def _warn_special(msg):
+        warnings.append((output_filename, msg))
+
+    w, dynamic_flag = _build_special_page(name, content_dir, dist_dir, config, template, values, _warn_special, output_filename=output_filename)
+    if w:
+        warnings.append((output_filename, w))
+    log(("UPDATED", output_filename))
+    pages_dynamic_updates[output_filename] = {"dynamic": dynamic_flag}
+
+
 def _determine_full_build_scope(changed_post_ids, content_dir, manifest, prev_pages, config, all_post_ids_sorted_desc, published_post_ids_sorted_desc):
     neighbor_ids = {
         n
@@ -410,9 +436,13 @@ def _determine_full_build_scope(changed_post_ids, content_dir, manifest, prev_pa
     # changed their computed values actually changed this build (a post or a
     # special page) — otherwise a build with zero changes anywhere would still
     # needlessly rebuild every dynamic page, every single time.
+    special_page_checks = [(name, f"{name}.md") for name in config["special_pages"]]
+    not_found_name = _not_found_page_name(config)
+    if not_found_name:
+        special_page_checks.append((not_found_name, config["404-page-input-filename"]))
     any_special_page_changed = any(
-        _special_page_changed(content_dir, manifest, f"{name}.md", special_page_image_pattern(name))
-        for name in config["special_pages"]
+        _special_page_changed(content_dir, manifest, md_name, special_page_image_pattern(name))
+        for name, md_name in special_page_checks
     )
     any_relevant_change = bool(changed_post_ids) or any_special_page_changed
     if any_relevant_change:
@@ -507,6 +537,28 @@ def _rebuild_stale_special_pages(config, content_dir, dist_dir, template, values
             pages_dynamic_updates[page_filename] = {"dynamic": dynamic_flag}
             specials_rebuilt = True
     return specials_rebuilt
+
+
+def _rebuild_stale_not_found_page(config, content_dir, dist_dir, template, values, manifest, prev_pages, any_relevant_change, pages_dynamic_updates, warnings, log):
+    name = _not_found_page_name(config)
+    if not name:
+        return False
+    output_filename = config["404-page-output-filename"]
+    should_build = _special_page_changed(content_dir, manifest, config["404-page-input-filename"], special_page_image_pattern(name))
+    if not should_build and any_relevant_change:
+        should_build = bool(prev_pages.get(output_filename, {}).get("dynamic"))
+    if not should_build:
+        return False
+
+    def _warn_special(msg, _page_filename=output_filename):
+        warnings.append((_page_filename, msg))
+
+    w, dynamic_flag = _build_special_page(name, content_dir, dist_dir, config, template, values, _warn_special, output_filename=output_filename)
+    if w:
+        warnings.append((output_filename, w))
+    log(("UPDATED", output_filename))
+    pages_dynamic_updates[output_filename] = {"dynamic": dynamic_flag}
+    return True
 
 
 def _write_generated_pages(published_posts_sorted_desc, dist_dir, config, template, log):
@@ -615,10 +667,10 @@ def build(cwd, filename=None, flush=False, resources=False, on_progress=None):
     (
         all_post_ids_sorted_desc, posts_cache,
         published_post_ids_sorted_desc, published_posts_sorted_desc,
-        special_page_posts, special_page_posts_by_name,
+        special_page_posts, special_page_posts_by_name, not_found_post,
     ) = _load_content(content_dir, config)
 
-    _check_no_invalid_posts(published_posts_sorted_desc, special_page_posts)
+    _check_no_invalid_posts(published_posts_sorted_desc, special_page_posts, not_found_post)
 
     # Sitewide dynamic-value computation runs unconditionally (even for a single-page
     # preview build) so that any shortcodes on the page(s) being built expand correctly.
@@ -629,11 +681,19 @@ def build(cwd, filename=None, flush=False, resources=False, on_progress=None):
 
     post_ids_to_build: set[int] = set()
 
+    not_found_name = _not_found_page_name(config)
+
     if filename:
         stem = Path(filename).stem
         if stem in config["special_pages"]:
             _build_requested_special_page(
                 stem, content_dir, dist_dir, config, template, values,
+                pages_dynamic_updates, warnings, _log,
+            )
+            changed_post_ids = set()
+        elif not_found_name and stem == not_found_name:
+            _build_requested_not_found_page(
+                not_found_name, config["404-page-output-filename"], content_dir, dist_dir, config, template, values,
                 pages_dynamic_updates, warnings, _log,
             )
             changed_post_ids = set()
@@ -658,7 +718,10 @@ def build(cwd, filename=None, flush=False, resources=False, on_progress=None):
     if filename:
         # Single-file preview build (post or special page): patch just this one page's
         # dynamic flag into the manifest, leaving every other entry untouched.
-        single_page_filename = f"{Path(filename).stem}.html"
+        if not_found_name and Path(filename).stem == not_found_name:
+            single_page_filename = config["404-page-output-filename"]
+        else:
+            single_page_filename = f"{Path(filename).stem}.html"
         if single_page_filename in pages_dynamic_updates:
             update_page_dynamic_flag(
                 manifest_path, manifest, single_page_filename,
@@ -674,6 +737,11 @@ def build(cwd, filename=None, flush=False, resources=False, on_progress=None):
             config, content_dir, dist_dir, template, values, manifest, prev_pages,
             any_relevant_change, pages_dynamic_updates, warnings, _log,
         )
+        not_found_rebuilt = _rebuild_stale_not_found_page(
+            config, content_dir, dist_dir, template, values, manifest, prev_pages,
+            any_relevant_change, pages_dynamic_updates, warnings, _log,
+        )
+        specials_rebuilt = specials_rebuilt or not_found_rebuilt
 
     if not filename and post_ids_to_build:
         _write_generated_pages(published_posts_sorted_desc, dist_dir, config, template, _log)
