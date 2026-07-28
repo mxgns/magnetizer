@@ -461,6 +461,21 @@ class TestValidateContentNotFoundPage:
             validate_content(content)
         assert "404" in capsys.readouterr().err
 
+    def test_post_404_fails_even_when_it_is_itself_the_configured_404_page_input(self, tmp_path):
+        # Naming the 404 page's own input file "404.md" would defeat the whole
+        # point of the reservation — must still be rejected.
+        content = make_content(tmp_path, {"1.md": MINIMAL_MD, "404.md": MINIMAL_MD})
+        with pytest.raises(SystemExit):
+            validate_content(content, config={
+                "404-page-input-filename": "404.md",
+                "404-page-output-filename": "404.html",
+            })
+
+    def test_post_404_fails_even_when_listed_as_a_special_page(self, tmp_path):
+        content = make_content(tmp_path, {"1.md": MINIMAL_MD, "404.md": MINIMAL_MD})
+        with pytest.raises(SystemExit):
+            validate_content(content, config={"special_pages": ["404"]})
+
 
 # ---------------------------------------------------------------------------
 # validate_config — site_url required
@@ -550,3 +565,34 @@ class TestValidateConfig:
                 "404-page-input-filename": "error-404.md",
             })
         assert "404-page-input-filename" in capsys.readouterr().err
+
+    @pytest.mark.parametrize("output_filename", [
+        "../outside.html",
+        "sub/404.html",
+        "/404.html",
+        ".",
+        "..",
+    ])
+    def test_fails_when_404_page_output_filename_contains_path_separator_or_is_dot_segment(self, output_filename):
+        with pytest.raises(SystemExit):
+            validate_config({
+                "site_url": "https://example.github.io",
+                "404-page-input-filename": "error-404.md",
+                "404-page-output-filename": output_filename,
+            })
+
+    def test_error_message_mentions_invalid_404_page_output_filename(self, capsys):
+        with pytest.raises(SystemExit):
+            validate_config({
+                "site_url": "https://example.github.io",
+                "404-page-input-filename": "error-404.md",
+                "404-page-output-filename": "../outside.html",
+            })
+        assert "404-page-output-filename" in capsys.readouterr().err
+
+    def test_passes_with_custom_but_plain_404_page_output_filename(self):
+        validate_config({
+            "site_url": "https://example.github.io",
+            "404-page-input-filename": "error-404.md",
+            "404-page-output-filename": "not-found.html",
+        })  # should not raise — configurable output name, just no path separators

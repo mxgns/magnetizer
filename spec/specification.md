@@ -795,7 +795,9 @@ GitHub Pages serves `404.html` at the site root as a custom error page — but `
 404-page-output-filename: 404.html
 ```
 
-Both keys are optional, but if either is set, both must be set — the build exits with an error otherwise. If set, Magnetizer requires the file named by `404-page-input-filename` to exist in `content/`, and generates `dist/{404-page-output-filename}` from it.
+Both keys are optional, but if either is set, both must be set — the build exits with an error otherwise. If set, Magnetizer requires the file named by `404-page-input-filename` to exist in `content/`, and generates `dist/{404-page-output-filename}` from it. `404-page-output-filename` must be a plain filename with no path separators (and can't be `.` or `..`) — it's used directly as a path inside `dist/`.
+
+The `content/404.md` reservation can't be bypassed by naming the 404 page's own input file `404.md`, or by adding `"404"` to `special_pages` — either configuration still exits with an error, since it would defeat the purpose of the reservation.
 
 In every other respect the 404 page behaves exactly like a special page — same frontmatter/image support, same rebuild-on-change behavior, same single-file preview build support (e.g. `build.py error-404.md`), same exclusion from index pages, category pages, the archive, the feed, `{{ ai_post_list }}`, and the newer/older post navigation. The one difference: **it's also excluded from `sitemap.xml`**, since it's an error page, not real content.
 

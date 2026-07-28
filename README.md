@@ -243,6 +243,8 @@ GitHub Pages serves `404.html` at the site root as a custom error page. Post id 
 404-page-output-filename: 404.html
 ```
 
+`404-page-output-filename` must be a plain filename with no path separators (not `.` or `..` either) — it's used directly as a path inside `dist/`. The `404.md` reservation also can't be dodged by naming the 404 page's own input file `404.md`, or adding `"404"` to `special_pages`.
+
 It behaves just like a special page (same frontmatter/image support, rebuild-on-change, single-file preview builds) except it's also excluded from `sitemap.xml`.
 
 ## Dynamic values

@@ -19,8 +19,11 @@ def _error(msg) -> NoReturn:
 def validate_config(config):
     if not config.get("site_url"):
         _error("'site_url' is required in config.yaml — set it to the absolute base URL of your site, e.g. https://example.github.io")
-    if bool(config.get("404-page-input-filename")) != bool(config.get("404-page-output-filename")):
+    not_found_output = config.get("404-page-output-filename")
+    if bool(config.get("404-page-input-filename")) != bool(not_found_output):
         _error("'404-page-input-filename' and '404-page-output-filename' in config.yaml must both be set, or neither")
+    if not_found_output and ("/" in not_found_output or not_found_output in (".", "..")):
+        _error(f"'404-page-output-filename' in config.yaml is invalid: '{not_found_output}' — it must be a plain filename with no path separators")
     reserved = _BASE_RESERVED_SLUGS | set(config.get("special_pages", []))
     for slug in config.get("categories", {}):
         if slug in reserved or _INDEX_PAGE_SLUG_PATTERN.match(slug) or slug.isdigit():
@@ -63,6 +66,11 @@ def validate_content(content_dir, config=None):
     image_numbers_by_post: dict[int, set[int]] = {}
 
     for name in files:
+        if name == "404.md":
+            # Checked before the special-page exemptions below, so 404.md can't be
+            # smuggled past this reservation by naming it as the 404 page's own
+            # input file or listing "404" in special_pages.
+            _error("post 404 is reserved for the site's 404 page and cannot be used as a normal post id — 404.html is a special filename on GitHub Pages")
         if name in special_md_names:
             continue
         if any(pattern.match(name) for pattern in special_image_patterns):
@@ -71,10 +79,7 @@ def validate_content(content_dir, config=None):
             m = _MD_PATTERN.match(name)
             if not m:
                 _error(f"invalid markdown filename '{name}' in content/ (expected {{post-id}}.md with no leading zeros)")
-            post_id = int(m.group(1))
-            if post_id == 404:
-                _error("post 404 is reserved for the site's 404 page and cannot be used as a normal post id — 404.html is a special filename on GitHub Pages")
-            md_ids.add(post_id)
+            md_ids.add(int(m.group(1)))
         elif re.search(r'-image-', name) or any(name.endswith(f'.{ext}') for ext in IMAGE_EXTENSIONS) or name.endswith('.gif'):
             m = _IMAGE_PATTERN.match(name)
             if not m:
