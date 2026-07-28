@@ -989,6 +989,110 @@ class TestSpecialPagesGeneric:
 
 
 # ---------------------------------------------------------------------------
+# 404 page
+# ---------------------------------------------------------------------------
+
+NOT_FOUND_MD = "---\ntitle: Page Not Found\n---\n\nSorry, that page doesn't exist.\n"
+
+_NOT_FOUND_CONFIG = (
+    "site_name: Test Blog\nsite_url: https://example.github.io\n"
+    "posts_per_page: 2\n404-page-input-filename: error-404.md\n404-page-output-filename: 404.html\n"
+)
+
+
+class TestNotFoundPage:
+
+    def test_404_html_created_when_configured_and_md_exists(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD}, config=_NOT_FOUND_CONFIG)
+        (p / "content" / "error-404.md").write_text(NOT_FOUND_MD)
+        build(p)
+        assert (p / "dist" / "404.html").exists()
+
+    def test_404_html_contains_body_content(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD}, config=_NOT_FOUND_CONFIG)
+        (p / "content" / "error-404.md").write_text(NOT_FOUND_MD)
+        build(p)
+        assert "Sorry, that page" in (p / "dist" / "404.html").read_text()
+
+    def test_404_html_uses_template(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD}, config=_NOT_FOUND_CONFIG)
+        (p / "content" / "error-404.md").write_text(NOT_FOUND_MD)
+        build(p)
+        assert "<html>" in (p / "dist" / "404.html").read_text()
+
+    def test_no_404_page_built_when_not_configured(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD})
+        build(p)
+        assert not (p / "dist" / "404.html").exists()
+
+    def test_build_errors_when_404_page_configured_but_md_missing(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD}, config=_NOT_FOUND_CONFIG)
+        with pytest.raises(SystemExit):
+            build(p)
+
+    def test_build_errors_when_only_one_404_config_key_set(self, tmp_path):
+        config = (
+            "site_name: Test Blog\nsite_url: https://example.github.io\n"
+            "404-page-input-filename: error-404.md\n"
+        )
+        p = make_project(tmp_path, posts={1: MINIMAL_MD}, config=config)
+        (p / "content" / "error-404.md").write_text(NOT_FOUND_MD)
+        with pytest.raises(SystemExit):
+            build(p)
+
+    def test_build_errors_when_post_404_exists(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD, 404: MINIMAL_MD})
+        with pytest.raises(SystemExit):
+            build(p)
+
+    def test_build_errors_when_post_404_exists_even_with_404_page_configured(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD, 404: MINIMAL_MD}, config=_NOT_FOUND_CONFIG)
+        (p / "content" / "error-404.md").write_text(NOT_FOUND_MD)
+        with pytest.raises(SystemExit):
+            build(p)
+
+    def test_404_page_not_in_sitemap(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD}, config=_NOT_FOUND_CONFIG)
+        (p / "content" / "error-404.md").write_text(NOT_FOUND_MD)
+        build(p)
+        assert "404.html" not in (p / "dist" / "sitemap.xml").read_text()
+
+    def test_404_page_not_in_index(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD}, config=_NOT_FOUND_CONFIG)
+        (p / "content" / "error-404.md").write_text(NOT_FOUND_MD)
+        build(p)
+        assert "404.html" not in (p / "dist" / "index.html").read_text()
+
+    def test_404_page_supports_images(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD}, config=_NOT_FOUND_CONFIG)
+        (p / "content" / "error-404.md").write_text(NOT_FOUND_MD)
+        make_jpg(p / "content" / "error-404-image-01.jpg")
+        build(p)
+        assert (p / "dist" / "error-404-image-01-resized.jpg").exists()
+
+    def test_single_file_build_of_404_page(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD}, config=_NOT_FOUND_CONFIG)
+        (p / "content" / "error-404.md").write_text(NOT_FOUND_MD)
+        build(p, filename="error-404.md")
+        assert (p / "dist" / "404.html").exists()
+
+    def test_single_file_build_of_unrelated_post_does_not_rebuild_unchanged_404_page(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD, 2: MINIMAL_MD}, config=_NOT_FOUND_CONFIG)
+        (p / "content" / "error-404.md").write_text(NOT_FOUND_MD)
+        build(p)
+        log = build(p, filename="1.md")["log"]
+        assert ("UPDATED", "404.html") not in log
+
+    def test_editing_404_page_rebuilds_it_on_full_build(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD}, config=_NOT_FOUND_CONFIG)
+        (p / "content" / "error-404.md").write_text(NOT_FOUND_MD)
+        build(p)
+        (p / "content" / "error-404.md").write_text("---\ntitle: Page Not Found\n---\n\nUpdated text.\n")
+        log = build(p)["log"]
+        assert ("UPDATED", "404.html") in log
+
+
+# ---------------------------------------------------------------------------
 # Verbose log
 # ---------------------------------------------------------------------------
 

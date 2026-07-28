@@ -17,6 +17,8 @@ DEFAULTS = {
     "navigation": {},
     "special_pages": [],
     "ai_disclosure_html": None,
+    "404-page-input-filename": None,
+    "404-page-output-filename": None,
 }
 
 

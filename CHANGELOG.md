@@ -5,6 +5,10 @@
 
 ## Released changes
 
+### 28/7/26
+
+- 404 page support: `404-page-input-filename`/`404-page-output-filename` config, post id 404 reserved
+
 ### 26/7/26
 
 - External post links now open in a new tab with `rel="noopener"` and an `external-link` class

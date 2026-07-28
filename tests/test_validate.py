@@ -407,6 +407,77 @@ class TestValidateContentSpecialPages:
 
 
 # ---------------------------------------------------------------------------
+# validate_content — 404 page
+# ---------------------------------------------------------------------------
+
+_404_CONFIG = {
+    "404-page-input-filename": "error-404.md",
+    "404-page-output-filename": "404.html",
+}
+
+
+class TestValidateContentNotFoundPage:
+
+    def test_passes_with_configured_404_page_md(self, tmp_path):
+        content = make_content(tmp_path, {"1.md": MINIMAL_MD, "error-404.md": MINIMAL_MD})
+        validate_content(content, config=_404_CONFIG)  # should not raise
+
+    def test_fails_when_configured_404_page_md_missing(self, tmp_path):
+        content = make_content(tmp_path, {"1.md": MINIMAL_MD})
+        with pytest.raises(SystemExit):
+            validate_content(content, config=_404_CONFIG)
+
+    def test_error_message_names_missing_404_page(self, tmp_path, capsys):
+        content = make_content(tmp_path, {"1.md": MINIMAL_MD})
+        with pytest.raises(SystemExit):
+            validate_content(content, config=_404_CONFIG)
+        assert "error-404.md" in capsys.readouterr().err
+
+    def test_404_page_supports_images(self, tmp_path):
+        content = make_content(tmp_path, {
+            "1.md": MINIMAL_MD,
+            "error-404.md": MINIMAL_MD,
+            "error-404-image-01.jpg": MINIMAL_IMG,
+        })
+        validate_content(content, config=_404_CONFIG)  # should not raise
+
+    def test_post_404_always_fails_even_without_404_page_configured(self, tmp_path):
+        content = make_content(tmp_path, {"1.md": MINIMAL_MD, "404.md": MINIMAL_MD})
+        with pytest.raises(SystemExit):
+            validate_content(content)
+
+    def test_post_404_fails_even_when_404_page_is_configured(self, tmp_path):
+        content = make_content(tmp_path, {
+            "1.md": MINIMAL_MD,
+            "404.md": MINIMAL_MD,
+            "error-404.md": MINIMAL_MD,
+        })
+        with pytest.raises(SystemExit):
+            validate_content(content, config=_404_CONFIG)
+
+    def test_error_message_mentions_reserved_post_404(self, tmp_path, capsys):
+        content = make_content(tmp_path, {"1.md": MINIMAL_MD, "404.md": MINIMAL_MD})
+        with pytest.raises(SystemExit):
+            validate_content(content)
+        assert "404" in capsys.readouterr().err
+
+    def test_post_404_fails_even_when_it_is_itself_the_configured_404_page_input(self, tmp_path):
+        # Naming the 404 page's own input file "404.md" would defeat the whole
+        # point of the reservation — must still be rejected.
+        content = make_content(tmp_path, {"1.md": MINIMAL_MD, "404.md": MINIMAL_MD})
+        with pytest.raises(SystemExit):
+            validate_content(content, config={
+                "404-page-input-filename": "404.md",
+                "404-page-output-filename": "404.html",
+            })
+
+    def test_post_404_fails_even_when_listed_as_a_special_page(self, tmp_path):
+        content = make_content(tmp_path, {"1.md": MINIMAL_MD, "404.md": MINIMAL_MD})
+        with pytest.raises(SystemExit):
+            validate_content(content, config={"special_pages": ["404"]})
+
+
+# ---------------------------------------------------------------------------
 # validate_config — site_url required
 # ---------------------------------------------------------------------------
 
@@ -462,3 +533,66 @@ class TestValidateConfig:
         with pytest.raises(SystemExit):
             validate_config({"site_url": "https://example.github.io", "categories": {"archive": "Whatever"}})
         assert "archive" in capsys.readouterr().err
+
+    def test_passes_when_both_404_page_filenames_set(self):
+        validate_config({
+            "site_url": "https://example.github.io",
+            "404-page-input-filename": "error-404.md",
+            "404-page-output-filename": "404.html",
+        })  # should not raise
+
+    def test_passes_when_neither_404_page_filename_set(self):
+        validate_config({"site_url": "https://example.github.io"})  # should not raise
+
+    def test_fails_when_only_404_page_input_filename_set(self):
+        with pytest.raises(SystemExit):
+            validate_config({
+                "site_url": "https://example.github.io",
+                "404-page-input-filename": "error-404.md",
+            })
+
+    def test_fails_when_only_404_page_output_filename_set(self):
+        with pytest.raises(SystemExit):
+            validate_config({
+                "site_url": "https://example.github.io",
+                "404-page-output-filename": "404.html",
+            })
+
+    def test_error_message_mentions_404_page_filenames(self, capsys):
+        with pytest.raises(SystemExit):
+            validate_config({
+                "site_url": "https://example.github.io",
+                "404-page-input-filename": "error-404.md",
+            })
+        assert "404-page-input-filename" in capsys.readouterr().err
+
+    @pytest.mark.parametrize("output_filename", [
+        "../outside.html",
+        "sub/404.html",
+        "/404.html",
+        ".",
+        "..",
+    ])
+    def test_fails_when_404_page_output_filename_contains_path_separator_or_is_dot_segment(self, output_filename):
+        with pytest.raises(SystemExit):
+            validate_config({
+                "site_url": "https://example.github.io",
+                "404-page-input-filename": "error-404.md",
+                "404-page-output-filename": output_filename,
+            })
+
+    def test_error_message_mentions_invalid_404_page_output_filename(self, capsys):
+        with pytest.raises(SystemExit):
+            validate_config({
+                "site_url": "https://example.github.io",
+                "404-page-input-filename": "error-404.md",
+                "404-page-output-filename": "../outside.html",
+            })
+        assert "404-page-output-filename" in capsys.readouterr().err
+
+    def test_passes_with_custom_but_plain_404_page_output_filename(self):
+        validate_config({
+            "site_url": "https://example.github.io",
+            "404-page-input-filename": "error-404.md",
+            "404-page-output-filename": "not-found.html",
+        })  # should not raise — configurable output name, just no path separators

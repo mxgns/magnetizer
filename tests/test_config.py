@@ -19,6 +19,8 @@ DEFAULTS = {
     "navigation": {},
     "special_pages": [],
     "ai_disclosure_html": None,
+    "404-page-input-filename": None,
+    "404-page-output-filename": None,
 }
 
 
@@ -229,6 +231,27 @@ class TestSpecialPages:
         config["special_pages"].append("about")
         fresh = load_config(tmp_path / "config.yaml")
         assert fresh["special_pages"] == []
+
+
+# ---------------------------------------------------------------------------
+# 404 page
+# ---------------------------------------------------------------------------
+
+class TestNotFoundPage:
+
+    def test_404_page_input_filename_default_is_none(self, tmp_path):
+        assert load_config(tmp_path / "config.yaml")["404-page-input-filename"] is None
+
+    def test_404_page_output_filename_default_is_none(self, tmp_path):
+        assert load_config(tmp_path / "config.yaml")["404-page-output-filename"] is None
+
+    def test_404_page_input_filename_loaded_from_config(self, tmp_path):
+        p = write_config(tmp_path, "404-page-input-filename: error-404.md\n404-page-output-filename: 404.html\n")
+        assert load_config(p)["404-page-input-filename"] == "error-404.md"
+
+    def test_404_page_output_filename_loaded_from_config(self, tmp_path):
+        p = write_config(tmp_path, "404-page-input-filename: error-404.md\n404-page-output-filename: 404.html\n")
+        assert load_config(p)["404-page-output-filename"] == "404.html"
 
 
 # ---------------------------------------------------------------------------

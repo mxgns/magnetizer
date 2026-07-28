@@ -19,6 +19,11 @@ def _error(msg) -> NoReturn:
 def validate_config(config):
     if not config.get("site_url"):
         _error("'site_url' is required in config.yaml — set it to the absolute base URL of your site, e.g. https://example.github.io")
+    not_found_output = config.get("404-page-output-filename")
+    if bool(config.get("404-page-input-filename")) != bool(not_found_output):
+        _error("'404-page-input-filename' and '404-page-output-filename' in config.yaml must both be set, or neither")
+    if not_found_output and ("/" in not_found_output or not_found_output in (".", "..")):
+        _error(f"'404-page-output-filename' in config.yaml is invalid: '{not_found_output}' — it must be a plain filename with no path separators")
     reserved = _BASE_RESERVED_SLUGS | set(config.get("special_pages", []))
     for slug in config.get("categories", {}):
         if slug in reserved or _INDEX_PAGE_SLUG_PATTERN.match(slug) or slug.isdigit():
@@ -40,19 +45,32 @@ def validate_content(content_dir, config=None):
     content_dir = Path(content_dir)
     files = [f.name for f in content_dir.iterdir() if not f.name.startswith('.')]
 
-    special_pages = (config or {}).get("special_pages", [])
+    config = config or {}
+    special_pages = config.get("special_pages", [])
     for name in special_pages:
         if f"{name}.md" not in files:
             _error(f"special page '{name}' is configured in config.yaml but '{name}.md' was not found in content/")
 
+    not_found_input = config.get("404-page-input-filename")
+    if not_found_input and not_found_input not in files:
+        _error(f"'404-page-input-filename' is configured as '{not_found_input}' in config.yaml but it was not found in content/")
+
     special_md_names = {f"{name}.md" for name in special_pages}
     special_image_patterns = [special_page_image_pattern(name) for name in special_pages]
+    if not_found_input:
+        special_md_names.add(not_found_input)
+        special_image_patterns.append(special_page_image_pattern(Path(not_found_input).stem))
 
     md_ids = set()
     image_ids = set()
     image_numbers_by_post: dict[int, set[int]] = {}
 
     for name in files:
+        if name == "404.md":
+            # Checked before the special-page exemptions below, so 404.md can't be
+            # smuggled past this reservation by naming it as the 404 page's own
+            # input file or listing "404" in special_pages.
+            _error("post 404 is reserved for the site's 404 page and cannot be used as a normal post id — 404.html is a special filename on GitHub Pages")
         if name in special_md_names:
             continue
         if any(pattern.match(name) for pattern in special_image_patterns):
