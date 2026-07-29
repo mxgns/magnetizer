@@ -424,7 +424,7 @@ Every post is classified into exactly one of three types, based on its `title`, 
 Notes get a link to `notes.html` in their `<footer>`, before the category link (if any):
 
 ```html
-<a href="notes.html" class="notes">Notes</a>
+<a href="notes.html" class="notes">Short note</a>
 ```
 
 #### `name`
@@ -869,9 +869,9 @@ The `MAGNETIZER_CONTENT` has the following structure:
   <li><a href="CATEGORY_SLUG.html">CATEGORY_NAME</a> (N)</li>
   ...
 </ul>
-<h2>Notes</h2>
+<h2>Short notes</h2>
 <ul>
-  <li><a href="notes.html">All notes</a></li>
+  <li><a href="notes.html">All short notes</a></li>
 </ul>
 <h2>Blog Posts</h2>
   <section>
@@ -889,7 +889,7 @@ The `MAGNETIZER_CONTENT` has the following structure:
 Where:
 
 - The `<h2>Categories</h2>` heading and its `<ul>` are only included if `categories` is configured and at least one configured category has a matching post. Each `<li>` links to the corresponding category page (see [Categories](#categories)) and includes the number of posts `(N)` in that category. Categories are listed in descending order of post count; categories with no matching posts are omitted.
-- The `<h2>Notes</h2>` heading and its `<ul>` are only included when at least one Note exists.
+- The `<h2>Short notes</h2>` heading and its `<ul>` are only included when at least one Note exists.
 - The `<h2>Blog Posts</h2>` heading is only included when the categories list, the notes section, or both are shown.
 - `DAY` is the day of the month with no leading zero, e.g. `16`
 - `POST_TYPE` is `full-post` or `image-post` (see [Post types](#post-types)) — Notes are excluded from the monthly list entirely.
@@ -903,13 +903,13 @@ Where:
 
 Magnetizer generates `dist/notes.html` (and `notes-2.html`, etc.) under the same conditions as index pages — on full builds where post changes are detected, but not during single-file preview builds. If no Notes exist, no notes pages are generated.
 
-Notes pages show all Notes in reverse chronological order (newest first), in full, with `notes_per_page` posts per page. The page title is `Notes - {site_name}`.
+Notes pages show all Notes in reverse chronological order (newest first), in full, with `notes_per_page` posts per page. The page title is `Short notes - {site_name}`.
 
 The `MAGNETIZER_CONTENT` has the following structure:
 
 ```html
 <main>
-<h1>Notes</h1>
+<h1>Short notes</h1>
 <article>...</article>
 <article>...</article>
 </main>

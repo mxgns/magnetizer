@@ -250,7 +250,7 @@ def _write_notes_pages(posts_sorted_desc, dist_dir, config, template):
     for page_num in range(1, total_pages + 1):
         slice_ = note_posts[(page_num - 1) * per_page: page_num * per_page]
         content_html = render_notes_page_content(slice_, page_num, total_pages, categories=categories, ai_disclosure_html=config["ai_disclosure_html"], images_per_post=config["images_per_post"])
-        title = render_page_title(config["site_name"], "Notes", page_num=None)
+        title = render_page_title(config["site_name"], "Short notes", page_num=None)
         filename = notes_page_url(page_num)
         html = render_template(template, title=title, content=content_html,
                                canonical=canonical_url(config["site_url"], filename),

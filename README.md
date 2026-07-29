@@ -127,7 +127,7 @@ A blank or whitespace-only `title`, `name`, or body counts as unset for all of t
 
 Images placed inline via `{{ image N }}` don't count as top-level images for this — a post with only inline images and no title is a Note, not an Image post. All in-post features (`<!-- more -->`, `{{ image N }}`, container blocks, dynamic values) work the same way across all three types; Magnetizer doesn't restrict any of them by post type.
 
-Notes replace what used to be called microblog posts. The behaviour is the same except there's no length cap any more, and the paginated listing page is `notes.html` (was `microblog.html`). Notes get a `<a href="notes.html" class="notes">Notes</a>` link in their footer, before the category link if any.
+Notes replace what used to be called microblog posts. The behaviour is the same except there's no length cap any more, and the paginated listing page is `notes.html` (was `microblog.html`). Notes get a `<a href="notes.html" class="notes">Short note</a>` link in their footer, before the category link if any.
 
 A post with no `title`, no images and no content is invalid — the build exits with an error. A post with a `title` but no images and no content triggers a build warning (it doesn't make much use of its own page), as does a post with both `title` and `name` set — the `title` wins and `name` is ignored. ("Images" here means any image, including one used only inline via `{{ image N }}` — unlike the Full/Image/Note classification above, these two checks don't distinguish top-level from inline.)
 
@@ -293,7 +293,7 @@ The archive page (`dist/archive.html`) lists all dated blog posts grouped by mon
 
 Each `<li>` gets the post's type class (`full-post` or `image-post` — Notes never appear here) and its link text follows the title → `name` → excerpt → generated-fallback priority order described in [Post types](#post-types).
 
-If `categories` is configured and at least one category has a matching post, a categories list is inserted after the `<h1>`. If any Notes exist, a `<h2>Notes</h2>` section with a link to `notes.html` is inserted after the categories. When either (or both) sections appear, a `<h2>Blog Posts</h2>` heading is shown before the monthly sections:
+If `categories` is configured and at least one category has a matching post, a categories list is inserted after the `<h1>`. If any Notes exist, a `<h2>Short notes</h2>` section with a link to `notes.html` is inserted after the categories. When either (or both) sections appear, a `<h2>Blog Posts</h2>` heading is shown before the monthly sections:
 
 ```html
 <main>
@@ -303,9 +303,9 @@ If `categories` is configured and at least one category has a matching post, a c
     <li><a href="photography.html">Photography</a> (34)</li>
     <li><a href="travel.html">Travel</a> (12)</li>
   </ul>
-  <h2>Notes</h2>
+  <h2>Short notes</h2>
   <ul>
-    <li><a href="notes.html">All notes</a></li>
+    <li><a href="notes.html">All short notes</a></li>
   </ul>
   <h2>Blog Posts</h2>
   ...
