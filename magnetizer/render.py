@@ -227,11 +227,12 @@ def render_metadata(title, canonical=None, meta_description=None, is_noindex=Fal
     return '\n'.join(lines)
 
 
-def render_template(template_html, title, content, canonical=None, meta_description=None, navigation='', is_noindex=False):
+def render_template(template_html, title, content, canonical=None, meta_description=None, navigation='', is_noindex=False, page_id=''):
     metadata = render_metadata(title, canonical=canonical, meta_description=meta_description, is_noindex=is_noindex)
     html = template_html.replace('MAGNETIZER_METADATA', metadata)
     html = html.replace('MAGNETIZER_NAVIGATION', navigation)
     html = html.replace('MAGNETIZER_CONTENT', content)
+    html = html.replace('MAGNETIZER_PAGE_ID', page_id)
     return html
 
 

@@ -1325,6 +1325,71 @@ class TestBuildId:
 
 
 # ---------------------------------------------------------------------------
+# Page ID placeholder
+# ---------------------------------------------------------------------------
+
+PAGE_ID_TEMPLATE = (
+    "<!DOCTYPE html><html><head>"
+    "MAGNETIZER_METADATA</head>"
+    "<body>MAGNETIZER_CONTENT<span id=\"page-id\">MAGNETIZER_PAGE_ID</span></body></html>"
+)
+
+
+class TestPageId:
+
+    def test_post_page_id_is_post_id(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD})
+        (p / "templates" / "index.html").write_text(PAGE_ID_TEMPLATE)
+        build(p)
+        assert '<span id="page-id">1</span>' in (p / "dist" / "1.html").read_text()
+
+    def test_first_index_page_id_is_index(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD})
+        (p / "templates" / "index.html").write_text(PAGE_ID_TEMPLATE)
+        build(p)
+        assert '<span id="page-id">index</span>' in (p / "dist" / "index.html").read_text()
+
+    def test_second_index_page_id_includes_page_number(self, tmp_path):
+        posts = {i: MINIMAL_MD for i in range(1, 4)}
+        p = make_project(tmp_path, posts=posts)
+        (p / "templates" / "index.html").write_text(PAGE_ID_TEMPLATE)
+        build(p)
+        assert '<span id="page-id">index-2</span>' in (p / "dist" / "index-2.html").read_text()
+
+    def test_category_page_id_is_slug(self, tmp_path):
+        p = make_project(tmp_path, posts={1: _CATEGORY_MD}, config=_CATEGORIES_CONFIG)
+        (p / "templates" / "index.html").write_text(PAGE_ID_TEMPLATE)
+        build(p)
+        assert '<span id="page-id">photography</span>' in (p / "dist" / "photography.html").read_text()
+
+    def test_notes_page_id_is_notes(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD, 2: "---\ndate: 2026-05-24\n---\n\nJust a note.\n"})
+        (p / "templates" / "index.html").write_text(PAGE_ID_TEMPLATE)
+        build(p)
+        assert '<span id="page-id">notes</span>' in (p / "dist" / "notes.html").read_text()
+
+    def test_special_page_id_is_page_name(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD}, config=_ABOUT_CONFIG)
+        (p / "content" / "about.md").write_text(ABOUT_MD)
+        (p / "templates" / "index.html").write_text(PAGE_ID_TEMPLATE)
+        build(p)
+        assert '<span id="page-id">about</span>' in (p / "dist" / "about.html").read_text()
+
+    def test_archive_page_id_is_archive(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD})
+        (p / "templates" / "index.html").write_text(PAGE_ID_TEMPLATE)
+        build(p)
+        assert '<span id="page-id">archive</span>' in (p / "dist" / "archive.html").read_text()
+
+    def test_404_page_id_is_output_filename_stem(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD}, config=_NOT_FOUND_CONFIG)
+        (p / "content" / "error-404.md").write_text(NOT_FOUND_MD)
+        (p / "templates" / "index.html").write_text(PAGE_ID_TEMPLATE)
+        build(p)
+        assert '<span id="page-id">404</span>' in (p / "dist" / "404.html").read_text()
+
+
+# ---------------------------------------------------------------------------
 # Canonical URLs
 # ---------------------------------------------------------------------------
 
