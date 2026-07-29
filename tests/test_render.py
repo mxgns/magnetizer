@@ -1253,17 +1253,17 @@ class TestArchiveCategoriesList:
     def test_notes_section_shown_when_notes_exist(self):
         post = make_dated_post(1, "2026-05-24", post_type="note")
         html = render_archive_page_content([post])
-        assert "<h2>Notes</h2>" in html
+        assert "<h2>Short notes</h2>" in html
 
     def test_notes_section_links_to_notes_html(self):
         post = make_dated_post(1, "2026-05-24", post_type="note")
         html = render_archive_page_content([post])
-        assert '<a href="notes.html">All notes</a>' in html
+        assert '<a href="notes.html">All short notes</a>' in html
 
     def test_notes_section_not_shown_when_no_notes(self):
         post = make_dated_post(1, "2026-05-24")
         html = render_archive_page_content([post])
-        assert "<h2>Notes</h2>" not in html
+        assert "<h2>Short notes</h2>" not in html
 
     def test_notes_section_after_categories(self):
         posts = [
@@ -1271,7 +1271,7 @@ class TestArchiveCategoriesList:
             make_dated_post(2, "2026-05-25", post_type="note"),
         ]
         html = render_archive_page_content(posts, categories=_CATEGORIES)
-        assert html.index("<h2>Notes</h2>") > html.index("</ul>")
+        assert html.index("<h2>Short notes</h2>") > html.index("</ul>")
 
     def test_blog_posts_heading_shown_when_notes_exist(self):
         post = make_dated_post(1, "2026-05-24", post_type="note")
@@ -1281,7 +1281,7 @@ class TestArchiveCategoriesList:
     def test_blog_posts_heading_after_notes_section(self):
         post = make_dated_post(1, "2026-05-24", post_type="note")
         html = render_archive_page_content([post])
-        assert html.index("<h2>Blog Posts</h2>") > html.index("<h2>Notes</h2>")
+        assert html.index("<h2>Blog Posts</h2>") > html.index("<h2>Short notes</h2>")
 
 
 # ---------------------------------------------------------------------------
@@ -1546,9 +1546,9 @@ class TestRenderArticleNotesLink:
         html = render_article(make_post(post_type="note", title=None), on_index_page=False)
         assert 'href="notes.html"' in html
 
-    def test_notes_link_text_is_notes(self):
+    def test_notes_link_text_is_short_note(self):
         html = render_article(make_post(post_type="note", title=None), on_index_page=False)
-        assert ">Notes<" in html
+        assert ">Short note<" in html
 
     def test_notes_link_inside_footer(self):
         html = render_article(make_post(post_type="note", title=None), on_index_page=False)
@@ -1679,11 +1679,11 @@ class TestRenderNotesPage:
 
     def test_notes_page_has_h1_notes(self):
         html = render_notes_page_content([_NOTE_POST], 1, 1)
-        assert "<h1>Notes</h1>" in html
+        assert "<h1>Short notes</h1>" in html
 
     def test_notes_h1_inside_main(self):
         html = render_notes_page_content([_NOTE_POST], 1, 1)
-        assert html.index('<main>') < html.index('<h1>Notes</h1>') < html.index('</main>')
+        assert html.index('<main>') < html.index('<h1>Short notes</h1>') < html.index('</main>')
 
     def test_notes_h1_before_articles(self):
         html = render_notes_page_content([_NOTE_POST], 1, 1)

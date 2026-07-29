@@ -5,6 +5,10 @@
 
 ## Released changes
 
+### 29/7/26
+
+- Renamed "Notes" to "Short notes" in headings/links (post footer, archive, notes page); URLs and class names unchanged
+
 ### 28/7/26
 
 - 404 page support: `404-page-input-filename`/`404-page-output-filename` config, post id 404 reserved

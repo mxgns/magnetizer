@@ -106,7 +106,7 @@ def render_article(post, on_index_page, categories=None, ai_disclosure_html=None
             date_content = post.date_uk
         footer_parts = [f'<time datetime="{post.date}">{date_content}</time>']
         if post.post_type == "note":
-            footer_parts.append('<a href="notes.html" class="notes">Notes</a>')
+            footer_parts.append('<a href="notes.html" class="notes">Short note</a>')
         if post.category and categories and post.category in categories:
             display_name = _escape(categories[post.category])
             footer_parts.append(f'<a href="{post.category}.html" class="category">{display_name}</a>')
@@ -170,7 +170,7 @@ def render_category_page_content(posts, category_name, category_slug, page_num, 
 
 def render_notes_page_content(posts, page_num, total_pages, categories=None, ai_disclosure_html=None, images_per_post=2):
     articles = '\n'.join(render_article(p, on_index_page=True, categories=categories, ai_disclosure_html=ai_disclosure_html, images_per_post=images_per_post) for p in posts)
-    content = f'<main>\n<h1>Notes</h1>\n{articles}\n</main>'
+    content = f'<main>\n<h1>Short notes</h1>\n{articles}\n</main>'
 
     if total_pages > 1:
         nav_items = []
@@ -295,9 +295,9 @@ def render_archive_page_content(posts, categories=None):
             has_sections = True
 
     if notes_count:
-        parts.append('<h2>Notes</h2>')
+        parts.append('<h2>Short notes</h2>')
         parts.append('<ul>')
-        parts.append('<li><a href="notes.html">All notes</a></li>')
+        parts.append('<li><a href="notes.html">All short notes</a></li>')
         parts.append('</ul>')
         has_sections = True
 

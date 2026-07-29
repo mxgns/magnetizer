@@ -1564,7 +1564,7 @@ class TestNoteDetection:
         (p / "content" / "4.md").write_text("---\ndate: 2026-06-06\ntitle: Normal Post\n---\n\nUpdated\n")
         build(p)
 
-        assert '<h2>Notes</h2>' in (p / "dist" / "archive.html").read_text()
+        assert '<h2>Short notes</h2>' in (p / "dist" / "archive.html").read_text()
 
 
 # ---------------------------------------------------------------------------
