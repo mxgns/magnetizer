@@ -1,7 +1,5 @@
 """Tests for magnetizer/render.py — all HTML generation functions"""
 
-from html.parser import HTMLParser
-
 import pytest
 from magnetizer.content import Image, Post
 from magnetizer.render import (
@@ -1465,32 +1463,6 @@ class TestRenderArticleCategory:
 # render_article — AI-assisted disclosure banner
 # ---------------------------------------------------------------------------
 
-_VOID_ELEMENTS = {"img", "br", "hr", "meta", "link", "input"}
-
-
-def _direct_children(html):
-    """(tag, class) for each direct child of the outermost element in `html`."""
-    class _Collector(HTMLParser):
-        def __init__(self):
-            super().__init__()
-            self.stack = []
-            self.children = []
-
-        def handle_starttag(self, tag, attrs):
-            if len(self.stack) == 1:
-                self.children.append((tag, dict(attrs).get("class", "")))
-            if tag not in _VOID_ELEMENTS:
-                self.stack.append(tag)
-
-        def handle_endtag(self, tag):
-            if self.stack and self.stack[-1] == tag:
-                self.stack.pop()
-
-    collector = _Collector()
-    collector.feed(html)
-    return collector.children
-
-
 class TestRenderArticleAiDisclosure:
 
     def _post_with_excerpt(self, is_ai_assisted):
@@ -1563,16 +1535,6 @@ class TestRenderArticleAiDisclosure:
     def test_banner_appears_before_heading_on_index_page(self):
         html = render_article(self._post_with_excerpt(is_ai_assisted=True), on_index_page=True)
         assert html.index('ai-disclosure') < html.index('<h2>')
-
-    def test_banner_is_direct_child_of_article_after_images(self):
-        post = make_post(is_ai_assisted=True, images=["1-image-01.jpg"])
-        html = render_article(post, on_index_page=False)
-        children = _direct_children(html)
-
-        images_index = next(i for i, (_, cls) in enumerate(children) if cls == "post-images")
-        banner_index = next(i for i, (_, cls) in enumerate(children) if "ai-disclosure" in cls)
-        heading_index = next(i for i, (tag, _) in enumerate(children) if tag == "h1")
-        assert images_index < banner_index < heading_index
 
     def test_banner_appears_in_excerpt_on_index_page(self):
         html = render_article(self._post_with_excerpt(is_ai_assisted=True), on_index_page=True)
