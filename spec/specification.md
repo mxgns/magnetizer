@@ -288,6 +288,7 @@ The following placeholders are available:
 | `MAGNETIZER_CONTENT` | Yes | The generated page content — one post for an individual post page or multiple posts for an index page. |
 | `MAGNETIZER_BUILD_ID` | No | A Unix timestamp generated at build time, e.g. `1748123456`. Useful for cache-busting static assets: `<link rel="stylesheet" href="resources/style.css?v=MAGNETIZER_BUILD_ID">`. The same value is used across all pages in a single build. |
 | `MAGNETIZER_NAVIGATION` | No | A `<ul>` of nav links built from `navigation` in config. See [Navigation](#navigation). Replaced with an empty string when `navigation` is not configured. |
+| `MAGNETIZER_PAGE_ID` | No | The current page's identifier: a post's id (e.g. `56`), a special/404 page's name (e.g. `about`), a category slug (e.g. `photography`), or the page's own filename stem otherwise (e.g. `index`, `index-2`, `notes`, `archive`). Always the bare id — never includes `.html`. Magnetizer has no built-in use for this itself; it exists so a template can key off which page is being rendered, e.g. for a per-page analytics beacon. |
 
 The following template is required in `templates/`:
 

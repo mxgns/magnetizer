@@ -179,6 +179,10 @@ def _adjacent_post_urls(post_id, post_ids_sorted_desc):
     return newer_url, older_url
 
 
+def _page_id(filename):
+    return filename.rsplit('.', 1)[0]
+
+
 def _write_post_html(post, dist_dir, config, template, newer_url=None, older_url=None, categories=None):
     content_html = render_post_page_content(post, newer_url=newer_url, older_url=older_url, categories=categories, ai_disclosure_html=config["ai_disclosure_html"])
     title = render_page_title(config["site_name"], post_display_text(post), page_num=None)
@@ -186,7 +190,7 @@ def _write_post_html(post, dist_dir, config, template, newer_url=None, older_url
     html = render_template(template, title=title, content=content_html,
                            canonical=canonical_url(config["site_url"], filename),
                            navigation=render_navigation(config["navigation"], filename),
-                           is_noindex=post.is_noindex)
+                           is_noindex=post.is_noindex, page_id=_page_id(filename))
     (dist_dir / filename).write_text(html)
 
 
@@ -203,7 +207,8 @@ def _write_index_pages(posts_sorted_desc, dist_dir, config, template, categories
         html = render_template(template, title=title, content=content_html,
                                canonical=canonical_url(config["site_url"], filename),
                                meta_description=config["index_meta_description"],
-                               navigation=render_navigation(config["navigation"], filename))
+                               navigation=render_navigation(config["navigation"], filename),
+                               page_id=_page_id(filename))
         (dist_dir / filename).write_text(html)
 
 
@@ -235,7 +240,8 @@ def _write_category_pages(posts_sorted_desc, dist_dir, config, template):
             filename = category_page_url(slug, page_num)
             html = render_template(template, title=title, content=content_html,
                                    canonical=canonical_url(config["site_url"], filename),
-                                   navigation=render_navigation(config["navigation"], filename))
+                                   navigation=render_navigation(config["navigation"], filename),
+                                   page_id=_page_id(filename))
             (dist_dir / filename).write_text(html)
 
 
@@ -254,7 +260,8 @@ def _write_notes_pages(posts_sorted_desc, dist_dir, config, template):
         filename = notes_page_url(page_num)
         html = render_template(template, title=title, content=content_html,
                                canonical=canonical_url(config["site_url"], filename),
-                               navigation=render_navigation(config["navigation"], filename))
+                               navigation=render_navigation(config["navigation"], filename),
+                               page_id=_page_id(filename))
         (dist_dir / filename).write_text(html)
 
 
@@ -295,7 +302,7 @@ def _build_special_page(name, content_dir, dist_dir, config, template, values, w
     html = render_template(template, title=title, content=content_html,
                            canonical=canonical_url(config["site_url"], filename),
                            navigation=render_navigation(config["navigation"], filename),
-                           is_noindex=post.is_noindex)
+                           is_noindex=post.is_noindex, page_id=_page_id(filename))
     (dist_dir / filename).write_text(html)
     return w, dynamic_flag
 
@@ -586,6 +593,7 @@ def _write_generated_pages(published_posts_sorted_desc, dist_dir, config, templa
         content=render_archive_page_content(published_posts_sorted_desc, categories=config["categories"]),
         canonical=canonical_url(config["site_url"], "archive.html"),
         navigation=render_navigation(config["navigation"], "archive.html"),
+        page_id="archive",
     )
     (dist_dir / "archive.html").write_text(archive_html)
     log(("UPDATED", "archive.html"))

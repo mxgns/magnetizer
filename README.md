@@ -191,6 +191,7 @@ Magnetizer uses a single template file: `templates/index.html`. It must contain 
 | `MAGNETIZER_METADATA` | Yes | A block of `<head>` metadata tags: `<title>`, an optional `<meta name="description">` (index pages only, from `index_meta_description`), a `<link rel="canonical">`, and — for posts or special pages with `noindex: true` — a `<meta name="robots" content="noindex">`. Each line is present only when applicable. |
 | `MAGNETIZER_CONTENT` | Yes | The generated page content |
 | `MAGNETIZER_BUILD_ID` | No | A Unix timestamp, useful for cache-busting: `style.css?v=MAGNETIZER_BUILD_ID` |
+| `MAGNETIZER_PAGE_ID` | No | The current page's bare id, e.g. `56` for a post, `about` for a special page, `photography` for a category page, `index`/`index-2`/`notes`/`archive` otherwise. Never includes `.html`. Not used by Magnetizer itself — useful for e.g. a per-page tracking pixel. |
 
 Example `templates/index.html`:
 

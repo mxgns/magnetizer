@@ -862,6 +862,7 @@ class TestRenderTemplate:
 
     TEMPLATE = "<head>MAGNETIZER_METADATA</head><body>MAGNETIZER_CONTENT</body>"
     NAVIGATION_TEMPLATE = "<body><nav>MAGNETIZER_NAVIGATION</nav>MAGNETIZER_CONTENT</body>"
+    PAGE_ID_TEMPLATE = "<body>MAGNETIZER_CONTENT<span>MAGNETIZER_PAGE_ID</span></body>"
 
     def test_metadata_placeholder_replaced(self):
         html = render_template(self.TEMPLATE, title="My Page", content="<p>hi</p>")
@@ -885,6 +886,15 @@ class TestRenderTemplate:
         html = render_template(self.TEMPLATE, title="T", content="C",
                                canonical="https://example.com/1.html")
         assert 'href="https://example.com/1.html"' in html
+
+    def test_page_id_placeholder_replaced(self):
+        html = render_template(self.PAGE_ID_TEMPLATE, title="T", content="C", page_id="56")
+        assert "MAGNETIZER_PAGE_ID" not in html
+        assert "<span>56</span>" in html
+
+    def test_page_id_defaults_to_empty_string(self):
+        html = render_template(self.PAGE_ID_TEMPLATE, title="T", content="C")
+        assert "<span></span>" in html
 
     def test_metadata_omits_canonical_when_not_provided(self):
         html = render_template(self.TEMPLATE, title="T", content="C")

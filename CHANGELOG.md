@@ -8,6 +8,7 @@
 ### 29/7/26
 
 - Renamed "Notes" to "Short notes" in headings/links (post footer, archive, notes page); URLs and class names unchanged
+- New `MAGNETIZER_PAGE_ID` template placeholder: each page's bare id, for template-level use like per-page tracking
 
 ### 28/7/26
 
