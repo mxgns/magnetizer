@@ -524,15 +524,19 @@ ai_assisted: true
 ---
 ```
 
-When set, a disclosure banner is inserted as the first element inside `.post-body`, before the post's excerpt or full body content:
+When set, a disclosure banner is inserted as a direct child of `<article>`, above the post's heading (below the post's images, if any):
 
 ```html
-<div class="post-body">
+<article ...>
+<div class="post-images">...</div>
 <div class="container container-brown ai-disclosure">
 <p>DISCLOSURE_HTML</p>
 </div>
+<h1>...</h1>
+<div class="post-body">
 ...
 </div>
+</article>
 ```
 
 `DISCLOSURE_HTML` is the value of `ai_disclosure_html` from `config.yaml`, inserted verbatim (not escaped), so it can include markup such as a link:
