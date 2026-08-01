@@ -1518,16 +1518,23 @@ class TestRenderArticleAiDisclosure:
         assert '<img' not in banner
         assert 'ai-icon.svg' not in banner
 
-    def test_banner_inside_post_body_div(self):
+    def test_banner_outside_post_body_div(self):
         html = render_article(make_post(is_ai_assisted=True), on_index_page=False)
         body_start = html.index('<div class="post-body">')
-        body_end = html.index('</div>', body_start)
         banner_pos = html.index('ai-disclosure')
-        assert body_start < banner_pos < body_end
+        assert banner_pos < body_start
 
     def test_banner_appears_before_body_content(self):
         html = render_article(make_post(is_ai_assisted=True, body_html="<p>Hello</p>"), on_index_page=False)
         assert html.index('ai-disclosure') < html.index('<p>Hello</p>')
+
+    def test_banner_appears_before_heading_on_single_post(self):
+        html = render_article(make_post(is_ai_assisted=True, title="My Post"), on_index_page=False)
+        assert html.index('ai-disclosure') < html.index('<h1>')
+
+    def test_banner_appears_before_heading_on_index_page(self):
+        html = render_article(self._post_with_excerpt(is_ai_assisted=True), on_index_page=True)
+        assert html.index('ai-disclosure') < html.index('<h2>')
 
     def test_banner_appears_in_excerpt_on_index_page(self):
         html = render_article(self._post_with_excerpt(is_ai_assisted=True), on_index_page=True)

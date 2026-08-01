@@ -74,6 +74,9 @@ def render_article(post, on_index_page, categories=None, ai_disclosure_html=None
                 parts.append(f'<figure><img src="{resized}"{alt}></figure>')
         parts.append('</div>')
 
+    if post.is_ai_assisted:
+        parts.append(_render_ai_disclosure(ai_disclosure_html))
+
     heading_text = _escape(post_display_text(post))
     if on_index_page:
         parts.append(f'<h2><a href="{post.url}">{heading_text}</a></h2>')
@@ -82,8 +85,6 @@ def render_article(post, on_index_page, categories=None, ai_disclosure_html=None
 
     hidden_top = max(0, len(top_images) - images_per_post) if on_index_page else 0
 
-    ai_banner = _render_ai_disclosure(ai_disclosure_html) if post.is_ai_assisted else ''
-
     if on_index_page and post.excerpt_html is not None and post.post_type != "note":
         hidden_inline = len(post.inline_image_filenames) - len(post.excerpt_inline_image_filenames)
         hidden = hidden_top + hidden_inline
@@ -91,9 +92,9 @@ def render_article(post, on_index_page, categories=None, ai_disclosure_html=None
             read_more_label = f'Read more (+{hidden} photo{"s" if hidden != 1 else ""})'
         else:
             read_more_label = 'Read more'
-        parts.append(f'<div class="post-body">{ai_banner}{post.excerpt_html}<a href="{post.url}" class="read-more">{read_more_label}</a></div>')
+        parts.append(f'<div class="post-body">{post.excerpt_html}<a href="{post.url}" class="read-more">{read_more_label}</a></div>')
     else:
-        parts.append(f'<div class="post-body">{ai_banner}{post.body_html}</div>')
+        parts.append(f'<div class="post-body">{post.body_html}</div>')
 
     if on_index_page and post.excerpt_html is None and hidden_top > 0:
         label = f'{hidden_top} more photo{"s" if hidden_top != 1 else ""}'

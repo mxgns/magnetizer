@@ -5,6 +5,10 @@
 
 ## Released changes
 
+### 1/8/26
+
+- AI-assisted disclosure banner now renders above the post heading instead of inside `.post-body`
+
 ### 29/7/26
 
 - Renamed "Notes" to "Short notes" in headings/links (post footer, archive, notes page); URLs and class names unchanged
