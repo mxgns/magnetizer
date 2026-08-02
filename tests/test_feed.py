@@ -102,6 +102,22 @@ class TestFeedEntries:
         timestamps = [_req(e.find(el("updated"))).text for e in entries]
         assert len(set(timestamps)) == 2
 
+    def test_note_posts_are_excluded(self):
+        posts = [
+            make_post(post_id=1, title="A Full Post"),
+            make_post(post_id=2, title=None, post_type="note"),
+        ]
+        root = parse(posts)
+        assert len(root.findall(el("entry"))) == 1
+
+    def test_feed_updated_ignores_excluded_note_posts(self):
+        posts = [
+            make_post(post_id=1, date="2026-01-01", post_type="note", title=None),
+            make_post(post_id=2, date="2025-01-01"),
+        ]
+        root = parse(posts)
+        assert _req(root.find(el("updated"))).text == "2025-01-01T00:00:02Z"
+
 
 # ---------------------------------------------------------------------------
 # Entry-level elements

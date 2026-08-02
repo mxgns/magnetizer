@@ -15,7 +15,7 @@ def render_feed(posts, config):
     site_url = config["site_url"].rstrip('/')
     site_name = _html.escape(config["site_name"])
     feed_url = f"{site_url}/feed.xml"
-    dated_posts = [p for p in posts if p.date]
+    dated_posts = [p for p in posts if p.date and p.post_type != "note"]
     most_recent_date = _rfc3339(dated_posts[0].date, dated_posts[0].id) if dated_posts else ""
 
     lines = [

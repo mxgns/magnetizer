@@ -8,6 +8,7 @@
 ### 2/8/26
 
 - Atom feed entries' `<link>` now carries a `?src=atom` query param (for the tracking pixel's traffic-source attribution); `<id>` stays a clean, tracking-free URL per the Atom spec's stable-identifier convention
+- Short notes are now excluded from the Atom feed (`feed.xml`) — only Full and Image posts get entries
 
 ### 1/8/26
 
