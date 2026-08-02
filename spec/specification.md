@@ -1013,6 +1013,8 @@ When a single `FILENAME` is specified (preview builds), the manifest is *not* re
 
 Magnetizer generates an Atom 1.0 feed at `dist/feed.xml` on every full build (incremental or `--flush`). Single-file preview builds (`build.py 1.md`) do not update the feed. `site_url` must be set in `config.yaml`; the build will exit with an error if it is absent or empty — see [Configuration](#configuration) for the full list of config variables.
 
+Short notes (post type `note`) are excluded from the feed — only `full` and `image` posts get entries.
+
 ### Feed structure
 
 ```xml
@@ -1039,7 +1041,7 @@ Where:
 - `SITE_TITLE` is `site_name` from config
 - `SITE_URL` is `site_url` from config
 - `FEED_URL` is `site_url + "/feed.xml"`
-- `MOST_RECENT_DATE` is the date of the most recent post in RFC 3339 format, e.g. `2026-05-24T00:00:00Z`
+- `MOST_RECENT_DATE` is the date of the most recent feed-eligible post (i.e. excluding short notes) in RFC 3339 format, e.g. `2026-05-24T00:00:00Z`
 - `POST_TITLE` follows the same title/name/date-fallback priority order as the post heading and meta title — see [Post types](#post-types)
 - `POST_URL` is the absolute URL of the post page, e.g. `https://example.github.io/1.html`
 - The entry's `<link>` (as of 2/8/26) is `POST_URL` with a `?src=atom` query param appended — a traffic-source tag for the tracking pixel (see the Blog project's `blog.js`) to attribute clicks from the feed. `<id>`, per the Atom spec, is a stable identifier some readers use for dedup, so it stays as the clean `POST_URL` with no tracking param.
