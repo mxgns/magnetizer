@@ -40,7 +40,7 @@ def render_feed(posts, config):
         lines += [
             '  <entry>',
             f'    <title>{title}</title>',
-            f'    <link href="{post_url}" />',
+            f'    <link href="{post_url}?src=atom" />',
             f'    <id>{post_url}</id>',
             f'    <updated>{_rfc3339(post.date, post.id)}</updated>',
             f'    <content type="html"><![CDATA[{images_html}{post.body_html}]]></content>',

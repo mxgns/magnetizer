@@ -1025,7 +1025,7 @@ Magnetizer generates an Atom 1.0 feed at `dist/feed.xml` on every full build (in
   <updated>MOST_RECENT_DATE</updated>
   <entry>
     <title>POST_TITLE</title>
-    <link href="POST_URL" />
+    <link href="POST_URL?src=atom" />
     <id>POST_URL</id>
     <updated>POST_DATE</updated>
     <content type="html"><![CDATA[POST_BODY_HTML]]></content>
@@ -1042,6 +1042,7 @@ Where:
 - `MOST_RECENT_DATE` is the date of the most recent post in RFC 3339 format, e.g. `2026-05-24T00:00:00Z`
 - `POST_TITLE` follows the same title/name/date-fallback priority order as the post heading and meta title — see [Post types](#post-types)
 - `POST_URL` is the absolute URL of the post page, e.g. `https://example.github.io/1.html`
+- The entry's `<link>` (as of 2/8/26) is `POST_URL` with a `?src=atom` query param appended — a traffic-source tag for the tracking pixel (see the Blog project's `blog.js`) to attribute clicks from the feed. `<id>`, per the Atom spec, is a stable identifier some readers use for dedup, so it stays as the clean `POST_URL` with no tracking param.
 - `POST_DATE` is the post date in RFC 3339 format, e.g. `2026-05-24T00:00:00Z`
 - `POST_BODY_HTML` is the HTML generated from the post's Markdown body
 
