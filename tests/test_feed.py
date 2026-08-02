@@ -126,12 +126,15 @@ class TestEntryStructure:
         entry = _req(root.find(el("entry")))
         assert _req(entry.find(el("title"))).text == "A quiet morning"
 
-    def test_entry_link_href_is_absolute_url(self):
+    def test_entry_link_href_is_absolute_url_tagged_with_src_atom(self):
         root = parse([make_post(post_id=5)])
         entry = _req(root.find(el("entry")))
-        assert _req(entry.find(el("link"))).get("href") == "https://example.github.io/5.html"
+        assert _req(entry.find(el("link"))).get("href") == "https://example.github.io/5.html?src=atom"
 
-    def test_entry_id_is_absolute_url(self):
+    def test_entry_id_is_absolute_url_without_src_param(self):
+        # <id> is meant to be a stable, permanent identifier per the Atom
+        # spec (some readers use it for dedup) — unlike <link>, it must not
+        # carry the ?src=atom tracking param.
         root = parse([make_post(post_id=5)])
         entry = _req(root.find(el("entry")))
         assert _req(entry.find(el("id"))).text == "https://example.github.io/5.html"

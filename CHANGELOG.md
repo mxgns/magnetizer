@@ -5,6 +5,10 @@
 
 ## Released changes
 
+### 2/8/26
+
+- Atom feed entries' `<link>` now carries a `?src=atom` query param (for the tracking pixel's traffic-source attribution); `<id>` stays a clean, tracking-free URL per the Atom spec's stable-identifier convention
+
 ### 1/8/26
 
 - AI-assisted disclosure banner now renders above the post heading instead of inside `.post-body`
