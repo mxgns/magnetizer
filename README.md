@@ -167,7 +167,7 @@ This is the single reference for every frontmatter key a post or special page ca
 
 ## Comments
 
-Comments are for posting manual updates on a post — e.g. linking to a follow-up once it's published. There's no way for a visitor to leave one; anything here has been added by hand.
+Comments are for posting manual updates on a post or special page — e.g. linking to a follow-up once it's published. There's no way for a visitor to leave one; anything here has been added by hand.
 
 A comment is its own Markdown file: `{post-id}-comment-{nn}.md` for a post (`12-comment-01.md`), or `{name}-comment-{nn}.md` for a special page (`about-comment-01.md`). Unlike image numbering, comment numbers don't need to be contiguous or start at `01`.
 
@@ -182,9 +182,9 @@ I have now published the [second part](13.html).
 
 Both `date` and `author` are required — the build errors if either is missing. The body is Markdown, with the same automatic external-link handling as a post body, but no container blocks, `{{ image N }}` tokens, or `{{ shortcode }}` values.
 
-Comments show up only on the post's own page, inside `<section class="comments" id="comments">`, oldest first — regardless of the comment's own date. Index, category, and notes pages instead get a `N comment(s)` link in the post's footer, pointing at `{post-id}.html#comments`. Each comment's author name is slugified into a `class="author author-{slug}"` on its `<h4>`, so you can style a specific commenter (e.g. give yourself an avatar) via CSS.
+Comments show up only on the post's or special page's own page, inside `<section class="comments" id="comments">`, oldest first — regardless of the comment's own date. Index, category, and notes pages instead get a `N comment(s)` link in the post's footer, pointing at `{post-id}.html#comments`. Each comment's author name is slugified into a `class="author author-{slug}"` on its `<h4>`, so you can style a specific commenter (e.g. give yourself an avatar) via CSS.
 
-A comment naming a post that doesn't exist (e.g. `99-comment-01.md` with no `99.md`) produces a build warning, not an error — the comment is simply skipped. Adding, editing, or removing a comment rebuilds its post like an image change would.
+A comment naming a post that doesn't exist (e.g. `99-comment-01.md` with no `99.md`) produces a build warning, not an error — the comment is simply skipped. Adding, editing, or removing a comment rebuilds its post or special page like an image change would.
 
 ## Building the site
 
@@ -237,7 +237,7 @@ All files live flat in `content/` — no subdirectories.
 
 - Markdown files: `{post-id}.md` (e.g. `42.md`)
 - Image files: `{post-id}-image-{nn}.jpg/jpeg/png/svg` (e.g. `42-image-01.jpg`) — numbering must start at `01` with no gaps; the build errors out otherwise
-- Comment files: `{post-id}-comment-{nn}.md` (e.g. `42-comment-01.md`) — see [Comments](#comments)
+- Comment files: `{post-id}-comment-{nn}.md` or `{name}-comment-{nn}.md` (e.g. `42-comment-01.md`, `about-comment-01.md`) — see [Comments](#comments)
 - One `{name}.md` per entry in `special_pages` (e.g. `about.md`, `cookies.md`) — see [Special pages](#special-pages)
 
 Posts are displayed in reverse order by post ID — a higher ID means a newer post.

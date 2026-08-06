@@ -635,7 +635,10 @@ def _write_generated_pages(published_posts_sorted_desc, dist_dir, config, templa
 def _write_sitemap_and_robots(published_post_ids_sorted_desc, published_posts_sorted_desc, posts_cache, content_dir, dist_dir, config, special_page_posts_by_name, log):
     per_page = config["posts_per_page"]
     total_pages = max(1, (len(published_post_ids_sorted_desc) + per_page - 1) // per_page)
-    index_lastmod = _lastmod([content_dir / f"{pid}.md" for pid in published_post_ids_sorted_desc])
+    index_lastmod = _lastmod(
+        [content_dir / f"{pid}.md" for pid in published_post_ids_sorted_desc]
+        + [content_dir / c.filename for pid in published_post_ids_sorted_desc for c in posts_cache[pid].comments]
+    )
     sitemap_pages = []
     for pid in published_post_ids_sorted_desc:
         if posts_cache[pid].is_noindex:
@@ -662,7 +665,10 @@ def _write_sitemap_and_robots(published_post_ids_sorted_desc, published_posts_so
                 sitemap_pages.append((category_page_url(slug, page_num), cat_lastmod))
     note_posts_all = [p for p in published_posts_sorted_desc if p.post_type == "note"]
     if note_posts_all:
-        notes_lastmod = _lastmod([content_dir / f"{p.id}.md" for p in note_posts_all])
+        notes_lastmod = _lastmod(
+            [content_dir / f"{p.id}.md" for p in note_posts_all]
+            + [content_dir / c.filename for p in note_posts_all for c in p.comments]
+        )
         notes_per_page_sitemap = config["notes_per_page"]
         total_notes_pages_sitemap = max(1, (len(note_posts_all) + notes_per_page_sitemap - 1) // notes_per_page_sitemap)
         for page_num in range(1, total_notes_pages_sitemap + 1):

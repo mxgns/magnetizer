@@ -195,9 +195,10 @@ Examples:
     2. at least one .md file in `content/`
     3.  image files named `{post-id}-image-{image-no}.{image-extension}` 
     4. There is a `.md` file for every `{post-id}` referenced by an image filename (so no orphan image files)
-    5. no other file types or names
-    
-    where `{post-id}` is an integer (not padded with zeroes), `{image-no}` is a two-digit number (with a leading zero if needed), and `{image-extension}` is one of `.jpg`, `.jpeg`, `.png`, or `.svg`.
+    5. comment files named `{post-id}-comment-{comment-no}.md`, or `{name}-comment-{comment-no}.md` for a configured special page — see [Comments](#comments) for why, unlike images, an orphan or gapped comment file doesn't fail validation
+    6. no other file types or names
+
+    where `{post-id}` is an integer (not padded with zeroes), `{image-no}`/`{comment-no}` is a two-digit number (with a leading zero if needed), and `{image-extension}` is one of `.jpg`, `.jpeg`, `.png`, or `.svg`.
     
 3. If `--flush`:
     1. Delete all contents of `dist/`, including sub-directories

@@ -2733,6 +2733,42 @@ class TestCommentSitemapLastmod:
         sitemap_after = (p / "dist" / "sitemap.xml").read_text()
         assert sitemap_before != sitemap_after
 
+    def test_new_comment_bumps_index_lastmod(self, tmp_path):
+        # index.html shows a comment-count link for the post, so its own lastmod
+        # must reflect a comment-only change too, not just post/category pages.
+        import os
+        p = make_project(tmp_path, posts={1: MINIMAL_MD})
+        md_mtime = 1609459200.0  # 2021-01-01
+        os.utime(p / "content" / "1.md", (md_mtime, md_mtime))
+        build(p)
+        sitemap_before = (p / "dist" / "sitemap.xml").read_text()
+        assert "<loc>https://example.github.io/index.html</loc>\n    <lastmod>2021-01-01</lastmod>" in sitemap_before
+
+        comment_mtime = 1640995200.0  # 2022-01-01
+        (p / "content" / "1-comment-01.md").write_text(COMMENT_MD)
+        os.utime(p / "content" / "1-comment-01.md", (comment_mtime, comment_mtime))
+        build(p)
+        sitemap_after = (p / "dist" / "sitemap.xml").read_text()
+        assert "<loc>https://example.github.io/index.html</loc>\n    <lastmod>2022-01-01</lastmod>" in sitemap_after
+
+    def test_new_comment_bumps_notes_lastmod(self, tmp_path):
+        # MINIMAL_MD (untitled, imageless, with body text) is a Note, so it
+        # appears on notes.html — that page's lastmod must move too.
+        import os
+        p = make_project(tmp_path, posts={1: MINIMAL_MD})
+        md_mtime = 1609459200.0  # 2021-01-01
+        os.utime(p / "content" / "1.md", (md_mtime, md_mtime))
+        build(p)
+        sitemap_before = (p / "dist" / "sitemap.xml").read_text()
+        assert "<loc>https://example.github.io/notes.html</loc>\n    <lastmod>2021-01-01</lastmod>" in sitemap_before
+
+        comment_mtime = 1640995200.0  # 2022-01-01
+        (p / "content" / "1-comment-01.md").write_text(COMMENT_MD)
+        os.utime(p / "content" / "1-comment-01.md", (comment_mtime, comment_mtime))
+        build(p)
+        sitemap_after = (p / "dist" / "sitemap.xml").read_text()
+        assert "<loc>https://example.github.io/notes.html</loc>\n    <lastmod>2022-01-01</lastmod>" in sitemap_after
+
 
 class TestCommentFrontmatterErrors:
 
