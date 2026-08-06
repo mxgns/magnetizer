@@ -1689,6 +1689,19 @@ class TestRenderArticleCommentsSection:
         html = render_article(make_post(comments=[make_comment(body_html="<p>Nice post!</p>")]), on_index_page=False)
         assert '<p>Nice post!</p>' in html
 
+    def test_comment_avatar_div(self):
+        html = render_article(make_post(comments=[make_comment(author_slug="magnus", author_initial="M")]), on_index_page=False)
+        assert '<div class="avatar author-magnus" data-initial="M" aria-hidden="true"></div>' in html
+
+    def test_comment_avatar_before_author_heading(self):
+        html = render_article(make_post(comments=[make_comment()]), on_index_page=False)
+        assert html.index('class="avatar') < html.index('class="author')
+
+    def test_comment_avatar_data_initial_escaped(self):
+        # Not a realistic initial, but confirms the attribute is safely escaped.
+        html = render_article(make_post(comments=[make_comment(author_initial='"')]), on_index_page=False)
+        assert 'data-initial="&quot;"' in html
+
     def test_comments_rendered_oldest_first(self):
         c1 = make_comment(filename="1-comment-01.md", author="First")
         c2 = make_comment(filename="1-comment-02.md", author="Second")

@@ -29,6 +29,7 @@ def make_comment(
     date_uk="5 August 2026",
     author="Magnus",
     author_slug="magnus",
+    author_initial="M",
     body_html="<p>Hello</p>",
 ):
     return Comment(
@@ -37,6 +38,7 @@ def make_comment(
         date_uk=date_uk,
         author=author,
         author_slug=author_slug,
+        author_initial=author_initial,
         body_html=body_html,
     )
 

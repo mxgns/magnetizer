@@ -654,6 +654,7 @@ Comments are shown only on the post's (or special page's) own individual page �
 <section class="comments" id="comments">
     <h2>1 comment</h2>
     <article class="comment">
+        <div class="avatar author-magnus" data-initial="M" aria-hidden="true"></div>
         <h4 class="author author-magnus">Magnus</h4>
         <time datetime="2026-08-05">5 August 2026</time>
         <p>I have now published the <a href="13.html">second part</a>.</p>
@@ -663,7 +664,8 @@ Comments are shown only on the post's (or special page's) own individual page �
 
 - The `<h2>` text is `1 comment` for a single comment, `N comments` otherwise. It's an `<h2>` — one level below the post's own `<h1>` — rather than an `<h3>`, since the comments section is its own top-level division of the page, not a subsection of the post body.
 - Each comment is its own `<article class="comment">`.
-- `{author-slug}` in `class="author author-{author-slug}"` is derived from `author` the same way as a navigation class (see [Navigation](#navigation)): lowercased, with any run of non-alphanumeric characters collapsed to a single hyphen. This exists so a project's `resources/` CSS can target one commenter specifically (e.g. an avatar for the site owner) via `.author-magnus`, the same way other CSS-dependent conventions — e.g. the AI-disclosure icon — rely on styling the project supplies.
+- `{author-slug}` in `class="author author-{author-slug}"` (and the matching class on `<div class="avatar author-{author-slug}">`, see below) is derived from `author` the same way as a navigation class (see [Navigation](#navigation)): lowercased, with any run of non-alphanumeric characters collapsed to a single hyphen.
+- The `<div class="avatar author-{author-slug}">` is a placeholder for a project's own avatar styling — Magnetizer has no opinion on what it looks like. `data-initial` holds the upper-cased first character of `author` (e.g. `M` for `Magnus`), for a project's CSS to display via `content: attr(data-initial)` on a pseudo-element — a plain-CSS "default avatar" with no image request needed. `aria-hidden="true"` keeps it out of the accessibility tree, since it's purely decorative — the author name is already conveyed by the adjacent `<h4>` text. A project can override a specific commenter's avatar with a real image by keying off the shared `author-{author-slug}` class — e.g. `.avatar.author-magnus { background-image: url(...); }` — the same way other CSS-dependent conventions, like the AI-disclosure icon, rely on styling the project supplies.
 - The whole `<section>` is omitted when a post or special page has no comment files — there's no empty comments section.
 
 #### Comment counts on multi-post pages

@@ -53,6 +53,7 @@ class Comment:
     date_uk: str
     author: str
     author_slug: str
+    author_initial: str
     body_html: str
 
 
@@ -205,6 +206,7 @@ def parse_comment(md_text, filename, site_url=""):
         date_uk=_format_date_uk(date_str),
         author=author,
         author_slug=_slugify(author),
+        author_initial=author[0].upper(),
         body_html=body_html,
     )
 

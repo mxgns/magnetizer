@@ -2792,3 +2792,10 @@ class TestCommentAuthorClass:
         (p / "content" / "1-comment-01.md").write_text(COMMENT_MD)
         build(p)
         assert 'class="author author-magnus"' in (p / "dist" / "1.html").read_text()
+
+    def test_avatar_div_present(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD})
+        (p / "content" / "1-comment-01.md").write_text(COMMENT_MD)
+        build(p)
+        html = (p / "dist" / "1.html").read_text()
+        assert 'class="avatar author-magnus" data-initial="M" aria-hidden="true"' in html

@@ -946,6 +946,33 @@ class TestCommentAuthorSlug:
         assert comment.author_slug == "magnus"
 
 
+class TestCommentAuthorInitial:
+
+    def test_simple_name(self):
+        comment = parse_comment(make_comment_md(author="Magnus"), "1-comment-01.md")
+        assert comment.author_initial == "M"
+
+    def test_lowercase_name_uppercased(self):
+        comment = parse_comment(make_comment_md(author="magnus"), "1-comment-01.md")
+        assert comment.author_initial == "M"
+
+    def test_already_uppercase_first_letter(self):
+        comment = parse_comment(make_comment_md(author="MAGNUS"), "1-comment-01.md")
+        assert comment.author_initial == "M"
+
+    def test_single_character_name(self):
+        comment = parse_comment(make_comment_md(author="M"), "1-comment-01.md")
+        assert comment.author_initial == "M"
+
+    def test_only_first_character_used(self):
+        comment = parse_comment(make_comment_md(author="Jane Doe"), "1-comment-01.md")
+        assert comment.author_initial == "J"
+
+    def test_accented_character_uppercased(self):
+        comment = parse_comment(make_comment_md(author="åsa"), "1-comment-01.md")
+        assert comment.author_initial == "Å"
+
+
 class TestCommentExternalLinks:
 
     def test_external_link_gets_target_blank_and_rel_noopener(self):

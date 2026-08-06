@@ -182,7 +182,9 @@ I have now published the [second part](13.html).
 
 Both `date` and `author` are required — the build errors if either is missing. The body is Markdown, with the same automatic external-link handling as a post body, but no container blocks, `{{ image N }}` tokens, or `{{ shortcode }}` values.
 
-Comments show up only on the post's or special page's own page, inside `<section class="comments" id="comments">`, oldest first — regardless of the comment's own date. Index, category, and notes pages instead get a `N comment(s)` link in the post's footer, pointing at `{post-id}.html#comments`. Each comment's author name is slugified into a `class="author author-{slug}"` on its `<h4>`, so you can style a specific commenter (e.g. give yourself an avatar) via CSS.
+Comments show up only on the post's or special page's own page, inside `<section class="comments" id="comments">`, oldest first — regardless of the comment's own date. Index, category, and notes pages instead get a `N comment(s)` link in the post's footer, pointing at `{post-id}.html#comments`.
+
+Each comment's author name is slugified into a `class="author author-{slug}"`, shared by its `<h4>` and by a `<div class="avatar author-{slug}" data-initial="{INITIAL}" aria-hidden="true"></div>` placed just before it — `{INITIAL}` is the upper-cased first character of the author's name. Magnetizer renders no avatar styling itself; a project's own CSS decides what that `<div>` looks like, typically the initial shown via `content: attr(data-initial)` on a pseudo-element for a default "no photo" look, with a specific commenter's `author-{slug}` class overridden to show a real image instead.
 
 A comment naming a post that doesn't exist (e.g. `99-comment-01.md` with no `99.md`) produces a build warning, not an error — the comment is simply skipped. Adding, editing, or removing a comment rebuilds its post or special page like an image change would.
 

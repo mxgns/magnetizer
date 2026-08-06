@@ -60,6 +60,8 @@ def _render_comments_section(comments):
     parts = ['<section class="comments" id="comments">', f'<h2>{heading}</h2>']
     for comment in comments:
         parts.append('<article class="comment">')
+        initial = _escape(comment.author_initial, quote=True)
+        parts.append(f'<div class="avatar author-{comment.author_slug}" data-initial="{initial}" aria-hidden="true"></div>')
         parts.append(f'<h4 class="author author-{comment.author_slug}">{_escape(comment.author)}</h4>')
         parts.append(f'<time datetime="{comment.date}">{comment.date_uk}</time>')
         parts.append(comment.body_html)
