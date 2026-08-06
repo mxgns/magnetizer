@@ -1662,12 +1662,12 @@ class TestRenderArticleCommentsSection:
 
     def test_heading_singular_for_one_comment(self):
         html = render_article(make_post(comments=[make_comment()]), on_index_page=False)
-        assert '<h3>1 comment</h3>' in html
+        assert '<h2>1 comment</h2>' in html
 
     def test_heading_plural_for_multiple_comments(self):
         comments = [make_comment(filename="1-comment-01.md"), make_comment(filename="1-comment-02.md")]
         html = render_article(make_post(comments=comments), on_index_page=False)
-        assert '<h3>2 comments</h3>' in html
+        assert '<h2>2 comments</h2>' in html
 
     def test_each_comment_is_an_article(self):
         html = render_article(make_post(comments=[make_comment()]), on_index_page=False)

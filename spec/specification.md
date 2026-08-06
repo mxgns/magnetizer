@@ -652,7 +652,7 @@ Comments are shown only on the post's (or special page's) own individual page �
 
 ```html
 <section class="comments" id="comments">
-    <h3>1 comment</h3>
+    <h2>1 comment</h2>
     <article class="comment">
         <h4 class="author author-magnus">Magnus</h4>
         <time datetime="2026-08-05">5 August 2026</time>
@@ -661,7 +661,7 @@ Comments are shown only on the post's (or special page's) own individual page �
 </section>
 ```
 
-- The `<h3>` text is `1 comment` for a single comment, `N comments` otherwise.
+- The `<h2>` text is `1 comment` for a single comment, `N comments` otherwise. It's an `<h2>` — one level below the post's own `<h1>` — rather than an `<h3>`, since the comments section is its own top-level division of the page, not a subsection of the post body.
 - Each comment is its own `<article class="comment">`.
 - `{author-slug}` in `class="author author-{author-slug}"` is derived from `author` the same way as a navigation class (see [Navigation](#navigation)): lowercased, with any run of non-alphanumeric characters collapsed to a single hyphen. This exists so a project's `resources/` CSS can target one commenter specifically (e.g. an avatar for the site owner) via `.author-magnus`, the same way other CSS-dependent conventions — e.g. the AI-disclosure icon — rely on styling the project supplies.
 - The whole `<section>` is omitted when a post or special page has no comment files — there's no empty comments section.

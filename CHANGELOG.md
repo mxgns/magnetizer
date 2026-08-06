@@ -7,7 +7,7 @@
 
 ### 6/8/26
 
-- Manually-authored comments: `{post-id}-comment-NN.md` / `{name}-comment-NN.md` files, rendered in a `<section class="comments">` on the post's own page, with a comment-count link on index/category/notes pages
+- Manually-authored comments: `{post-id}-comment-NN.md` / `{name}-comment-NN.md` files, rendered in a `<section class="comments">` (with an `<h2>` comment-count heading) on the post's own page, with a comment-count link on index/category/notes pages
 - Orphan comments (referencing a post that doesn't exist) now produce a build warning instead of being silently accepted or erroring
 
 ### 2/8/26

@@ -57,7 +57,7 @@ def _generated_post_label(post):
 def _render_comments_section(comments):
     count = len(comments)
     heading = f'{count} comment{"s" if count != 1 else ""}'
-    parts = ['<section class="comments" id="comments">', f'<h3>{heading}</h3>']
+    parts = ['<section class="comments" id="comments">', f'<h2>{heading}</h2>']
     for comment in comments:
         parts.append('<article class="comment">')
         parts.append(f'<h4 class="author author-{comment.author_slug}">{_escape(comment.author)}</h4>')
