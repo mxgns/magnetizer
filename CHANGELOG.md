@@ -7,9 +7,7 @@
 
 ### 6/8/26
 
-- Manually-authored comments: `{post-id}-comment-NN.md` / `{name}-comment-NN.md` files, rendered in a `<section class="comments">` (with an `<h2>` comment-count heading) on the post's own page, with a comment-count link on index/category/notes pages
-- Orphan comments (referencing a post that doesn't exist) now produce a build warning instead of being silently accepted or erroring
-- Each comment now also renders a `<div class="avatar author-{slug}" data-initial="{INITIAL}">` placeholder before its `<h4>`, for a project's CSS to style — no avatar look is built into Magnetizer itself
+- Added comments, published manually using .md
 
 ### 2/8/26
 
