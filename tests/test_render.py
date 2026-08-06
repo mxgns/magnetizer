@@ -19,7 +19,7 @@ from magnetizer.render import (
     render_post_page_content,
     render_template,
 )
-from conftest import make_post
+from conftest import make_comment, make_post
 
 
 # ---------------------------------------------------------------------------
@@ -1620,6 +1620,128 @@ class TestRenderArticleNotesLink:
     def test_notes_link_appears_on_index_page(self):
         html = render_article(make_post(post_type="note", title=None), on_index_page=True)
         assert 'class="notes"' in html
+
+
+# ---------------------------------------------------------------------------
+# render_article — comments section (single-post pages)
+# ---------------------------------------------------------------------------
+
+class TestRenderArticleCommentsSection:
+
+    def test_no_comments_section_when_no_comments(self):
+        html = render_article(make_post(), on_index_page=False)
+        assert 'class="comments"' not in html
+
+    def test_comments_section_present_when_comments_exist(self):
+        html = render_article(make_post(comments=[make_comment()]), on_index_page=False)
+        assert '<section class="comments" id="comments">' in html
+
+    def test_comments_section_not_rendered_on_index_page(self):
+        html = render_article(make_post(comments=[make_comment()]), on_index_page=True)
+        assert '<section class="comments"' not in html
+
+    def test_comments_section_after_footer(self):
+        html = render_article(make_post(comments=[make_comment()]), on_index_page=False)
+        footer_end = html.index('</footer>')
+        section_start = html.index('<section class="comments"')
+        assert footer_end < section_start
+
+    def test_comments_section_before_article_close(self):
+        html = render_article(make_post(comments=[make_comment()]), on_index_page=False)
+        section_start = html.index('<section class="comments"')
+        article_close = html.rindex('</article>')
+        assert section_start < article_close
+
+    def test_comments_section_present_without_footer(self):
+        # A dateless special page has no <footer>, but its comments section
+        # still renders — the two are independent.
+        post = make_post(date=None, date_uk=None, comments=[make_comment()])
+        html = render_article(post, on_index_page=False)
+        assert '<footer>' not in html
+        assert '<section class="comments" id="comments">' in html
+
+    def test_heading_singular_for_one_comment(self):
+        html = render_article(make_post(comments=[make_comment()]), on_index_page=False)
+        assert '<h3>1 comment</h3>' in html
+
+    def test_heading_plural_for_multiple_comments(self):
+        comments = [make_comment(filename="1-comment-01.md"), make_comment(filename="1-comment-02.md")]
+        html = render_article(make_post(comments=comments), on_index_page=False)
+        assert '<h3>2 comments</h3>' in html
+
+    def test_each_comment_is_an_article(self):
+        html = render_article(make_post(comments=[make_comment()]), on_index_page=False)
+        assert '<article class="comment">' in html
+
+    def test_comment_author_heading(self):
+        html = render_article(make_post(comments=[make_comment(author="Magnus", author_slug="magnus")]), on_index_page=False)
+        assert '<h4 class="author author-magnus">Magnus</h4>' in html
+
+    def test_comment_author_escaped(self):
+        html = render_article(make_post(comments=[make_comment(author="Bill & Ted", author_slug="bill-ted")]), on_index_page=False)
+        assert 'Bill &amp; Ted' in html
+
+    def test_comment_time_element(self):
+        html = render_article(make_post(comments=[make_comment(date="2026-08-05", date_uk="5 August 2026")]), on_index_page=False)
+        assert '<time datetime="2026-08-05">5 August 2026</time>' in html
+
+    def test_comment_body_html_included(self):
+        html = render_article(make_post(comments=[make_comment(body_html="<p>Nice post!</p>")]), on_index_page=False)
+        assert '<p>Nice post!</p>' in html
+
+    def test_comments_rendered_oldest_first(self):
+        c1 = make_comment(filename="1-comment-01.md", author="First")
+        c2 = make_comment(filename="1-comment-02.md", author="Second")
+        # Post.comments is already sorted by parse_post; render_article must
+        # preserve that order rather than re-sorting or reversing it.
+        html = render_article(make_post(comments=[c1, c2]), on_index_page=False)
+        assert html.index('First') < html.index('Second')
+
+
+# ---------------------------------------------------------------------------
+# render_article — comment count link (multi-post pages)
+# ---------------------------------------------------------------------------
+
+class TestRenderArticleCommentsCountLink:
+
+    def test_no_link_when_no_comments(self):
+        html = render_article(make_post(), on_index_page=True)
+        assert 'class="comments"' not in html
+
+    def test_no_link_on_single_post_page(self):
+        # The full section is shown instead — see TestRenderArticleCommentsSection.
+        html = render_article(make_post(comments=[make_comment()]), on_index_page=False)
+        assert 'href="1.html#comments"' not in html
+
+    def test_link_present_on_index_page_when_comments_exist(self):
+        html = render_article(make_post(comments=[make_comment()]), on_index_page=True)
+        assert 'href="1.html#comments" class="comments"' in html
+
+    def test_link_text_singular(self):
+        html = render_article(make_post(comments=[make_comment()]), on_index_page=True)
+        assert '>1 comment<' in html
+
+    def test_link_text_plural(self):
+        comments = [make_comment(filename="1-comment-01.md"), make_comment(filename="1-comment-02.md")]
+        html = render_article(make_post(comments=comments), on_index_page=True)
+        assert '>2 comments<' in html
+
+    def test_link_is_last_item_in_footer(self):
+        html = render_article(
+            make_post(post_type="note", title=None, category="photography", comments=[make_comment()]),
+            on_index_page=True, categories=_CATEGORIES,
+        )
+        footer_start = html.index('<footer>')
+        footer_end = html.index('</footer>')
+        footer = html[footer_start:footer_end]
+        assert footer.rindex('class="comments"') > footer.rindex('class="category"') > footer.rindex('class="notes"')
+
+    def test_link_inside_footer(self):
+        html = render_article(make_post(comments=[make_comment()]), on_index_page=True)
+        footer_start = html.index('<footer>')
+        footer_end = html.index('</footer>')
+        link_pos = html.index('class="comments"')
+        assert footer_start < link_pos < footer_end
 
 
 # ---------------------------------------------------------------------------

@@ -3,10 +3,11 @@ import sys
 from pathlib import Path
 from typing import NoReturn
 
-from magnetizer.content import IMAGE_EXTENSIONS, _IMAGE_EXT_RE, special_page_image_pattern
+from magnetizer.content import IMAGE_EXTENSIONS, _IMAGE_EXT_RE, special_page_comment_pattern, special_page_image_pattern
 
 _MD_PATTERN = re.compile(r'^([1-9]\d*)\.md$')
 _IMAGE_PATTERN = re.compile(rf'^([1-9]\d*)-image-(\d{{2}})\.({_IMAGE_EXT_RE})$')
+_COMMENT_PATTERN = re.compile(r'^([1-9]\d*)-comment-(\d{2})\.md$')
 _BASE_RESERVED_SLUGS = {"index", "archive"}
 _INDEX_PAGE_SLUG_PATTERN = re.compile(r'^index-\d+$')
 
@@ -57,9 +58,11 @@ def validate_content(content_dir, config=None):
 
     special_md_names = {f"{name}.md" for name in special_pages}
     special_image_patterns = [special_page_image_pattern(name) for name in special_pages]
+    special_comment_patterns = [special_page_comment_pattern(name) for name in special_pages]
     if not_found_input:
         special_md_names.add(not_found_input)
         special_image_patterns.append(special_page_image_pattern(Path(not_found_input).stem))
+        special_comment_patterns.append(special_page_comment_pattern(Path(not_found_input).stem))
 
     md_ids = set()
     image_ids = set()
@@ -74,6 +77,13 @@ def validate_content(content_dir, config=None):
         if name in special_md_names:
             continue
         if any(pattern.match(name) for pattern in special_image_patterns):
+            continue
+        if any(pattern.match(name) for pattern in special_comment_patterns):
+            continue
+        if _COMMENT_PATTERN.match(name):
+            # Comments are lenient by design — numbering gaps and comments on a
+            # post that doesn't exist are a build-time warning, not a hard
+            # validation error like orphan/gapped images.
             continue
         if name.endswith('.md'):
             m = _MD_PATTERN.match(name)
