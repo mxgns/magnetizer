@@ -478,6 +478,96 @@ class TestValidateContentNotFoundPage:
 
 
 # ---------------------------------------------------------------------------
+# validate_content — comment filenames
+# ---------------------------------------------------------------------------
+
+MINIMAL_COMMENT_MD = b"---\ndate: 2026-08-05\nauthor: Magnus\n---\nHi\n"
+
+
+class TestValidateContentCommentFilenames:
+
+    def test_passes_with_comment_on_existing_post(self, tmp_path):
+        content = make_content(tmp_path, {
+            "1.md": MINIMAL_MD,
+            "1-comment-01.md": MINIMAL_COMMENT_MD,
+        })
+        validate_content(content)  # should not raise
+
+    def test_passes_with_multiple_comments(self, tmp_path):
+        content = make_content(tmp_path, {
+            "1.md": MINIMAL_MD,
+            "1-comment-01.md": MINIMAL_COMMENT_MD,
+            "1-comment-02.md": MINIMAL_COMMENT_MD,
+        })
+        validate_content(content)  # should not raise
+
+    def test_passes_with_comment_referencing_nonexistent_post(self, tmp_path):
+        # Orphan comments are a warning (raised elsewhere during the build), not
+        # a validation error — unlike orphan images.
+        content = make_content(tmp_path, {
+            "1.md": MINIMAL_MD,
+            "2-comment-01.md": MINIMAL_COMMENT_MD,
+        })
+        validate_content(content)  # should not raise
+
+    def test_passes_with_comment_numbering_gap(self, tmp_path):
+        # Comment numbering is lenient, unlike image numbering.
+        content = make_content(tmp_path, {
+            "1.md": MINIMAL_MD,
+            "1-comment-01.md": MINIMAL_COMMENT_MD,
+            "1-comment-03.md": MINIMAL_COMMENT_MD,
+        })
+        validate_content(content)  # should not raise
+
+    def test_passes_with_comment_not_starting_at_01(self, tmp_path):
+        content = make_content(tmp_path, {
+            "1.md": MINIMAL_MD,
+            "1-comment-02.md": MINIMAL_COMMENT_MD,
+        })
+        validate_content(content)  # should not raise
+
+    def test_fails_for_comment_with_single_digit_number(self, tmp_path):
+        content = make_content(tmp_path, {
+            "1.md": MINIMAL_MD,
+            "1-comment-1.md": MINIMAL_COMMENT_MD,
+        })
+        with pytest.raises(SystemExit):
+            validate_content(content)
+
+    def test_fails_for_comment_with_zero_padded_post_id(self, tmp_path):
+        content = make_content(tmp_path, {
+            "1.md": MINIMAL_MD,
+            "01-comment-01.md": MINIMAL_COMMENT_MD,
+        })
+        with pytest.raises(SystemExit):
+            validate_content(content)
+
+    def test_passes_with_special_page_comment(self, tmp_path):
+        content = make_content(tmp_path, {
+            "1.md": MINIMAL_MD,
+            "about.md": MINIMAL_MD,
+            "about-comment-01.md": MINIMAL_COMMENT_MD,
+        })
+        validate_content(content, config={"special_pages": ["about"]})  # should not raise
+
+    def test_special_page_comment_without_config_entry_is_unrecognised(self, tmp_path):
+        content = make_content(tmp_path, {
+            "1.md": MINIMAL_MD,
+            "about-comment-01.md": MINIMAL_COMMENT_MD,
+        })
+        with pytest.raises(SystemExit):
+            validate_content(content)  # "about" isn't a configured special page
+
+    def test_passes_with_404_page_comment(self, tmp_path):
+        content = make_content(tmp_path, {
+            "1.md": MINIMAL_MD,
+            "error-404.md": MINIMAL_MD,
+            "error-404-comment-01.md": MINIMAL_COMMENT_MD,
+        })
+        validate_content(content, config=_404_CONFIG)  # should not raise
+
+
+# ---------------------------------------------------------------------------
 # validate_config — site_url required
 # ---------------------------------------------------------------------------
 

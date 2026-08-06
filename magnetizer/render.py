@@ -54,6 +54,22 @@ def _generated_post_label(post):
     return f"{kind} posted {post.date_uk}" if post.date_uk else kind
 
 
+def _render_comments_section(comments):
+    count = len(comments)
+    heading = f'{count} comment{"s" if count != 1 else ""}'
+    parts = ['<section class="comments" id="comments">', f'<h2>{heading}</h2>']
+    for comment in comments:
+        parts.append('<article class="comment">')
+        initial = _escape(comment.author_initial, quote=True)
+        parts.append(f'<div class="avatar author-{comment.author_slug}" data-initial="{initial}" aria-hidden="true"></div>')
+        parts.append(f'<h4 class="author author-{comment.author_slug}">{_escape(comment.author)}</h4>')
+        parts.append(f'<time datetime="{comment.date}">{comment.date_uk}</time>')
+        parts.append(comment.body_html)
+        parts.append('</article>')
+    parts.append('</section>')
+    return '\n'.join(parts)
+
+
 def render_article(post, on_index_page, categories=None, ai_disclosure_html=None, images_per_post=2):
     article_class = "multiple-posts" if on_index_page else "single-post"
     if post.post_type in _POST_TYPE_CLASS:
@@ -111,7 +127,14 @@ def render_article(post, on_index_page, categories=None, ai_disclosure_html=None
         if post.category and categories and post.category in categories:
             display_name = _escape(categories[post.category])
             footer_parts.append(f'<a href="{post.category}.html" class="category">{display_name}</a>')
+        if on_index_page and post.comments:
+            count = len(post.comments)
+            label = f'{count} comment{"s" if count != 1 else ""}'
+            footer_parts.append(f'<a href="{post.url}#comments" class="comments">{label}</a>')
         parts.append(f'<footer>{"".join(footer_parts)}</footer>')
+
+    if not on_index_page and post.comments:
+        parts.append(_render_comments_section(post.comments))
 
     parts.append('</article>')
     return '\n'.join(parts)

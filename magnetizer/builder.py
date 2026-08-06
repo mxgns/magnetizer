@@ -7,7 +7,7 @@ from datetime import datetime as _datetime
 from pathlib import Path
 
 from magnetizer.config import load_config
-from magnetizer.content import _IMAGE_EXT_RE, parse_post, special_page_image_pattern
+from magnetizer.content import _IMAGE_EXT_RE, parse_comment, parse_post, special_page_comment_pattern, special_page_image_pattern
 from magnetizer.dynamic import compute_base_values, compute_word_count, expand_shortcodes, format_int, wrap_scalar
 from magnetizer.image import resize_image
 from magnetizer.manifest import (
@@ -85,11 +85,38 @@ def _image_filenames_for_post(content_dir, post_id):
     )
 
 
+_ORPHAN_COMMENT_PATTERN = re.compile(r'^([1-9]\d*)-comment-\d{2}\.md$')
+
+
+def _comment_filenames_for_post(content_dir, post_id):
+    pattern = re.compile(rf'^{post_id}-comment-\d{{2}}\.md$')
+    return sorted(
+        f.name for f in content_dir.iterdir() if pattern.match(f.name)
+    )
+
+
+def _load_comments(content_dir, filenames, site_url=""):
+    return [
+        parse_comment((content_dir / name).read_text(), name, site_url)
+        for name in filenames
+    ]
+
+
+def _orphan_comment_warnings(content_dir, published_post_ids):
+    warnings = []
+    for f in sorted(content_dir.iterdir(), key=lambda f: f.name):
+        m = _ORPHAN_COMMENT_PATTERN.match(f.name)
+        if m and int(m.group(1)) not in published_post_ids:
+            warnings.append(("build", f"Comment '{f.name}' has no matching post {m.group(1)}.md in content/"))
+    return warnings
+
+
 def _load_post(content_dir, post_id, site_url=""):
     md_path = content_dir / f"{post_id}.md"
     md_text = md_path.read_text()
     images = _image_filenames_for_post(content_dir, post_id)
-    return parse_post(md_text, post_id, images, site_url)
+    comments = _load_comments(content_dir, _comment_filenames_for_post(content_dir, post_id), site_url)
+    return parse_post(md_text, post_id, images, site_url, comments=comments)
 
 
 def _delete_post_files(dist_dir, post_id):
@@ -270,10 +297,16 @@ def _special_page_image_filenames(content_dir, name):
     return sorted(f.name for f in content_dir.iterdir() if pattern.match(f.name))
 
 
+def _special_page_comment_filenames(content_dir, name):
+    pattern = special_page_comment_pattern(name)
+    return sorted(f.name for f in content_dir.iterdir() if pattern.match(f.name))
+
+
 def _load_special_page_post(content_dir, name, site_url=""):
     md_text = (content_dir / f"{name}.md").read_text()
     images = _special_page_image_filenames(content_dir, name)
-    return parse_post(md_text, name, images, site_url)
+    comments = _load_comments(content_dir, _special_page_comment_filenames(content_dir, name), site_url)
+    return parse_post(md_text, name, images, site_url, comments=comments)
 
 
 def _build_special_page(name, content_dir, dist_dir, config, template, values, warn, output_filename=None):
@@ -307,14 +340,14 @@ def _build_special_page(name, content_dir, dist_dir, config, template, values, w
     return w, dynamic_flag
 
 
-def _special_page_changed(content_dir, manifest, md_name, image_pattern=None):
+def _special_page_changed(content_dir, manifest, md_name, patterns=()):
     relevant = {md_name}
-    if image_pattern:
+    for pattern in patterns:
         for f in content_dir.iterdir():
-            if image_pattern.match(f.name):
+            if pattern.match(f.name):
                 relevant.add(f.name)
         for name in manifest:
-            if image_pattern.match(name):
+            if pattern.match(name):
                 relevant.add(name)
     for name in relevant:
         f = content_dir / name
@@ -448,7 +481,7 @@ def _determine_full_build_scope(changed_post_ids, content_dir, manifest, prev_pa
     if not_found_name:
         special_page_checks.append((not_found_name, config["404-page-input-filename"]))
     any_special_page_changed = any(
-        _special_page_changed(content_dir, manifest, md_name, special_page_image_pattern(name))
+        _special_page_changed(content_dir, manifest, md_name, [special_page_image_pattern(name), special_page_comment_pattern(name)])
         for name, md_name in special_page_checks
     )
     any_relevant_change = bool(changed_post_ids) or any_special_page_changed
@@ -530,7 +563,7 @@ def _rebuild_stale_special_pages(config, content_dir, dist_dir, template, values
     specials_rebuilt = False
     for name in config["special_pages"]:
         page_filename = f"{name}.html"
-        should_build = _special_page_changed(content_dir, manifest, f"{name}.md", special_page_image_pattern(name))
+        should_build = _special_page_changed(content_dir, manifest, f"{name}.md", [special_page_image_pattern(name), special_page_comment_pattern(name)])
         if not should_build and any_relevant_change:
             should_build = bool(prev_pages.get(page_filename, {}).get("dynamic"))
         if should_build:
@@ -551,7 +584,7 @@ def _rebuild_stale_not_found_page(config, content_dir, dist_dir, template, value
     if not name:
         return False
     output_filename = config["404-page-output-filename"]
-    should_build = _special_page_changed(content_dir, manifest, config["404-page-input-filename"], special_page_image_pattern(name))
+    should_build = _special_page_changed(content_dir, manifest, config["404-page-input-filename"], [special_page_image_pattern(name), special_page_comment_pattern(name)])
     if not should_build and any_relevant_change:
         should_build = bool(prev_pages.get(output_filename, {}).get("dynamic"))
     if not should_build:
@@ -602,13 +635,16 @@ def _write_generated_pages(published_posts_sorted_desc, dist_dir, config, templa
 def _write_sitemap_and_robots(published_post_ids_sorted_desc, published_posts_sorted_desc, posts_cache, content_dir, dist_dir, config, special_page_posts_by_name, log):
     per_page = config["posts_per_page"]
     total_pages = max(1, (len(published_post_ids_sorted_desc) + per_page - 1) // per_page)
-    index_lastmod = _lastmod([content_dir / f"{pid}.md" for pid in published_post_ids_sorted_desc])
+    index_lastmod = _lastmod(
+        [content_dir / f"{pid}.md" for pid in published_post_ids_sorted_desc]
+        + [content_dir / c.filename for pid in published_post_ids_sorted_desc for c in posts_cache[pid].comments]
+    )
     sitemap_pages = []
     for pid in published_post_ids_sorted_desc:
         if posts_cache[pid].is_noindex:
             continue
         post_files = [content_dir / f"{pid}.md"] + [
-            f for f in content_dir.iterdir() if re.match(rf'^{pid}-image-', f.name)
+            f for f in content_dir.iterdir() if re.match(rf'^{pid}-(image|comment)-', f.name)
         ]
         sitemap_pages.append((f"{pid}.html", _lastmod(post_files)))
     for page_num in range(1, total_pages + 1):
@@ -619,13 +655,20 @@ def _write_sitemap_and_robots(published_post_ids_sorted_desc, published_posts_so
             cat_lastmod = _lastmod([
                 path
                 for p in cat_posts
-                for path in [content_dir / f"{p.id}.md"] + [content_dir / img.filename for img in p.images]
+                for path in (
+                    [content_dir / f"{p.id}.md"]
+                    + [content_dir / img.filename for img in p.images]
+                    + [content_dir / c.filename for c in p.comments]
+                )
             ])
             for page_num in range(1, total_cat_pages + 1):
                 sitemap_pages.append((category_page_url(slug, page_num), cat_lastmod))
     note_posts_all = [p for p in published_posts_sorted_desc if p.post_type == "note"]
     if note_posts_all:
-        notes_lastmod = _lastmod([content_dir / f"{p.id}.md" for p in note_posts_all])
+        notes_lastmod = _lastmod(
+            [content_dir / f"{p.id}.md" for p in note_posts_all]
+            + [content_dir / c.filename for p in note_posts_all for c in p.comments]
+        )
         notes_per_page_sitemap = config["notes_per_page"]
         total_notes_pages_sitemap = max(1, (len(note_posts_all) + notes_per_page_sitemap - 1) // notes_per_page_sitemap)
         for page_num in range(1, total_notes_pages_sitemap + 1):
@@ -635,6 +678,8 @@ def _write_sitemap_and_robots(published_post_ids_sorted_desc, published_posts_so
             continue
         page_files = [content_dir / f"{name}.md"] + [
             content_dir / img for img in _special_page_image_filenames(content_dir, name)
+        ] + [
+            content_dir / c for c in _special_page_comment_filenames(content_dir, name)
         ]
         sitemap_pages.append((f"{name}.html", _lastmod(page_files)))
     sitemap_pages.append(("archive.html", index_lastmod))
@@ -679,6 +724,7 @@ def build(cwd, filename=None, flush=False, resources=False, on_progress=None):
     ) = _load_content(content_dir, config)
 
     _check_no_invalid_posts(published_posts_sorted_desc, special_page_posts, not_found_post)
+    warnings.extend(_orphan_comment_warnings(content_dir, set(published_post_ids_sorted_desc)))
 
     # Sitewide dynamic-value computation runs unconditionally (even for a single-page
     # preview build) so that any shortcodes on the page(s) being built expand correctly.

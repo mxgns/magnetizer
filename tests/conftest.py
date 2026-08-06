@@ -1,4 +1,4 @@
-from magnetizer.content import Image, Post
+from magnetizer.content import Comment, Image, Post
 
 TEMPLATE = (
     "<!DOCTYPE html><html><head>MAGNETIZER_METADATA</head>"
@@ -23,6 +23,26 @@ def make_project(tmp_path, posts=None, config=_DEFAULT_CONFIG):
     return tmp_path
 
 
+def make_comment(
+    filename="1-comment-01.md",
+    date="2026-08-05",
+    date_uk="5 August 2026",
+    author="Magnus",
+    author_slug="magnus",
+    author_initial="M",
+    body_html="<p>Hello</p>",
+):
+    return Comment(
+        filename=filename,
+        date=date,
+        date_uk=date_uk,
+        author=author,
+        author_slug=author_slug,
+        author_initial=author_initial,
+        body_html=body_html,
+    )
+
+
 def make_post(
     post_id=1,
     date="2026-05-24",
@@ -37,6 +57,7 @@ def make_post(
     is_ai_assisted: bool = False,
     inline_image_filenames=frozenset(),
     excerpt_inline_image_filenames=frozenset(),
+    comments=None,
 ):
     image_objects = [
         img if isinstance(img, Image) else Image(filename=img, alt="")
@@ -63,6 +84,7 @@ def make_post(
         is_ai_assisted=is_ai_assisted,
         inline_image_filenames=frozenset(inline_image_filenames),
         excerpt_inline_image_filenames=frozenset(excerpt_inline_image_filenames),
+        comments=comments or [],
     )
 
 

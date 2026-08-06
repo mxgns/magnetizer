@@ -1,7 +1,7 @@
 """Tests for magnetizer/content.py — Post dataclass and parse_post()"""
 
 import pytest
-from magnetizer.content import Post, parse_post
+from magnetizer.content import Post, parse_post, Comment, parse_comment, special_page_comment_pattern
 
 
 # ---------------------------------------------------------------------------
@@ -845,3 +845,204 @@ class TestInlineImageTokens:
     def test_excerpt_inline_image_filenames_empty_when_no_tokens(self):
         post = parse_post(make_md(body="Hello"), 1, [])
         assert post.excerpt_inline_image_filenames == frozenset()
+
+
+# ---------------------------------------------------------------------------
+# Comments — parse_comment()
+# ---------------------------------------------------------------------------
+
+def make_comment_md(date="2026-08-05", author="Magnus", body="Hello there."):
+    lines = ["---"]
+    if date is not None:
+        lines.append(f"date: {date}")
+    if author is not None:
+        lines.append(f"author: {author}")
+    lines.append("---")
+    if body:
+        lines.append("")
+        lines.append(body)
+    return "\n".join(lines) + "\n"
+
+
+class TestParseComment:
+
+    def test_date_extracted(self):
+        comment = parse_comment(make_comment_md(date="2026-08-05"), "1-comment-01.md")
+        assert comment.date == "2026-08-05"
+
+    def test_date_uk_formatted(self):
+        comment = parse_comment(make_comment_md(date="2026-08-05"), "1-comment-01.md")
+        assert comment.date_uk == "5 August 2026"
+
+    def test_author_extracted(self):
+        comment = parse_comment(make_comment_md(author="Magnus"), "1-comment-01.md")
+        assert comment.author == "Magnus"
+
+    def test_filename_stored(self):
+        comment = parse_comment(make_comment_md(), "1-comment-01.md")
+        assert comment.filename == "1-comment-01.md"
+
+    def test_body_rendered_as_html(self):
+        comment = parse_comment(make_comment_md(body="Hello **world**"), "1-comment-01.md")
+        assert "<p>Hello <strong>world</strong></p>" in comment.body_html
+
+    def test_missing_date_errors(self):
+        md = "---\nauthor: Magnus\n---\nHi\n"
+        with pytest.raises(SystemExit):
+            parse_comment(md, "1-comment-01.md")
+
+    def test_missing_author_errors(self):
+        md = "---\ndate: 2026-08-05\n---\nHi\n"
+        with pytest.raises(SystemExit):
+            parse_comment(md, "1-comment-01.md")
+
+    def test_blank_author_errors(self):
+        md = "---\ndate: 2026-08-05\nauthor:\n---\nHi\n"
+        with pytest.raises(SystemExit):
+            parse_comment(md, "1-comment-01.md")
+
+    def test_blank_date_errors(self):
+        md = "---\ndate:\nauthor: Magnus\n---\nHi\n"
+        with pytest.raises(SystemExit):
+            parse_comment(md, "1-comment-01.md")
+
+    def test_unknown_key_warns(self, capsys):
+        md = "---\ndate: 2026-08-05\nauthor: Magnus\nfoo: bar\n---\nHi\n"
+        parse_comment(md, "1-comment-01.md")
+        out = capsys.readouterr().out
+        assert "Warning" in out
+        assert "foo" in out
+
+    def test_warning_mentions_filename(self, capsys):
+        md = "---\ndate: 2026-08-05\nauthor: Magnus\nfoo: bar\n---\nHi\n"
+        parse_comment(md, "12-comment-02.md")
+        assert "12-comment-02.md" in capsys.readouterr().out
+
+    def test_no_warning_for_valid_keys(self, capsys):
+        parse_comment(make_comment_md(), "1-comment-01.md")
+        assert "Warning" not in capsys.readouterr().out
+
+    def test_empty_body_produces_empty_string(self):
+        comment = parse_comment(make_comment_md(body=""), "1-comment-01.md")
+        assert comment.body_html == ""
+
+
+class TestCommentAuthorSlug:
+
+    def test_simple_name(self):
+        comment = parse_comment(make_comment_md(author="Magnus"), "1-comment-01.md")
+        assert comment.author_slug == "magnus"
+
+    def test_name_with_space_collapsed_to_hyphen(self):
+        comment = parse_comment(make_comment_md(author="Jane Doe"), "1-comment-01.md")
+        assert comment.author_slug == "jane-doe"
+
+    def test_name_with_punctuation_collapsed(self):
+        comment = parse_comment(make_comment_md(author="O'Brien!!"), "1-comment-01.md")
+        assert comment.author_slug == "o-brien"
+
+    def test_uppercase_name_lowercased(self):
+        comment = parse_comment(make_comment_md(author="MAGNUS"), "1-comment-01.md")
+        assert comment.author_slug == "magnus"
+
+
+class TestCommentAuthorInitial:
+
+    def test_simple_name(self):
+        comment = parse_comment(make_comment_md(author="Magnus"), "1-comment-01.md")
+        assert comment.author_initial == "M"
+
+    def test_lowercase_name_uppercased(self):
+        comment = parse_comment(make_comment_md(author="magnus"), "1-comment-01.md")
+        assert comment.author_initial == "M"
+
+    def test_already_uppercase_first_letter(self):
+        comment = parse_comment(make_comment_md(author="MAGNUS"), "1-comment-01.md")
+        assert comment.author_initial == "M"
+
+    def test_single_character_name(self):
+        comment = parse_comment(make_comment_md(author="M"), "1-comment-01.md")
+        assert comment.author_initial == "M"
+
+    def test_only_first_character_used(self):
+        comment = parse_comment(make_comment_md(author="Jane Doe"), "1-comment-01.md")
+        assert comment.author_initial == "J"
+
+    def test_accented_character_uppercased(self):
+        comment = parse_comment(make_comment_md(author="åsa"), "1-comment-01.md")
+        assert comment.author_initial == "Å"
+
+
+class TestCommentExternalLinks:
+
+    def test_external_link_gets_target_blank_and_rel_noopener(self):
+        comment = parse_comment(make_comment_md(body="[click](https://example.com)"), "1-comment-01.md", site_url="https://mxgns.uk")
+        assert 'target="_blank"' in comment.body_html
+        assert 'rel="noopener"' in comment.body_html
+        assert 'class="external-link"' in comment.body_html
+
+    def test_relative_link_untouched(self):
+        comment = parse_comment(make_comment_md(body="[click](/about.html)"), "1-comment-01.md", site_url="https://mxgns.uk")
+        assert 'target="_blank"' not in comment.body_html
+
+    def test_link_to_own_site_untouched(self):
+        comment = parse_comment(make_comment_md(body="[click](https://mxgns.uk/5.html)"), "1-comment-01.md", site_url="https://mxgns.uk")
+        assert 'target="_blank"' not in comment.body_html
+
+
+class TestCommentNoExtendedFeatures:
+
+    def test_container_fence_not_expanded(self):
+        comment = parse_comment(make_comment_md(body="::: my-class\nContent\n:::"), "1-comment-01.md")
+        assert '<div class="container' not in comment.body_html
+
+    def test_shortcode_left_as_literal_text(self):
+        comment = parse_comment(make_comment_md(body="{{ post_count }}"), "1-comment-01.md")
+        assert "{{ post_count }}" in comment.body_html
+
+    def test_inline_image_token_left_as_literal_text(self):
+        comment = parse_comment(make_comment_md(body="{{ image 1 }}"), "1-comment-01.md")
+        assert "{{ image 1 }}" in comment.body_html
+
+
+class TestSpecialPageCommentPattern:
+
+    def test_matches_expected_filename(self):
+        pattern = special_page_comment_pattern("about")
+        assert pattern.match("about-comment-01.md")
+
+    def test_does_not_match_different_name(self):
+        pattern = special_page_comment_pattern("about")
+        assert not pattern.match("cookies-comment-01.md")
+
+    def test_does_not_match_image_filename(self):
+        pattern = special_page_comment_pattern("about")
+        assert not pattern.match("about-image-01.jpg")
+
+
+# ---------------------------------------------------------------------------
+# Post.comments
+# ---------------------------------------------------------------------------
+
+class TestPostComments:
+
+    def test_comments_empty_by_default(self):
+        post = parse_post(make_md(), 1, [])
+        assert post.comments == []
+
+    def test_comments_attached(self):
+        comment = parse_comment(make_comment_md(), "1-comment-01.md")
+        post = parse_post(make_md(), 1, [], comments=[comment])
+        assert post.comments == [comment]
+
+    def test_comments_sorted_by_number_oldest_first(self):
+        c2 = parse_comment(make_comment_md(), "1-comment-02.md")
+        c1 = parse_comment(make_comment_md(), "1-comment-01.md")
+        post = parse_post(make_md(), 1, [], comments=[c2, c1])
+        assert [c.filename for c in post.comments] == ["1-comment-01.md", "1-comment-02.md"]
+
+    def test_comments_sorted_leniently_with_gaps(self):
+        c3 = parse_comment(make_comment_md(), "1-comment-03.md")
+        c1 = parse_comment(make_comment_md(), "1-comment-01.md")
+        post = parse_post(make_md(), 1, [], comments=[c3, c1])
+        assert [c.filename for c in post.comments] == ["1-comment-01.md", "1-comment-03.md"]

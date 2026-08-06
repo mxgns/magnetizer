@@ -165,6 +165,29 @@ This is the single reference for every frontmatter key a post or special page ca
 - **`ai_assisted`** — inserts a disclosure banner above the post's heading, wherever it's shown (individual page, and index/category excerpts or full body). The banner text comes from `ai_disclosure_html` in `config.yaml` (raw HTML, so it can include a link) — Magnetizer falls back to a generic sentence if `ai_disclosure_html` isn't set. The banner needs the `.container-brown` and `.ai-disclosure` CSS rules to be present in the project's `resources/` directory — the icon itself is a CSS background image, base64-encoded in the project's own stylesheet, same as every other icon on the site.
 - **`noindex`** — excludes the page from `sitemap.xml` and adds a `<meta name="robots" content="noindex">` tag via `MAGNETIZER_METADATA`, but is otherwise treated normally (still shown on index pages, category pages, the feed, the archive, and post navigation) — it only affects search indexing. Works the same way on special pages as on posts.
 
+## Comments
+
+Comments are for posting manual updates on a post or special page — e.g. linking to a follow-up once it's published. There's no way for a visitor to leave one; anything here has been added by hand.
+
+A comment is its own Markdown file: `{post-id}-comment-{nn}.md` for a post (`12-comment-01.md`), or `{name}-comment-{nn}.md` for a special page (`about-comment-01.md`). Unlike image numbering, comment numbers don't need to be contiguous or start at `01`.
+
+```markdown
+---
+date: 2026-08-05
+author: Magnus
+---
+
+I have now published the [second part](13.html).
+```
+
+Both `date` and `author` are required — the build errors if either is missing. The body is Markdown, with the same automatic external-link handling as a post body, but no container blocks, `{{ image N }}` tokens, or `{{ shortcode }}` values.
+
+Comments show up only on the post's or special page's own page, inside `<section class="comments" id="comments">`, oldest first — regardless of the comment's own date. Index, category, and notes pages instead get a `N comment(s)` link in the post's footer, pointing at `{post-id}.html#comments`.
+
+Each comment's author name is slugified into a `class="author author-{slug}"`, shared by its `<h4>` and by a `<div class="avatar author-{slug}" data-initial="{INITIAL}" aria-hidden="true"></div>` placed just before it — `{INITIAL}` is the upper-cased first character of the author's name. Magnetizer renders no avatar styling itself; a project's own CSS decides what that `<div>` looks like, typically the initial shown via `content: attr(data-initial)` on a pseudo-element for a default "no photo" look, with a specific commenter's `author-{slug}` class overridden to show a real image instead.
+
+A comment naming a post that doesn't exist (e.g. `99-comment-01.md` with no `99.md`) produces a build warning, not an error — the comment is simply skipped. Adding, editing, or removing a comment rebuilds its post or special page like an image change would.
+
 ## Building the site
 
 Run `build.py` from your project directory.
@@ -216,6 +239,7 @@ All files live flat in `content/` — no subdirectories.
 
 - Markdown files: `{post-id}.md` (e.g. `42.md`)
 - Image files: `{post-id}-image-{nn}.jpg/jpeg/png/svg` (e.g. `42-image-01.jpg`) — numbering must start at `01` with no gaps; the build errors out otherwise
+- Comment files: `{post-id}-comment-{nn}.md` or `{name}-comment-{nn}.md` (e.g. `42-comment-01.md`, `about-comment-01.md`) — see [Comments](#comments)
 - One `{name}.md` per entry in `special_pages` (e.g. `about.md`, `cookies.md`) — see [Special pages](#special-pages)
 
 Posts are displayed in reverse order by post ID — a higher ID means a newer post.

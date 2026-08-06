@@ -5,6 +5,10 @@
 
 ## Released changes
 
+### 6/8/26
+
+- Added comments, published manually using .md
+
 ### 2/8/26
 
 - Atom feed entries' `<link>` now carries a `?src=atom` query param (for the tracking pixel's traffic-source attribution); `<id>` stays a clean, tracking-free URL per the Atom spec's stable-identifier convention

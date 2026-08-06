@@ -2537,3 +2537,265 @@ class TestSpecialPagePreviewBuildSharedTail:
         )
         build(p, filename="1.md")
         assert "Updated about content" not in (p / "dist" / "about.html").read_text()
+
+
+# ---------------------------------------------------------------------------
+# Comments
+# ---------------------------------------------------------------------------
+
+COMMENT_MD = "---\ndate: 2026-08-05\nauthor: Magnus\n---\n\nGreat post!\n"
+
+
+class TestCommentsOnPostPage:
+
+    def test_comment_appears_on_post_page(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD})
+        (p / "content" / "1-comment-01.md").write_text(COMMENT_MD)
+        build(p)
+        html = (p / "dist" / "1.html").read_text()
+        assert "Great post!" in html
+        assert '<section class="comments" id="comments">' in html
+
+    def test_no_comments_section_when_no_comment_files(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD})
+        build(p)
+        assert 'class="comments"' not in (p / "dist" / "1.html").read_text()
+
+    def test_multiple_comments_appear_in_number_order(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD})
+        (p / "content" / "1-comment-01.md").write_text(
+            "---\ndate: 2026-08-05\nauthor: Magnus\n---\n\nFirst comment.\n"
+        )
+        (p / "content" / "1-comment-02.md").write_text(
+            "---\ndate: 2026-08-06\nauthor: Magnus\n---\n\nSecond comment.\n"
+        )
+        build(p)
+        html = (p / "dist" / "1.html").read_text()
+        assert html.index("First comment.") < html.index("Second comment.")
+
+    def test_comment_not_on_other_posts_page(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD, 2: MINIMAL_MD})
+        (p / "content" / "1-comment-01.md").write_text(COMMENT_MD)
+        build(p)
+        assert "Great post!" not in (p / "dist" / "2.html").read_text()
+
+    def test_comment_count_link_on_index_page(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD})
+        (p / "content" / "1-comment-01.md").write_text(COMMENT_MD)
+        build(p)
+        html = (p / "dist" / "index.html").read_text()
+        assert 'href="1.html#comments" class="comments"' in html
+        assert ">1 comment<" in html
+
+    def test_full_comments_section_not_on_index_page(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD})
+        (p / "content" / "1-comment-01.md").write_text(COMMENT_MD)
+        build(p)
+        assert "Great post!" not in (p / "dist" / "index.html").read_text()
+
+    def test_comment_count_link_on_notes_page(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD})
+        (p / "content" / "1-comment-01.md").write_text(COMMENT_MD)
+        build(p)
+        html = (p / "dist" / "notes.html").read_text()
+        assert 'href="1.html#comments" class="comments"' in html
+
+
+class TestCommentsOnSpecialPage:
+
+    def test_comment_appears_on_special_page(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD}, config=_ABOUT_CONFIG)
+        (p / "content" / "about.md").write_text(ABOUT_MD)
+        (p / "content" / "about-comment-01.md").write_text(COMMENT_MD)
+        build(p)
+        html = (p / "dist" / "about.html").read_text()
+        assert "Great post!" in html
+        assert '<section class="comments" id="comments">' in html
+
+
+class TestOrphanCommentWarning:
+
+    def test_comment_on_nonexistent_post_produces_warning(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD})
+        (p / "content" / "2-comment-01.md").write_text(COMMENT_MD)
+        warnings = build(p)["warnings"]
+        assert any("2-comment-01.md" in msg for _, msg in warnings)
+
+    def test_orphan_comment_warning_does_not_error(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD})
+        (p / "content" / "2-comment-01.md").write_text(COMMENT_MD)
+        build(p)  # should not raise
+
+    def test_no_orphan_warning_when_post_exists(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD})
+        (p / "content" / "1-comment-01.md").write_text(COMMENT_MD)
+        warnings = build(p)["warnings"]
+        assert not any("comment" in msg.lower() for _, msg in warnings)
+
+    def test_orphan_comment_warning_marks_done_with_warnings(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD})
+        (p / "content" / "2-comment-01.md").write_text(COMMENT_MD)
+        warnings = build(p)["warnings"]
+        assert any(f == "build" for f, _ in warnings)
+
+
+class TestCommentIncrementalRebuild:
+
+    def test_new_comment_rebuilds_post_page(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD})
+        build(p)
+        assert "Great post!" not in (p / "dist" / "1.html").read_text()
+
+        (p / "content" / "1-comment-01.md").write_text(COMMENT_MD)
+        build(p)
+        assert "Great post!" in (p / "dist" / "1.html").read_text()
+
+    def test_changed_comment_rebuilds_post_page(self, tmp_path):
+        import time
+        p = make_project(tmp_path, posts={1: MINIMAL_MD})
+        (p / "content" / "1-comment-01.md").write_text(COMMENT_MD)
+        build(p)
+        time.sleep(0.01)
+        (p / "content" / "1-comment-01.md").write_text(
+            "---\ndate: 2026-08-05\nauthor: Magnus\n---\n\nEdited comment.\n"
+        )
+        build(p)
+        html = (p / "dist" / "1.html").read_text()
+        assert "Edited comment." in html
+        assert "Great post!" not in html
+
+    def test_deleted_comment_removed_from_post_page(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD})
+        (p / "content" / "1-comment-01.md").write_text(COMMENT_MD)
+        build(p)
+        (p / "content" / "1-comment-01.md").unlink()
+        build(p)
+        assert "Great post!" not in (p / "dist" / "1.html").read_text()
+        assert 'class="comments"' not in (p / "dist" / "1.html").read_text()
+
+    def test_new_comment_on_special_page_rebuilds_it(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD}, config=_ABOUT_CONFIG)
+        (p / "content" / "about.md").write_text(ABOUT_MD)
+        build(p)
+        assert "Great post!" not in (p / "dist" / "about.html").read_text()
+
+        (p / "content" / "about-comment-01.md").write_text(COMMENT_MD)
+        build(p)
+        assert "Great post!" in (p / "dist" / "about.html").read_text()
+
+
+class TestCommentSitemapLastmod:
+
+    def test_new_comment_bumps_post_lastmod(self, tmp_path):
+        import os
+        p = make_project(tmp_path, posts={1: MINIMAL_MD})
+        md_mtime = 1609459200.0  # 2021-01-01
+        os.utime(p / "content" / "1.md", (md_mtime, md_mtime))
+        build(p)
+        sitemap_before = (p / "dist" / "sitemap.xml").read_text()
+
+        comment_mtime = 1640995200.0  # 2022-01-01
+        (p / "content" / "1-comment-01.md").write_text(COMMENT_MD)
+        os.utime(p / "content" / "1-comment-01.md", (comment_mtime, comment_mtime))
+        build(p)
+        sitemap_after = (p / "dist" / "sitemap.xml").read_text()
+        assert sitemap_before != sitemap_after
+        assert "2022-01-01" in sitemap_after
+
+    def test_new_comment_bumps_category_lastmod(self, tmp_path):
+        import os
+        p = make_project(tmp_path, posts={1: _CATEGORY_MD}, config=_CATEGORIES_CONFIG)
+        md_mtime = 1609459200.0  # 2021-01-01
+        os.utime(p / "content" / "1.md", (md_mtime, md_mtime))
+        build(p)
+        sitemap_before = (p / "dist" / "sitemap.xml").read_text()
+
+        comment_mtime = 1640995200.0  # 2022-01-01
+        (p / "content" / "1-comment-01.md").write_text(COMMENT_MD)
+        os.utime(p / "content" / "1-comment-01.md", (comment_mtime, comment_mtime))
+        build(p)
+        sitemap_after = (p / "dist" / "sitemap.xml").read_text()
+        assert sitemap_before != sitemap_after
+
+    def test_new_comment_bumps_special_page_lastmod(self, tmp_path):
+        import os
+        p = make_project(tmp_path, posts={1: MINIMAL_MD}, config=_ABOUT_CONFIG)
+        (p / "content" / "about.md").write_text(ABOUT_MD)
+        md_mtime = 1609459200.0  # 2021-01-01
+        os.utime(p / "content" / "about.md", (md_mtime, md_mtime))
+        build(p)
+        sitemap_before = (p / "dist" / "sitemap.xml").read_text()
+
+        comment_mtime = 1640995200.0  # 2022-01-01
+        (p / "content" / "about-comment-01.md").write_text(COMMENT_MD)
+        os.utime(p / "content" / "about-comment-01.md", (comment_mtime, comment_mtime))
+        build(p)
+        sitemap_after = (p / "dist" / "sitemap.xml").read_text()
+        assert sitemap_before != sitemap_after
+
+    def test_new_comment_bumps_index_lastmod(self, tmp_path):
+        # index.html shows a comment-count link for the post, so its own lastmod
+        # must reflect a comment-only change too, not just post/category pages.
+        import os
+        p = make_project(tmp_path, posts={1: MINIMAL_MD})
+        md_mtime = 1609459200.0  # 2021-01-01
+        os.utime(p / "content" / "1.md", (md_mtime, md_mtime))
+        build(p)
+        sitemap_before = (p / "dist" / "sitemap.xml").read_text()
+        assert "<loc>https://example.github.io/index.html</loc>\n    <lastmod>2021-01-01</lastmod>" in sitemap_before
+
+        comment_mtime = 1640995200.0  # 2022-01-01
+        (p / "content" / "1-comment-01.md").write_text(COMMENT_MD)
+        os.utime(p / "content" / "1-comment-01.md", (comment_mtime, comment_mtime))
+        build(p)
+        sitemap_after = (p / "dist" / "sitemap.xml").read_text()
+        assert "<loc>https://example.github.io/index.html</loc>\n    <lastmod>2022-01-01</lastmod>" in sitemap_after
+
+    def test_new_comment_bumps_notes_lastmod(self, tmp_path):
+        # MINIMAL_MD (untitled, imageless, with body text) is a Note, so it
+        # appears on notes.html — that page's lastmod must move too.
+        import os
+        p = make_project(tmp_path, posts={1: MINIMAL_MD})
+        md_mtime = 1609459200.0  # 2021-01-01
+        os.utime(p / "content" / "1.md", (md_mtime, md_mtime))
+        build(p)
+        sitemap_before = (p / "dist" / "sitemap.xml").read_text()
+        assert "<loc>https://example.github.io/notes.html</loc>\n    <lastmod>2021-01-01</lastmod>" in sitemap_before
+
+        comment_mtime = 1640995200.0  # 2022-01-01
+        (p / "content" / "1-comment-01.md").write_text(COMMENT_MD)
+        os.utime(p / "content" / "1-comment-01.md", (comment_mtime, comment_mtime))
+        build(p)
+        sitemap_after = (p / "dist" / "sitemap.xml").read_text()
+        assert "<loc>https://example.github.io/notes.html</loc>\n    <lastmod>2022-01-01</lastmod>" in sitemap_after
+
+
+class TestCommentFrontmatterErrors:
+
+    def test_missing_date_errors_build(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD})
+        (p / "content" / "1-comment-01.md").write_text("---\nauthor: Magnus\n---\n\nHi\n")
+        with pytest.raises(SystemExit):
+            build(p)
+
+    def test_missing_author_errors_build(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD})
+        (p / "content" / "1-comment-01.md").write_text("---\ndate: 2026-08-05\n---\n\nHi\n")
+        with pytest.raises(SystemExit):
+            build(p)
+
+
+class TestCommentAuthorClass:
+
+    def test_author_slug_class_present(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD})
+        (p / "content" / "1-comment-01.md").write_text(COMMENT_MD)
+        build(p)
+        assert 'class="author author-magnus"' in (p / "dist" / "1.html").read_text()
+
+    def test_avatar_div_present(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD})
+        (p / "content" / "1-comment-01.md").write_text(COMMENT_MD)
+        build(p)
+        html = (p / "dist" / "1.html").read_text()
+        assert 'class="avatar author-magnus" data-initial="M" aria-hidden="true"' in html

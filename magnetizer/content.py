@@ -1,7 +1,7 @@
 import html
 import re
 import sys
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import date as _date
 from typing import NoReturn
 from urllib.parse import urlsplit
@@ -15,8 +15,15 @@ _IMAGE_EXT_RE = "|".join(IMAGE_EXTENSIONS)
 def special_page_image_pattern(name):
     return re.compile(rf'^{re.escape(name)}-image-(\d{{2}})\.({_IMAGE_EXT_RE})$')
 
+
+def special_page_comment_pattern(name):
+    return re.compile(rf'^{re.escape(name)}-comment-(\d{{2}})\.md$')
+
 _ALLOWED_FRONTMATTER_KEYS = frozenset({'date', 'title', 'name', 'images', 'favourite', 'category', 'ai_assisted', 'noindex'})
 _MARKDOWN_EXTENSIONS = ['pymdownx.mark', 'smarty', 'magnetizer.containers']
+_COMMENT_ALLOWED_FRONTMATTER_KEYS = frozenset({'date', 'author'})
+_COMMENT_MARKDOWN_EXTENSIONS = ['pymdownx.mark', 'smarty']
+_COMMENT_NUMBER_RE = re.compile(r'-comment-(\d+)')
 
 _IMAGE_TOKEN_BLOCK_RE = re.compile(r'^\{\{\s*image\s+(\d+)\s*\}\}$')
 _IMAGE_TOKEN_LOOSE_RE = re.compile(r'\{\{\s*image\s+\d+\s*\}\}')
@@ -40,6 +47,17 @@ class Image:
 
 
 @dataclass
+class Comment:
+    filename: str
+    date: str
+    date_uk: str
+    author: str
+    author_slug: str
+    author_initial: str
+    body_html: str
+
+
+@dataclass
 class Post:
     id: int | str
     date: str | None
@@ -58,6 +76,7 @@ class Post:
     char_count: int = 0
     inline_image_filenames: frozenset = frozenset()
     excerpt_inline_image_filenames: frozenset = frozenset()
+    comments: list = field(default_factory=list)
 
 
 def resized_filename(filename):
@@ -107,6 +126,10 @@ def _parse_frontmatter(text):
 def _format_date_uk(date_str):
     d = _date.fromisoformat(date_str)
     return f"{d.day} {d.strftime('%B %Y')}"
+
+
+def _slugify(text):
+    return re.sub(r'[^a-z0-9]+', '-', text.lower()).strip('-')
 
 
 def _is_external_href(href, site_url):
@@ -161,6 +184,33 @@ def _mark_external_links(body_html, site_url):
     return _A_TAG_RE.sub(_replace, body_html)
 
 
+def parse_comment(md_text, filename, site_url=""):
+    fm, body = _parse_frontmatter(md_text)
+
+    for key in fm:
+        if key not in _COMMENT_ALLOWED_FRONTMATTER_KEYS:
+            print(f"Warning: Comment '{filename}' has unknown frontmatter key: '{key}'")
+
+    date_str = fm.get('date') or None
+    if not date_str:
+        _error(f"comment '{filename}' is missing required frontmatter key 'date'")
+    author = fm.get('author') or None
+    if not author:
+        _error(f"comment '{filename}' is missing required frontmatter key 'author'")
+
+    body_html = _mark_external_links(_markdown.markdown(body, extensions=_COMMENT_MARKDOWN_EXTENSIONS), site_url) if body else ''
+
+    return Comment(
+        filename=filename,
+        date=date_str,
+        date_uk=_format_date_uk(date_str),
+        author=author,
+        author_slug=_slugify(author),
+        author_initial=author[0].upper(),
+        body_html=body_html,
+    )
+
+
 def _substitute_image_tokens(body, images, post_id):
     blocks = body.split('\n\n')
     used_filenames = set()
@@ -184,7 +234,7 @@ def _substitute_image_tokens(body, images, post_id):
     return new_body, used_filenames
 
 
-def parse_post(md_text, post_id, image_filenames, site_url=""):
+def parse_post(md_text, post_id, image_filenames, site_url="", comments=None):
     fm, body = _parse_frontmatter(md_text)
 
     for key in fm:
@@ -243,6 +293,11 @@ def parse_post(md_text, post_id, image_filenames, site_url=""):
         # decides what to do with this (see the build's invalid-post error).
         post_type = None
 
+    sorted_comments = sorted(
+        comments or [],
+        key=lambda c: int(_COMMENT_NUMBER_RE.search(c.filename).group(1)),  # type: ignore[union-attr]
+    )
+
     return Post(
         id=post_id,
         date=date_str,
@@ -261,4 +316,5 @@ def parse_post(md_text, post_id, image_filenames, site_url=""):
         char_count=char_count,
         inline_image_filenames=frozenset(inline_image_filenames),
         excerpt_inline_image_filenames=frozenset(excerpt_inline_image_filenames),
+        comments=sorted_comments,
     )

@@ -448,3 +448,37 @@ class TestCLINonPostWarnings:
         p = make_project(tmp_path, posts={1: "---\ndate: 2026-05-24\n---\n\n{{ nonsense }}\n"})
         result = run_build([], cwd=p)
         assert "nonsense" in result.stdout
+
+
+# ---------------------------------------------------------------------------
+# Comments
+# ---------------------------------------------------------------------------
+
+COMMENT_MD = "---\ndate: 2026-08-05\nauthor: Magnus\n---\n\nGreat post!\n"
+
+
+class TestCLIComments:
+
+    def test_comment_rendered_in_post_page(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD})
+        (p / "content" / "1-comment-01.md").write_text(COMMENT_MD)
+        run_build([], cwd=p)
+        assert "Great post!" in (p / "dist" / "1.html").read_text()
+
+    def test_orphan_comment_shown_as_warning(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD})
+        (p / "content" / "2-comment-01.md").write_text(COMMENT_MD)
+        result = run_build([], cwd=p)
+        assert "2-comment-01.md" in result.stdout
+
+    def test_orphan_comment_marks_done_with_warnings(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD})
+        (p / "content" / "2-comment-01.md").write_text(COMMENT_MD)
+        result = run_build([], cwd=p)
+        assert "DONE with warnings" in result.stdout
+
+    def test_no_warning_when_comment_has_matching_post(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD})
+        (p / "content" / "1-comment-01.md").write_text(COMMENT_MD)
+        result = run_build([], cwd=p)
+        assert "DONE with warnings" not in result.stdout
