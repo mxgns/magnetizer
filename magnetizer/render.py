@@ -318,8 +318,6 @@ def _calendar_month_labels(start_date):
 
 def _calendar_day_tooltip(d, day_posts):
     date_str = f"{d.day} {d.strftime('%B')}"
-    if not day_posts:
-        return f"{date_str}: No posts"
     posts_n = sum(1 for p in day_posts if p.post_type != "note")
     notes_n = sum(1 for p in day_posts if p.post_type == "note")
     counts = []
@@ -369,13 +367,13 @@ def _render_contribution_calendar(posts, build_date, posts_per_page):
                 continue
             day_posts = posts_by_date.get(d.isoformat(), [])
             level = min(len(day_posts), 5)
-            tooltip = _escape(_calendar_day_tooltip(d, day_posts), quote=True)
             if day_posts:
                 newest = max(day_posts, key=lambda p: p.id)
                 url = f"{index_page_url(page_num_by_id[newest.id])}#post-{newest.id}"
+                tooltip = _escape(_calendar_day_tooltip(d, day_posts), quote=True)
                 parts.append(f'<a href="{url}" class="calendar-day level-{level}" data-tooltip="{tooltip}" aria-label="{tooltip}"></a>')
             else:
-                parts.append(f'<span class="calendar-day level-{level}" data-tooltip="{tooltip}"></span>')
+                parts.append(f'<span class="calendar-day level-{level}"></span>')
         parts.append('</div>')
     parts.append('</div>')
     parts.append('</div>')

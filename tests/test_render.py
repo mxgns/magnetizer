@@ -1271,10 +1271,11 @@ class TestRenderContributionCalendar:
         assert '<span class="calendar-day level-0"' in block
         assert '<a' not in block
 
-    def test_zero_post_day_tooltip(self):
+    def test_zero_post_day_has_no_tooltip(self):
         html = render_archive_page_content([], build_date=date(2026, 5, 24))
         block = _last_week_block(html)
-        assert 'data-tooltip="24 May: No posts"' in block
+        assert '<span class="calendar-day level-0"></span>' in block
+        assert 'data-tooltip' not in block
 
     def test_day_with_one_post_is_level_1_and_links_to_index(self):
         posts = [make_dated_post(7, "2026-05-24")]

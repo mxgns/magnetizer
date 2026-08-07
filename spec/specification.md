@@ -980,7 +980,7 @@ Each day in the window is bucketed by how many posts fall on it: `level-0` (zero
 
 A day later than the build date — i.e. one that hasn't happened yet, which can only occur in the final week column — isn't rendered as a day box at all: it's an empty `<span class="calendar-day-empty">`, carrying no `level-N` class, no link, and no tooltip, so it reads as blank space rather than an (incorrectly) empty box.
 
-Every real (non-future) day box, filled or not, carries a `data-tooltip` attribute summarising that day, e.g. `25 August: 1 post`, `25 August: No posts`, or — when both ordinary posts and Notes fall on the same day — `25 August: 1 post + 2 notes` (each count pluralised independently, joined with ` + `). This is deliberately a `data-` attribute rather than `title` — Magnetizer emits it as data only; rendering it as an actual hover tooltip (positioning, appearance, show/hide) is the responsibility of the project's own `resources/` CSS, the same way every other visual aspect of the calendar is. A filled day's `<a>` repeats the same text as `aria-label`, so the count is available to assistive technology independently of the visual tooltip.
+A day with one or more posts carries a `data-tooltip` attribute summarising it, e.g. `25 August: 1 post`, or — when both ordinary posts and Notes fall on the same day — `25 August: 1 post + 2 notes` (each count pluralised independently, joined with ` + `). This is deliberately a `data-` attribute rather than `title` — Magnetizer emits it as data only; rendering it as an actual hover tooltip (positioning, appearance, show/hide) is the responsibility of the project's own `resources/` CSS, the same way every other visual aspect of the calendar is. The `<a>` repeats the same text as `aria-label`, so the count is available to assistive technology independently of the visual tooltip. A day with no posts (but that has already happened) has no tooltip — there's nothing to report.
 
 The `MAGNETIZER_CONTENT` structure is:
 
@@ -995,7 +995,7 @@ The `MAGNETIZER_CONTENT` structure is:
 </div>
 <div class="calendar-weeks">
   <div class="calendar-week">
-    <span class="calendar-day level-0" data-tooltip="26 May: No posts"></span>
+    <span class="calendar-day level-0"></span>
     <a href="INDEX_PAGE_URL#post-POST_ID" class="calendar-day level-N" data-tooltip="27 May: 1 post + 1 note" aria-label="27 May: 1 post + 1 note"></a>
     <span class="calendar-day-empty"></span>
     ... (7 cells, Monday to Sunday)
