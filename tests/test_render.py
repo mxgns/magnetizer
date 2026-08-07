@@ -1,5 +1,6 @@
 """Tests for magnetizer/render.py — all HTML generation functions"""
 
+from datetime import date
 from html.parser import HTMLParser
 
 import pytest
@@ -1054,8 +1055,10 @@ class TestRenderArchivePageContent:
         assert '<a href="index.html">Blog home</a>' in html
 
     def test_month_heading(self):
+        # <h3>, not <h2> -- a month heading is a subsection under the page's
+        # "Blog Posts" <h2>, not a sibling of it.
         html = render_archive_page_content([make_dated_post(1, "2026-05-24")])
-        assert "<h2>May 2026</h2>" in html
+        assert "<h3>May 2026</h3>" in html
 
     def test_multiple_months_in_reverse_order(self):
         posts = [
@@ -1072,7 +1075,7 @@ class TestRenderArchivePageContent:
 
     def test_day_in_span_outside_link(self):
         html = render_archive_page_content([make_dated_post(1, "2026-05-24", title="Sunny day")])
-        assert html.index('<span class="day">') < html.index('<a href=')
+        assert html.index('<span class="day">') < html.index('<a href="1.html">')
 
     def test_each_entry_is_a_link_to_post(self):
         html = render_archive_page_content([make_dated_post(5, "2026-05-24", title="Hello")])
@@ -1084,7 +1087,7 @@ class TestRenderArchivePageContent:
             make_dated_post(1, "2026-05-10"),
         ]
         html = render_archive_page_content(posts)
-        assert html.index("30") < html.index("10")
+        assert html.index('<span class="day">30</span>') < html.index('<span class="day">10</span>')
 
     def test_post_without_date_excluded(self):
         posts = [
@@ -1155,6 +1158,209 @@ class TestRenderArchivePageContent:
                     url="1.html", body_html="", images=[], is_favourite=False, post_type="full")
         html = render_archive_page_content([post])
         assert '<li class="full-post favourite">' not in html
+
+
+# ---------------------------------------------------------------------------
+# render_archive_page_content — contribution calendar
+# ---------------------------------------------------------------------------
+
+def _last_week_block(html):
+    """The final <div class="calendar-week">...</div> block — always the week
+    containing build_date, so it's a stable place to check a specific day's cell."""
+    start = html.rindex('<div class="calendar-week">')
+    end = html.index('</div>', start)
+    return html[start:end]
+
+
+def _first_week_block(html):
+    start = html.index('<div class="calendar-week">')
+    end = html.index('</div>', start)
+    return html[start:end]
+
+
+class TestRenderContributionCalendar:
+
+    def test_section_present(self):
+        html = render_archive_page_content([make_dated_post(1, "2026-05-24")], build_date=date(2026, 5, 24))
+        assert '<section class="contribution-calendar">' in html
+
+    def test_section_after_h1_and_before_categories(self):
+        post = make_dated_post(1, "2026-05-24", category="photography")
+        html = render_archive_page_content([post], categories=_CATEGORIES, build_date=date(2026, 5, 24))
+        assert html.index("<h1>Archive</h1>") < html.index('<section class="contribution-calendar">')
+        assert html.index('<section class="contribution-calendar">') < html.index("<h2>Categories</h2>")
+
+    def test_title_counts_posts_in_window(self):
+        posts = [
+            make_dated_post(1, "2026-05-20"),
+            make_dated_post(2, "2026-05-21"),
+        ]
+        html = render_archive_page_content(posts, build_date=date(2026, 5, 24))
+        assert '<h2><span class="calendar-count">2</span> posts in the last year</h2>' in html
+
+    def test_title_excludes_posts_outside_window(self):
+        # build_date=2026-01-04 (a Sunday) -> window start_date is 2024-12-30 (Monday).
+        # A post the day before start_date must not be counted.
+        posts = [make_dated_post(1, "2024-12-29")]
+        html = render_archive_page_content(posts, build_date=date(2026, 1, 4))
+        assert '<h2><span class="calendar-count">0</span> posts in the last year</h2>' in html
+
+    def test_title_includes_note_posts(self):
+        posts = [make_dated_post(1, "2026-05-20", post_type="note")]
+        html = render_archive_page_content(posts, build_date=date(2026, 5, 24))
+        assert '<h2><span class="calendar-count">1</span> posts in the last year</h2>' in html
+
+    def test_empty_posts_list_still_renders_grid(self):
+        html = render_archive_page_content([], build_date=date(2026, 5, 24))
+        assert '<h2><span class="calendar-count">0</span> posts in the last year</h2>' in html
+        assert html.count('<div class="calendar-week">') == 53
+
+    def test_grid_has_53_week_columns(self):
+        html = render_archive_page_content([make_dated_post(1, "2026-05-24")], build_date=date(2026, 5, 24))
+        assert html.count('<div class="calendar-week">') == 53
+
+    def test_grid_has_53_month_column_cells(self):
+        html = render_archive_page_content([make_dated_post(1, "2026-05-24")], build_date=date(2026, 5, 24))
+        assert html.count('<span class="calendar-month">') == 53
+
+    def test_grid_has_371_day_cells_total(self):
+        # build_date=2026-05-24 is itself a Sunday (the last row of its week
+        # in Monday-first order), so this window has zero "hasn't happened
+        # yet" cells and all 371 are real day cells.
+        html = render_archive_page_content([make_dated_post(1, "2026-05-24")], build_date=date(2026, 5, 24))
+        assert html.count('class="calendar-day level-') == 371
+        assert html.count('class="calendar-day-empty"') == 0
+
+    def test_no_weekday_labels_or_label_column(self):
+        html = render_archive_page_content([make_dated_post(1, "2026-05-24")], build_date=date(2026, 5, 24))
+        assert 'calendar-day-label' not in html
+        assert 'calendar-corner' not in html
+        assert 'calendar-day-labels' not in html
+
+    def test_first_week_column_starts_on_monday(self):
+        # build_date=2026-05-24 -> start_date=2025-05-19, a Monday.
+        posts = [make_dated_post(1, "2025-05-19")]
+        html = render_archive_page_content(posts, build_date=date(2026, 5, 24), posts_per_page=12)
+        block = _first_week_block(html)
+        assert block.startswith('<div class="calendar-week">\n<a href="index.html#post-1"')
+
+    def test_future_days_in_final_week_render_as_empty_not_boxes(self):
+        # build_date=2026-05-27 is a Wednesday, so Thu/Fri/Sat/Sun of its own
+        # week haven't happened yet and shouldn't render as ordinary boxes.
+        html = render_archive_page_content([], build_date=date(2026, 5, 27))
+        block = _last_week_block(html)
+        assert block.count('class="calendar-day-empty"') == 4
+        assert block.count('class="calendar-day level-') == 3
+
+    def test_leftmost_partial_month_is_labelled(self):
+        # build_date=2026-01-04 is a Sunday -> start_date=2024-12-30 (Monday).
+        # The first week column spans Dec 30 - Jan 5, so it straddles a month
+        # boundary; Jan 1 (day 3 of that column) is the later month and wins
+        # the single label slot available for that column.
+        html = render_archive_page_content([make_dated_post(1, "2025-06-01")], build_date=date(2026, 1, 4))
+        first_month_cell = html.index('<span class="calendar-month">')
+        assert html[first_month_cell:first_month_cell + 40].startswith('<span class="calendar-month">Jan</span>')
+
+    def test_month_labels_in_left_to_right_chronological_order(self):
+        html = render_archive_page_content([make_dated_post(1, "2026-05-24")], build_date=date(2026, 8, 7))
+        assert html.index(">Aug<") < html.index(">Sep<") < html.index(">Dec<") < html.index(">Jan<") < html.index(">Jul<")
+
+    def test_day_with_zero_posts_is_level_0_and_not_a_link(self):
+        html = render_archive_page_content([], build_date=date(2026, 5, 24))
+        block = _last_week_block(html)
+        assert '<span class="calendar-day level-0"' in block
+        assert '<a' not in block
+
+    def test_zero_post_day_has_no_tooltip(self):
+        html = render_archive_page_content([], build_date=date(2026, 5, 24))
+        block = _last_week_block(html)
+        assert '<span class="calendar-day level-0"></span>' in block
+        assert 'data-tooltip' not in block
+
+    def test_day_with_one_post_is_level_1_and_links_to_index(self):
+        posts = [make_dated_post(7, "2026-05-24")]
+        html = render_archive_page_content(posts, build_date=date(2026, 5, 24), posts_per_page=12)
+        block = _last_week_block(html)
+        assert '<a href="index.html#post-7" class="calendar-day level-1" data-tooltip="24 May: 1 post" aria-label="24 May: 1 post"></a>' in block
+
+    def test_tooltip_uses_data_attribute_not_title(self):
+        # A custom tooltip, not the native browser title="" tooltip.
+        posts = [make_dated_post(7, "2026-05-24")]
+        html = render_archive_page_content(posts, build_date=date(2026, 5, 24), posts_per_page=12)
+        block = _last_week_block(html)
+        assert 'title=' not in block
+
+    def test_tooltip_singular_post_and_note(self):
+        posts = [
+            make_dated_post(1, "2026-05-24", post_type="full"),
+            make_dated_post(2, "2026-05-24", post_type="note"),
+        ]
+        html = render_archive_page_content(posts, build_date=date(2026, 5, 24), posts_per_page=12)
+        block = _last_week_block(html)
+        assert 'data-tooltip="24 May: 1 post + 1 note"' in block
+        assert 'aria-label="24 May: 1 post + 1 note"' in block
+
+    def test_tooltip_plural_posts_and_notes(self):
+        posts = [
+            make_dated_post(1, "2026-05-24", post_type="full"),
+            make_dated_post(2, "2026-05-24", post_type="image"),
+            make_dated_post(3, "2026-05-24", post_type="note"),
+            make_dated_post(4, "2026-05-24", post_type="note"),
+        ]
+        html = render_archive_page_content(posts, build_date=date(2026, 5, 24), posts_per_page=12)
+        block = _last_week_block(html)
+        assert 'data-tooltip="24 May: 2 posts + 2 notes"' in block
+
+    def test_tooltip_notes_only(self):
+        posts = [make_dated_post(1, "2026-05-24", post_type="note")]
+        html = render_archive_page_content(posts, build_date=date(2026, 5, 24), posts_per_page=12)
+        block = _last_week_block(html)
+        assert 'data-tooltip="24 May: 1 note"' in block
+
+    def test_bucketing_caps_at_level_5_for_six_or_more_posts(self):
+        posts = [make_dated_post(i, "2026-05-24") for i in range(1, 7)]
+        html = render_archive_page_content(posts, build_date=date(2026, 5, 24))
+        block = _last_week_block(html)
+        assert 'level-5' in block
+        assert 'level-6' not in block
+
+    def test_bucketing_exact_levels(self):
+        for count, expected_level in [(1, 1), (2, 2), (3, 3), (4, 4), (5, 5)]:
+            posts = [make_dated_post(i, "2026-05-24") for i in range(1, count + 1)]
+            html = render_archive_page_content(posts, build_date=date(2026, 5, 24))
+            block = _last_week_block(html)
+            assert f'level-{expected_level}"' in block
+            assert f'level-{expected_level + 1}"' not in block
+
+    def test_multiple_posts_same_day_links_to_newest(self):
+        posts = [
+            make_dated_post(3, "2026-05-24"),
+            make_dated_post(9, "2026-05-24"),
+            make_dated_post(1, "2026-05-24"),
+        ]
+        html = render_archive_page_content(posts, build_date=date(2026, 5, 24), posts_per_page=12)
+        block = _last_week_block(html)
+        assert 'href="index.html#post-9"' in block
+
+    def test_link_target_paginates_by_position_in_list(self):
+        # posts_per_page=2, three posts newest-first -> the 3rd post (index 2)
+        # lands on page 2 (index-2.html).
+        posts = [
+            make_dated_post(3, "2026-05-22"),
+            make_dated_post(2, "2026-05-23"),
+            make_dated_post(1, "2026-05-24"),
+        ]
+        html = render_archive_page_content(posts, build_date=date(2026, 5, 24), posts_per_page=2)
+        block = _last_week_block(html)
+        assert 'href="index-2.html#post-1"' in block
+
+    def test_post_without_date_not_counted_in_calendar(self):
+        posts = [
+            make_dated_post(2, "2026-05-24"),
+            Post(id=1, date=None, date_uk=None, title="No date", url="1.html", body_html="", images=[]),
+        ]
+        html = render_archive_page_content(posts, build_date=date(2026, 5, 24))
+        assert '<h2><span class="calendar-count">1</span> posts in the last year</h2>' in html
 
 
 # ---------------------------------------------------------------------------

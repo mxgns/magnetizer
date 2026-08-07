@@ -1,6 +1,6 @@
 import re
 from collections import Counter
-from datetime import date as _date
+from datetime import date as _date, timedelta as _timedelta
 from html import escape as _escape, unescape as _unescape
 
 from magnetizer.content import resized_filename as _resized_filename
@@ -291,7 +291,98 @@ def _archive_item_class(post):
     return cls
 
 
-def render_archive_page_content(posts, categories=None):
+_CALENDAR_WEEKS = 53
+_CALENDAR_DAYS = _CALENDAR_WEEKS * 7
+
+
+def _calendar_window(build_date):
+    """The Monday-aligned 53-week (371-day) window ending in build_date's own
+    week, mirroring GitHub's own contribution calendar span."""
+    current_week_start = build_date - _timedelta(days=build_date.weekday())
+    return current_week_start - _timedelta(weeks=_CALENDAR_WEEKS - 1)
+
+
+def _calendar_month_labels(start_date):
+    labels = {}
+    seen_months = set()
+    for i in range(_CALENDAR_DAYS):
+        d = start_date + _timedelta(days=i)
+        month_key = (d.year, d.month)
+        if month_key in seen_months:
+            continue
+        if d.day == 1 or i == 0:
+            seen_months.add(month_key)
+            labels[i // 7] = d.strftime('%b')
+    return labels
+
+
+def _calendar_day_tooltip(d, day_posts):
+    date_str = f"{d.day} {d.strftime('%B')}"
+    posts_n = sum(1 for p in day_posts if p.post_type != "note")
+    notes_n = sum(1 for p in day_posts if p.post_type == "note")
+    counts = []
+    if posts_n:
+        counts.append(f'{posts_n} post{"" if posts_n == 1 else "s"}')
+    if notes_n:
+        counts.append(f'{notes_n} note{"" if notes_n == 1 else "s"}')
+    return f'{date_str}: {" + ".join(counts)}'
+
+
+def _render_contribution_calendar(posts, build_date, posts_per_page):
+    start_date = _calendar_window(build_date)
+
+    page_num_by_id = {}
+    for idx, post in enumerate(posts):
+        page_num_by_id[post.id] = idx // posts_per_page + 1
+
+    posts_by_date = {}
+    for post in posts:
+        if not post.date:
+            continue
+        posts_by_date.setdefault(post.date, []).append(post)
+
+    total = sum(len(day_posts) for date_str, day_posts in posts_by_date.items()
+                if start_date <= _date.fromisoformat(date_str) < start_date + _timedelta(days=_CALENDAR_DAYS))
+
+    month_labels = _calendar_month_labels(start_date)
+
+    parts = [
+        '<section class="contribution-calendar">',
+        f'<h2><span class="calendar-count">{total}</span> posts in the last year</h2>',
+        '<div class="calendar">',
+        '<div class="calendar-months">',
+    ]
+    for week in range(_CALENDAR_WEEKS):
+        label = month_labels.get(week, '')
+        parts.append(f'<span class="calendar-month">{label}</span>')
+    parts.append('</div>')
+
+    parts.append('<div class="calendar-weeks">')
+    for week in range(_CALENDAR_WEEKS):
+        parts.append('<div class="calendar-week">')
+        for weekday in range(7):
+            d = start_date + _timedelta(days=week * 7 + weekday)
+            if d > build_date:
+                parts.append('<span class="calendar-day-empty"></span>')
+                continue
+            day_posts = posts_by_date.get(d.isoformat(), [])
+            level = min(len(day_posts), 5)
+            if day_posts:
+                newest = max(day_posts, key=lambda p: p.id)
+                url = f"{index_page_url(page_num_by_id[newest.id])}#post-{newest.id}"
+                tooltip = _escape(_calendar_day_tooltip(d, day_posts), quote=True)
+                parts.append(f'<a href="{url}" class="calendar-day level-{level}" data-tooltip="{tooltip}" aria-label="{tooltip}"></a>')
+            else:
+                parts.append(f'<span class="calendar-day level-{level}"></span>')
+        parts.append('</div>')
+    parts.append('</div>')
+    parts.append('</div>')
+
+    parts.append('</section>')
+    return '\n'.join(parts)
+
+
+def render_archive_page_content(posts, categories=None, build_date=None, posts_per_page=12):
     blog_posts = [p for p in posts if p.date and p.post_type != "note"]
 
     months = {}
@@ -303,6 +394,7 @@ def render_archive_page_content(posts, categories=None):
     notes_count = sum(1 for p in posts if p.post_type == "note")
 
     parts = ['<main>', '<h1>Archive</h1>']
+    parts.append(_render_contribution_calendar(posts, build_date or _date.today(), posts_per_page))
     has_sections = False
 
     if categories:
@@ -332,7 +424,7 @@ def render_archive_page_content(posts, categories=None):
     for year, month in sorted(months.keys(), reverse=True):
         label = _date(year, month, 1).strftime('%B %Y')
         parts.append('<section>')
-        parts.append(f'<h2>{label}</h2>')
+        parts.append(f'<h3>{label}</h3>')
         parts.append('<ul>')
         for post in months[(year, month)]:
             day = str(_date.fromisoformat(post.date).day)

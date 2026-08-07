@@ -300,13 +300,33 @@ Because a page like this can go stale purely from *other* content changing (a ne
 
 ## Archive page
 
-The archive page (`dist/archive.html`) lists all dated blog posts grouped by month (Notes are excluded from this list). It opens with an `<h1>Archive</h1>` heading:
+The archive page (`dist/archive.html`) lists all dated blog posts grouped by month (Notes are excluded from this list). It opens with an `<h1>Archive</h1>` heading, immediately followed by a GitHub-style contribution calendar — a rolling 53-week grid (Monday to Sunday) of every published post (Notes included this time) from the last 12 months, coloured by how many posts fell on each day (`level-0` for none up to `level-5` for five or more). A day later than the build date hasn't happened yet, so it renders as blank space rather than an empty box. Clicking a filled-in day links to the newest post from that day, at its anchor on `index.html` (or whichever paginated index page it falls on); a day with one or more posts carries a `data-tooltip` attribute describing it (plus `aria-label` on its link), e.g. `25 August: 1 post + 2 notes` — deliberately a data attribute rather than `title`, since Magnetizer emits data only and a project's own CSS renders the actual tooltip. A day with no posts has no tooltip. The categories/notes/monthly-list sections described below follow the calendar, in the same order as before:
+
+```html
+<section class="contribution-calendar">
+  <h2><span class="calendar-count">248</span> posts in the last year</h2>
+  <div class="calendar">
+    <div class="calendar-months">...</div>
+    <div class="calendar-weeks">
+      <div class="calendar-week">
+        <span class="calendar-day level-0"></span>
+        <a href="index.html#post-42" class="calendar-day level-2" data-tooltip="27 May: 2 posts" aria-label="27 May: 2 posts"></a>
+        <span class="calendar-day-empty"></span>
+        ...
+      </div>
+      ...
+    </div>
+  </div>
+</section>
+```
+
+As with everything else Magnetizer generates, this is bare structure only — no inline styles — so the actual grid layout, sizing, colour scale, and tooltip appearance come entirely from the project's own `resources/` CSS.
 
 ```html
 <main>
   <h1>Archive</h1>
   <section>
-    <h2>May 2026</h2>
+    <h3>May 2026</h3>
     <ul>
       <li class="full-post"><span class="day">16</span><a href="42.html">Post title</a></li>
       ...
@@ -316,9 +336,11 @@ The archive page (`dist/archive.html`) lists all dated blog posts grouped by mon
 </main>
 ```
 
+Each month heading is an `<h3>`, one level below the page's own `<h2>Blog Posts</h2>` — it's a subsection of the monthly list, not a sibling heading.
+
 Each `<li>` gets the post's type class (`full-post` or `image-post` — Notes never appear here) and its link text follows the title → `name` → excerpt → generated-fallback priority order described in [Post types](#post-types).
 
-If `categories` is configured and at least one category has a matching post, a categories list is inserted after the `<h1>`. If any Notes exist, a `<h2>Short notes</h2>` section with a link to `notes.html` is inserted after the categories. When either (or both) sections appear, a `<h2>Blog Posts</h2>` heading is shown before the monthly sections:
+If `categories` is configured and at least one category has a matching post, a categories list is inserted after the contribution calendar. If any Notes exist, a `<h2>Short notes</h2>` section with a link to `notes.html` is inserted after the categories. When either (or both) sections appear, a `<h2>Blog Posts</h2>` heading is shown before the monthly sections:
 
 ```html
 <main>
