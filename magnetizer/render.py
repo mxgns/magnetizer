@@ -296,10 +296,9 @@ _CALENDAR_DAYS = _CALENDAR_WEEKS * 7
 
 
 def _calendar_window(build_date):
-    """The Sunday-aligned 53-week (371-day) window ending in build_date's own
+    """The Monday-aligned 53-week (371-day) window ending in build_date's own
     week, mirroring GitHub's own contribution calendar span."""
-    days_since_sunday = (build_date.weekday() + 1) % 7
-    current_week_start = build_date - _timedelta(days=days_since_sunday)
+    current_week_start = build_date - _timedelta(days=build_date.weekday())
     return current_week_start - _timedelta(weeks=_CALENDAR_WEEKS - 1)
 
 
@@ -315,6 +314,20 @@ def _calendar_month_labels(start_date):
             seen_months.add(month_key)
             labels[i // 7] = d.strftime('%b')
     return labels
+
+
+def _calendar_day_tooltip(d, day_posts):
+    date_str = f"{d.day} {d.strftime('%B')}"
+    if not day_posts:
+        return f"{date_str}: No posts"
+    posts_n = sum(1 for p in day_posts if p.post_type != "note")
+    notes_n = sum(1 for p in day_posts if p.post_type == "note")
+    counts = []
+    if posts_n:
+        counts.append(f'{posts_n} post{"" if posts_n == 1 else "s"}')
+    if notes_n:
+        counts.append(f'{notes_n} note{"" if notes_n == 1 else "s"}')
+    return f'{date_str}: {" + ".join(counts)}'
 
 
 def _render_contribution_calendar(posts, build_date, posts_per_page):
@@ -339,21 +352,11 @@ def _render_contribution_calendar(posts, build_date, posts_per_page):
         '<section class="contribution-calendar">',
         f'<h2><span class="calendar-count">{total}</span> posts in the last year</h2>',
         '<div class="calendar">',
-        '<div class="calendar-header">',
-        '<span class="calendar-corner"></span>',
         '<div class="calendar-months">',
     ]
     for week in range(_CALENDAR_WEEKS):
         label = month_labels.get(week, '')
         parts.append(f'<span class="calendar-month">{label}</span>')
-    parts.append('</div>')
-    parts.append('</div>')
-
-    parts.append('<div class="calendar-body">')
-    parts.append('<div class="calendar-day-labels">')
-    for weekday in range(7):
-        label = {1: 'Mon', 3: 'Wed', 5: 'Fri'}.get(weekday)
-        parts.append(f'<span class="calendar-day-label">{label}</span>' if label else '<span></span>')
     parts.append('</div>')
 
     parts.append('<div class="calendar-weeks">')
@@ -361,19 +364,22 @@ def _render_contribution_calendar(posts, build_date, posts_per_page):
         parts.append('<div class="calendar-week">')
         for weekday in range(7):
             d = start_date + _timedelta(days=week * 7 + weekday)
+            if d > build_date:
+                parts.append('<span class="calendar-day-empty"></span>')
+                continue
             day_posts = posts_by_date.get(d.isoformat(), [])
             level = min(len(day_posts), 5)
+            tooltip = _escape(_calendar_day_tooltip(d, day_posts), quote=True)
             if day_posts:
                 newest = max(day_posts, key=lambda p: p.id)
                 url = f"{index_page_url(page_num_by_id[newest.id])}#post-{newest.id}"
-                parts.append(f'<a href="{url}" class="calendar-day level-{level}"></a>')
+                parts.append(f'<a href="{url}" class="calendar-day level-{level}" title="{tooltip}" aria-label="{tooltip}"></a>')
             else:
-                parts.append(f'<span class="calendar-day level-{level}"></span>')
+                parts.append(f'<span class="calendar-day level-{level}" title="{tooltip}"></span>')
         parts.append('</div>')
     parts.append('</div>')
     parts.append('</div>')
 
-    parts.append('</div>')
     parts.append('</section>')
     return '\n'.join(parts)
 

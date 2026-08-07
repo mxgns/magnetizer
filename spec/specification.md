@@ -971,11 +971,15 @@ Where:
 
 A GitHub-style calendar of posting activity, always present at the top of [the archive page](#archive-page), directly after the `<h1>`. Unlike the archive's monthly list below it, the calendar counts **every published post type, including Notes** — it mirrors what's shown on the index pages, which is also where its links point.
 
-The calendar covers a rolling 53-week (371-day) window ending in the calendar week containing the build date: the start date is the Sunday 52 weeks before the Sunday of the build date's own week. This keeps the grid week-aligned (matching GitHub's own calendar) while covering the last 12 months.
+The calendar covers a rolling 53-week (371-day) window ending in the calendar week containing the build date: the start date is the Monday 52 weeks before the Monday of the build date's own week, and each week column runs Monday to Sunday. This keeps the grid week-aligned (matching GitHub's own calendar) while covering the last 12 months.
 
 The heading text is always `{N} posts in the last year`, where `N` is the total count of published posts (all types) falling within the window — no singular/plural variant for `N == 1`.
 
-Each day in the window is bucketed by how many posts fall on it: `level-0` (zero), `level-1`, `level-2`, `level-3`, `level-4`, or `level-5` (five or more). A day with one or more posts is a link (`<a>`) to the **newest** post from that day (highest post ID) — not that post's own page, but its anchor on whichever index page it appears on: `{INDEX_PAGE_URL}#post-{post-id}`, using the same pagination as [index pages](#index-pages) (`posts_per_page`, positions in the reverse-chronological post list). A day with no posts is a non-interactive `<span>`.
+Each day in the window is bucketed by how many posts fall on it: `level-0` (zero), `level-1`, `level-2`, `level-3`, `level-4`, or `level-5` (five or more). A day with one or more posts is a link (`<a>`) to the **newest** post from that day (highest post ID) — not that post's own page, but its anchor on whichever index page it appears on: `{INDEX_PAGE_URL}#post-{post-id}`, using the same pagination as [index pages](#index-pages) (`posts_per_page`, positions in the reverse-chronological post list). A day with no posts (but that has already happened) is a non-interactive `<span>`.
+
+A day later than the build date — i.e. one that hasn't happened yet, which can only occur in the final week column — isn't rendered as a day box at all: it's an empty `<span class="calendar-day-empty">`, carrying no `level-N` class, no link, and no tooltip, so it reads as blank space rather than an (incorrectly) empty box.
+
+Every real (non-future) day box, filled or not, carries a `title` attribute summarising that day, e.g. `25 August: 1 post`, `25 August: No posts`, or — when both ordinary posts and Notes fall on the same day — `25 August: 1 post + 2 notes` (each count pluralised independently, joined with ` + `). A filled day's `<a>` repeats the same text as `aria-label`, so the count is available to assistive technology without relying on the `title` hover tooltip.
 
 The `MAGNETIZER_CONTENT` structure is:
 
@@ -983,41 +987,27 @@ The `MAGNETIZER_CONTENT` structure is:
 <section class="contribution-calendar">
 <h2><span class="calendar-count">N</span> posts in the last year</h2>
 <div class="calendar">
-<div class="calendar-header">
-<span class="calendar-corner"></span>
 <div class="calendar-months">
   <span class="calendar-month">Aug</span>
   <span class="calendar-month"></span>
   ... (53 spans total, one per week column; empty unless that week is the first to contain a given month)
 </div>
-</div>
-<div class="calendar-body">
-<div class="calendar-day-labels">
-  <span></span>
-  <span class="calendar-day-label">Mon</span>
-  <span></span>
-  <span class="calendar-day-label">Wed</span>
-  <span></span>
-  <span class="calendar-day-label">Fri</span>
-  <span></span>
-</div>
 <div class="calendar-weeks">
   <div class="calendar-week">
-    <span class="calendar-day level-0"></span>
-    <a href="INDEX_PAGE_URL#post-POST_ID" class="calendar-day level-N"></a>
-    ... (7 cells, Sunday to Saturday)
+    <span class="calendar-day level-0" title="26 May: No posts"></span>
+    <a href="INDEX_PAGE_URL#post-POST_ID" class="calendar-day level-N" title="27 May: 1 post + 1 note" aria-label="27 May: 1 post + 1 note"></a>
+    <span class="calendar-day-empty"></span>
+    ... (7 cells, Monday to Sunday)
   </div>
   ... (53 weeks total)
-</div>
 </div>
 </div>
 </section>
 ```
 
-- `.calendar-header` groups the label-column spacer (`.calendar-corner`) with `.calendar-months`; `.calendar-body` groups `.calendar-day-labels` with `.calendar-weeks` — deliberately flat, nested-flex groupings rather than CSS grid areas, so a project's CSS can lay the whole thing out with plain shrink-to-fit flexbox (`flex: 1 1 0; min-width: 0`) instead of running into CSS Grid's "blowout" behaviour, where a grid track can refuse to shrink below its items' content size even past its container's available width.
-- `.calendar-months` always has exactly 53 `<span>` elements — one per week column, aligned with `.calendar-weeks` — labelled with a 3-letter month abbreviation (e.g. `Aug`) only in the week where that month is first seen in the grid. The leftmost (partial) month is always labelled, regardless of which day of the month the window happens to start on; every subsequent month is labelled at its 1st.
-- `.calendar-day-labels` always has exactly 7 `<span>` elements (Sunday to Saturday); only Monday, Wednesday and Friday carry a `calendar-day-label` class and text — the rest are empty, unlabelled spacers.
-- `.calendar-weeks` always has exactly 53 `.calendar-week` columns of exactly 7 `.calendar-day` cells each (Sunday to Saturday), for 371 cells total, regardless of how many posts exist.
+- `.calendar-months` always has exactly 53 `<span>` elements — one per week column, aligned with `.calendar-weeks` — labelled with a 3-letter month abbreviation (e.g. `Aug`) only in the week where that month is first seen in the grid. The leftmost (partial) month is always labelled, regardless of which day of the month the window happens to start on; every subsequent month is labelled at its 1st. If a week column happens to straddle a month boundary (so two different months would both want the same column's single label slot), the later month wins.
+- `.calendar-weeks` always has exactly 53 `.calendar-week` columns of exactly 7 cells each (Monday to Sunday), for 371 cells total regardless of how many posts exist — each cell is a real day box (`.calendar-day`, either `<span>` or `<a>`) or, for a day later than the build date, an empty `.calendar-day-empty` placeholder.
+- There's no weekday-label column — the calendar has no reserved space for row labels, so it's free to fill the full width of its container.
 - As with every other generated page, Magnetizer emits no inline styles — the grid's actual layout, cell sizing, and `level-0`–`level-5` colour scale are entirely the responsibility of the project's own `resources/` CSS.
 
 ### Notes pages
