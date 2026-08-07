@@ -931,16 +931,23 @@ The `MAGNETIZER_CONTENT` has the following structure:
 <main>
 <h1>Archive</h1>
 <section class="contribution-calendar">...</section>
+<div class="archive-columns">
+<div class="archive-categories">
 <h2>Categories</h2>
 <ul>
   <li><a href="CATEGORY_SLUG.html">CATEGORY_NAME</a> (N)</li>
   ...
 </ul>
+</div>
+<div class="archive-notes">
 <h2>Short notes</h2>
 <ul>
   <li><a href="notes.html">All short notes</a></li>
 </ul>
+</div>
+</div>
 <h2>Blog Posts</h2>
+<div class="archive-months">
   <section>
     <h3>May 2026</h3>
     <ul>
@@ -949,6 +956,7 @@ The `MAGNETIZER_CONTENT` has the following structure:
     </ul>
   </section>
   ...
+</div>
 </main>
 <nav><a href="index.html">Blog home</a></nav>
 ```
@@ -956,9 +964,11 @@ The `MAGNETIZER_CONTENT` has the following structure:
 Where:
 
 - The contribution calendar (`<section class="contribution-calendar">`) is always present, immediately after the `<h1>` — see [Contribution calendar](#contribution-calendar).
-- The `<h2>Categories</h2>` heading and its `<ul>` are only included if `categories` is configured and at least one configured category has a matching post. Each `<li>` links to the corresponding category page (see [Categories](#categories)) and includes the number of posts `(N)` in that category. Categories are listed in descending order of post count; categories with no matching posts are omitted.
-- The `<h2>Short notes</h2>` heading and its `<ul>` are only included when at least one Note exists.
+- `<div class="archive-columns">` wraps whichever of `<div class="archive-categories">` / `<div class="archive-notes">` are present, as a stable pair of blocks a project's CSS can lay out side by side on wide viewports (see [Archive column layout](#archive-column-layout)). It's included whenever either is shown, and omitted entirely when neither is.
+- The `<h2>Categories</h2>` heading and its `<ul>`, together in `<div class="archive-categories">`, are only included if `categories` is configured and at least one configured category has a matching post. Each `<li>` links to the corresponding category page (see [Categories](#categories)) and includes the number of posts `(N)` in that category. Categories are listed in descending order of post count; categories with no matching posts are omitted.
+- The `<h2>Short notes</h2>` heading and its `<ul>`, together in `<div class="archive-notes">`, are only included when at least one Note exists.
 - The `<h2>Blog Posts</h2>` heading is only included when the categories list, the notes section, or both are shown.
+- `<div class="archive-months">` wraps every month `<section>`, so a project's CSS can flow them across multiple columns on wide viewports (see [Archive column layout](#archive-column-layout)). It's included whenever at least one dated blog post exists, and omitted when there are none (e.g. a blog with only Notes).
 - Each month heading is an `<h3>` — one level below `<h2>Blog Posts</h2>` — since it's a subsection of the monthly list, not a sibling of it.
 - `DAY` is the day of the month with no leading zero, e.g. `16`
 - `POST_TYPE` is `full-post` or `image-post` (see [Post types](#post-types)) — Notes are excluded from the monthly list entirely.
@@ -967,6 +977,15 @@ Where:
     2. `name`, if set
     3. The post's first `<p>` element, converted to plaintext with tags stripped, if it has any non-whitespace content — truncated to 40 characters after the last full word, with a trailing `…`, if longer than 40
     4. Otherwise, the same generated fallback text used for the heading and meta title (see [Post types](#post-types)): `Photo posted {date}` or `Photos posted {date}` (an Image post always has at least one top-level image, so `Note posted {date}` is never reached here in practice — it only appears for a Note, which isn't listed in the archive at all)
+
+### Archive column layout
+
+`archive-columns` and `archive-months` (see [Archive page](#archive-page)) exist purely so a project's own CSS can arrange the archive into columns on wide viewports, without Magnetizer needing any opinion on the breakpoint or column count — Magnetizer only guarantees the wrapper elements are there, grouped the way a column layout needs:
+
+- `archive-columns` groups `archive-categories` and `archive-notes` as two adjacent, independently-sized blocks — suited to a simple two-column flex/grid row (categories on one side, short notes on the other), each with its own heading pinned to the top of its column. When only one of the two is present, it's the sole child of `archive-columns`.
+- `archive-months` groups every month `<section>` as a flat sequence of same-shaped blocks — suited to CSS multi-column flow (`column-count`/`columns`), which distributes them across columns automatically, balancing column length without Magnetizer needing to decide which months go in which column itself.
+
+Magnetizer emits no inline styles and ships no default column CSS, same as everywhere else — narrow viewports get the same single-column stacked layout as before unless a project's `resources/` CSS adds a wide-viewport rule.
 
 ### Contribution calendar
 

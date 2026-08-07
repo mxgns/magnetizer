@@ -395,43 +395,65 @@ def render_archive_page_content(posts, categories=None, build_date=None, posts_p
 
     parts = ['<main>', '<h1>Archive</h1>']
     parts.append(_render_contribution_calendar(posts, build_date or _date.today(), posts_per_page))
-    has_sections = False
 
+    category_block = []
     if categories:
         used_slugs = {p.category for p in posts if p.category}
         category_items = [(slug, name) for slug, name in categories.items() if slug in used_slugs]
         if category_items:
             category_counts = Counter(p.category for p in posts if p.category)
             category_items.sort(key=lambda item: category_counts.get(item[0], 0), reverse=True)
-            parts.append('<h2>Categories</h2>')
-            parts.append('<ul>')
+            category_block.append('<h2>Categories</h2>')
+            category_block.append('<ul>')
             for slug, name in category_items:
                 count = category_counts.get(slug, 0)
-                parts.append(f'<li><a href="{slug}.html">{_escape(name)}</a> ({count})</li>')
-            parts.append('</ul>')
-            has_sections = True
+                category_block.append(f'<li><a href="{slug}.html">{_escape(name)}</a> ({count})</li>')
+            category_block.append('</ul>')
 
+    notes_block = []
     if notes_count:
-        parts.append('<h2>Short notes</h2>')
-        parts.append('<ul>')
-        parts.append('<li><a href="notes.html">All short notes</a></li>')
-        parts.append('</ul>')
-        has_sections = True
+        notes_block = [
+            '<h2>Short notes</h2>',
+            '<ul>',
+            '<li><a href="notes.html">All short notes</a></li>',
+            '</ul>',
+        ]
+
+    has_sections = bool(category_block) or bool(notes_block)
+
+    if has_sections:
+        parts.append('<div class="archive-columns">')
+        if category_block:
+            parts.append('<div class="archive-categories">')
+            parts.extend(category_block)
+            parts.append('</div>')
+        if notes_block:
+            parts.append('<div class="archive-notes">')
+            parts.extend(notes_block)
+            parts.append('</div>')
+        parts.append('</div>')
 
     if has_sections:
         parts.append('<h2>Blog Posts</h2>')
 
+    month_blocks = []
     for year, month in sorted(months.keys(), reverse=True):
         label = _date(year, month, 1).strftime('%B %Y')
-        parts.append('<section>')
-        parts.append(f'<h3>{label}</h3>')
-        parts.append('<ul>')
+        month_blocks.append('<section>')
+        month_blocks.append(f'<h3>{label}</h3>')
+        month_blocks.append('<ul>')
         for post in months[(year, month)]:
             day = str(_date.fromisoformat(post.date).day)
             item_class = _archive_item_class(post)
-            parts.append(f'<li class="{item_class}"><span class="day">{day}</span><a href="{post.url}">{_archive_description(post)}</a></li>')
-        parts.append('</ul>')
-        parts.append('</section>')
+            month_blocks.append(f'<li class="{item_class}"><span class="day">{day}</span><a href="{post.url}">{_archive_description(post)}</a></li>')
+        month_blocks.append('</ul>')
+        month_blocks.append('</section>')
+
+    if month_blocks:
+        parts.append('<div class="archive-months">')
+        parts.extend(month_blocks)
+        parts.append('</div>')
+
     parts.append('</main>')
     parts.append('<nav><a href="index.html">Blog home</a></nav>')
 

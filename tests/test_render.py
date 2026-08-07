@@ -1503,6 +1503,69 @@ class TestArchiveCategoriesList:
 
 
 # ---------------------------------------------------------------------------
+# render_archive_page_content — wide-viewport column layout
+# ---------------------------------------------------------------------------
+
+class TestArchiveColumnsLayout:
+
+    def test_categories_and_notes_wrapped_in_columns_container(self):
+        post = make_dated_post(1, "2026-05-24", category="photography", post_type="note")
+        html = render_archive_page_content([post], categories=_CATEGORIES)
+        assert '<div class="archive-columns">' in html
+        assert html.index('<div class="archive-columns">') < html.index("<h2>Categories</h2>")
+
+    def test_categories_div_wraps_categories_heading_and_list(self):
+        post = make_dated_post(1, "2026-05-24", category="photography")
+        html = render_archive_page_content([post], categories=_CATEGORIES)
+        assert '<div class="archive-categories">\n<h2>Categories</h2>' in html
+
+    def test_notes_div_wraps_notes_heading_and_list(self):
+        post = make_dated_post(1, "2026-05-24", post_type="note")
+        html = render_archive_page_content([post])
+        assert '<div class="archive-notes">\n<h2>Short notes</h2>' in html
+
+    def test_columns_container_has_both_divs_when_both_present(self):
+        post = make_dated_post(1, "2026-05-24", category="photography", post_type="note")
+        html = render_archive_page_content([post], categories=_CATEGORIES)
+        assert "archive-categories" in html
+        assert "archive-notes" in html
+
+    def test_columns_container_present_with_only_categories(self):
+        post = make_dated_post(1, "2026-05-24", category="photography")
+        html = render_archive_page_content([post], categories=_CATEGORIES)
+        assert '<div class="archive-columns">' in html
+        assert "archive-categories" in html
+        assert "archive-notes" not in html
+
+    def test_columns_container_present_with_only_notes(self):
+        post = make_dated_post(1, "2026-05-24", post_type="note")
+        html = render_archive_page_content([post])
+        assert '<div class="archive-columns">' in html
+        assert "archive-notes" in html
+        assert "archive-categories" not in html
+
+    def test_no_columns_container_when_neither_categories_nor_notes(self):
+        html = render_archive_page_content([make_dated_post(1, "2026-05-24")])
+        assert "archive-columns" not in html
+
+    def test_month_sections_wrapped_in_archive_months_div(self):
+        html = render_archive_page_content([make_dated_post(1, "2026-05-24")])
+        assert '<div class="archive-months">\n<section>' in html
+        assert html.index('</section>\n</div>\n</main>') > 0
+
+    def test_archive_months_div_after_blog_posts_heading(self):
+        post = make_dated_post(1, "2026-05-24", category="photography")
+        html = render_archive_page_content([post], categories=_CATEGORIES)
+        assert html.index("<h2>Blog Posts</h2>") < html.index('<div class="archive-months">')
+
+    def test_no_archive_months_div_when_no_dated_blog_posts(self):
+        # A Note has no entry in the monthly list (see test_note_post_not_in_monthly_list),
+        # so there's nothing to wrap.
+        html = render_archive_page_content([make_dated_post(1, "2026-05-24", post_type="note")])
+        assert "archive-months" not in html
+
+
+# ---------------------------------------------------------------------------
 # render_archive_page_content — post descriptions
 # ---------------------------------------------------------------------------
 

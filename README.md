@@ -325,18 +325,20 @@ As with everything else Magnetizer generates, this is bare structure only — no
 ```html
 <main>
   <h1>Archive</h1>
-  <section>
-    <h3>May 2026</h3>
-    <ul>
-      <li class="full-post"><span class="day">16</span><a href="42.html">Post title</a></li>
-      ...
-    </ul>
-  </section>
-  ...
+  <div class="archive-months">
+    <section>
+      <h3>May 2026</h3>
+      <ul>
+        <li class="full-post"><span class="day">16</span><a href="42.html">Post title</a></li>
+        ...
+      </ul>
+    </section>
+    ...
+  </div>
 </main>
 ```
 
-Each month heading is an `<h3>`, one level below the page's own `<h2>Blog Posts</h2>` — it's a subsection of the monthly list, not a sibling heading.
+Each month heading is an `<h3>`, one level below the page's own `<h2>Blog Posts</h2>` — it's a subsection of the monthly list, not a sibling heading. Every month `<section>` is wrapped in a single `<div class="archive-months">`, so a project's CSS can flow them across multiple columns on wide viewports via `column-count` — see [Archive column layout](#archive-column-layout) in the spec for the full detail. Magnetizer itself doesn't decide which months land in which column; the browser balances them.
 
 Each `<li>` gets the post's type class (`full-post` or `image-post` — Notes never appear here) and its link text follows the title → `name` → excerpt → generated-fallback priority order described in [Post types](#post-types).
 
@@ -345,21 +347,29 @@ If `categories` is configured and at least one category has a matching post, a c
 ```html
 <main>
   <h1>Archive</h1>
-  <h2>Categories</h2>
-  <ul>
-    <li><a href="photography.html">Photography</a> (34)</li>
-    <li><a href="travel.html">Travel</a> (12)</li>
-  </ul>
-  <h2>Short notes</h2>
-  <ul>
-    <li><a href="notes.html">All short notes</a></li>
-  </ul>
+  <div class="archive-columns">
+    <div class="archive-categories">
+      <h2>Categories</h2>
+      <ul>
+        <li><a href="photography.html">Photography</a> (34)</li>
+        <li><a href="travel.html">Travel</a> (12)</li>
+      </ul>
+    </div>
+    <div class="archive-notes">
+      <h2>Short notes</h2>
+      <ul>
+        <li><a href="notes.html">All short notes</a></li>
+      </ul>
+    </div>
+  </div>
   <h2>Blog Posts</h2>
   ...
 </main>
 ```
 
 Each category link shows the number of posts in that category in parentheses. Categories are listed in descending order of post count, and only if they have at least one matching post.
+
+`archive-categories` and `archive-notes` sit side by side inside `archive-columns` — whichever of the two exist; if only one does, it's the sole child. Like `archive-months`, this is bare structure for a project's CSS to lay out on wide viewports (e.g. a two-column flex row); Magnetizer ships no default column CSS or breakpoint of its own.
 
 ## Publishing
 
