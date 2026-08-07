@@ -341,39 +341,53 @@ def _render_contribution_calendar(posts, build_date, posts_per_page):
             continue
         posts_by_date.setdefault(post.date, []).append(post)
 
-    total = sum(len(day_posts) for date_str, day_posts in posts_by_date.items()
-                if start_date <= _date.fromisoformat(date_str) < start_date + _timedelta(days=_CALENDAR_DAYS))
+    posts_in_window = [
+        p for date_str, day_posts in posts_by_date.items()
+        if start_date <= _date.fromisoformat(date_str) < start_date + _timedelta(days=_CALENDAR_DAYS)
+        for p in day_posts
+    ]
+    post_count = sum(1 for p in posts_in_window if p.post_type != "note")
+    note_count = sum(1 for p in posts_in_window if p.post_type == "note")
 
     month_labels = _calendar_month_labels(start_date)
 
     parts = [
         '<section class="contribution-calendar">',
-        f'<h2><span class="calendar-count">{total}</span> posts in the last year</h2>',
+        '<p class="calendar-summary">I have posted '
+        f'<span class="calendar-post-count">{post_count}</span> posts and '
+        f'<span class="calendar-note-count">{note_count}</span> notes so far this year.</p>',
+        '<h2>Publishing calendar</h2>',
         '<div class="calendar">',
         '<div class="calendar-months">',
     ]
-    for week in range(_CALENDAR_WEEKS):
-        label = month_labels.get(week, '')
-        parts.append(f'<span class="calendar-month">{label}</span>')
+    for pair_start in range(0, _CALENDAR_WEEKS, 2):
+        parts.append('<div class="calendar-month-pair">')
+        for week in range(pair_start, min(pair_start + 2, _CALENDAR_WEEKS)):
+            label = month_labels.get(week, '')
+            parts.append(f'<span class="calendar-month">{label}</span>')
+        parts.append('</div>')
     parts.append('</div>')
 
     parts.append('<div class="calendar-weeks">')
-    for week in range(_CALENDAR_WEEKS):
-        parts.append('<div class="calendar-week">')
-        for weekday in range(7):
-            d = start_date + _timedelta(days=week * 7 + weekday)
-            if d > build_date:
-                parts.append('<span class="calendar-day-empty"></span>')
-                continue
-            day_posts = posts_by_date.get(d.isoformat(), [])
-            level = min(len(day_posts), 5)
-            if day_posts:
-                newest = max(day_posts, key=lambda p: p.id)
-                url = f"{index_page_url(page_num_by_id[newest.id])}#post-{newest.id}"
-                tooltip = _escape(_calendar_day_tooltip(d, day_posts), quote=True)
-                parts.append(f'<a href="{url}" class="calendar-day level-{level}" data-tooltip="{tooltip}" aria-label="{tooltip}"></a>')
-            else:
-                parts.append(f'<span class="calendar-day level-{level}"></span>')
+    for pair_start in range(0, _CALENDAR_WEEKS, 2):
+        parts.append('<div class="calendar-week-pair">')
+        for week in range(pair_start, min(pair_start + 2, _CALENDAR_WEEKS)):
+            parts.append('<div class="calendar-week">')
+            for weekday in range(7):
+                d = start_date + _timedelta(days=week * 7 + weekday)
+                if d > build_date:
+                    parts.append('<span class="calendar-day-empty"></span>')
+                    continue
+                day_posts = posts_by_date.get(d.isoformat(), [])
+                level = min(len(day_posts), 5)
+                if day_posts:
+                    newest = max(day_posts, key=lambda p: p.id)
+                    url = f"{index_page_url(page_num_by_id[newest.id])}#post-{newest.id}"
+                    tooltip = _escape(_calendar_day_tooltip(d, day_posts), quote=True)
+                    parts.append(f'<a href="{url}" class="calendar-day level-{level}" data-tooltip="{tooltip}" aria-label="{tooltip}"></a>')
+                else:
+                    parts.append(f'<span class="calendar-day level-{level}"></span>')
+            parts.append('</div>')
         parts.append('</div>')
     parts.append('</div>')
     parts.append('</div>')

@@ -1190,29 +1190,40 @@ class TestRenderContributionCalendar:
         assert html.index("<h1>Archive</h1>") < html.index('<section class="contribution-calendar">')
         assert html.index('<section class="contribution-calendar">') < html.index("<h2>Categories</h2>")
 
-    def test_title_counts_posts_in_window(self):
+    def test_heading_is_publishing_calendar_with_no_number(self):
+        html = render_archive_page_content([make_dated_post(1, "2026-05-24")], build_date=date(2026, 5, 24))
+        assert '<h2>Publishing calendar</h2>' in html
+        assert 'calendar-count' not in html
+
+    def test_summary_paragraph_before_heading(self):
+        html = render_archive_page_content([make_dated_post(1, "2026-05-24")], build_date=date(2026, 5, 24))
+        assert html.index('<p class="calendar-summary">') < html.index('<h2>Publishing calendar</h2>')
+
+    def test_summary_counts_posts_and_notes_separately(self):
         posts = [
-            make_dated_post(1, "2026-05-20"),
-            make_dated_post(2, "2026-05-21"),
+            make_dated_post(1, "2026-05-20", post_type="full"),
+            make_dated_post(2, "2026-05-21", post_type="image"),
+            make_dated_post(3, "2026-05-21", post_type="note"),
         ]
         html = render_archive_page_content(posts, build_date=date(2026, 5, 24))
-        assert '<h2><span class="calendar-count">2</span> posts in the last year</h2>' in html
+        assert (
+            '<p class="calendar-summary">I have posted '
+            '<span class="calendar-post-count">2</span> posts and '
+            '<span class="calendar-note-count">1</span> notes so far this year.</p>'
+        ) in html
 
-    def test_title_excludes_posts_outside_window(self):
+    def test_summary_excludes_posts_outside_window(self):
         # build_date=2026-01-04 (a Sunday) -> window start_date is 2024-12-30 (Monday).
         # A post the day before start_date must not be counted.
         posts = [make_dated_post(1, "2024-12-29")]
         html = render_archive_page_content(posts, build_date=date(2026, 1, 4))
-        assert '<h2><span class="calendar-count">0</span> posts in the last year</h2>' in html
-
-    def test_title_includes_note_posts(self):
-        posts = [make_dated_post(1, "2026-05-20", post_type="note")]
-        html = render_archive_page_content(posts, build_date=date(2026, 5, 24))
-        assert '<h2><span class="calendar-count">1</span> posts in the last year</h2>' in html
+        assert '<span class="calendar-post-count">0</span>' in html
+        assert '<span class="calendar-note-count">0</span>' in html
 
     def test_empty_posts_list_still_renders_grid(self):
         html = render_archive_page_content([], build_date=date(2026, 5, 24))
-        assert '<h2><span class="calendar-count">0</span> posts in the last year</h2>' in html
+        assert '<span class="calendar-post-count">0</span>' in html
+        assert '<span class="calendar-note-count">0</span>' in html
         assert html.count('<div class="calendar-week">') == 53
 
     def test_grid_has_53_week_columns(self):
@@ -1222,6 +1233,42 @@ class TestRenderContributionCalendar:
     def test_grid_has_53_month_column_cells(self):
         html = render_archive_page_content([make_dated_post(1, "2026-05-24")], build_date=date(2026, 5, 24))
         assert html.count('<span class="calendar-month">') == 53
+
+    def test_weeks_grouped_into_27_pairs(self):
+        # 53 weeks -> 26 pairs of 2 + 1 trailing single -> 27 groups. CSS uses
+        # these to merge each pair into a single 2-week column on small screens.
+        html = render_archive_page_content([make_dated_post(1, "2026-05-24")], build_date=date(2026, 5, 24))
+        assert html.count('<div class="calendar-week-pair">') == 27
+
+    def test_first_week_pair_contains_two_weeks(self):
+        html = render_archive_page_content([make_dated_post(1, "2026-05-24")], build_date=date(2026, 5, 24))
+        start = html.index('<div class="calendar-week-pair">')
+        next_pair = html.index('<div class="calendar-week-pair">', start + 1)
+        pair_block = html[start:next_pair]
+        assert pair_block.count('<div class="calendar-week">') == 2
+
+    def test_last_week_pair_contains_one_week(self):
+        html = render_archive_page_content([make_dated_post(1, "2026-05-24")], build_date=date(2026, 5, 24))
+        start = html.rindex('<div class="calendar-week-pair">')
+        pair_block = html[start:]
+        assert pair_block.count('<div class="calendar-week">') == 1
+
+    def test_month_labels_grouped_into_27_pairs(self):
+        html = render_archive_page_content([make_dated_post(1, "2026-05-24")], build_date=date(2026, 5, 24))
+        assert html.count('<div class="calendar-month-pair">') == 27
+
+    def test_first_month_pair_contains_two_labels(self):
+        html = render_archive_page_content([make_dated_post(1, "2026-05-24")], build_date=date(2026, 5, 24))
+        start = html.index('<div class="calendar-month-pair">')
+        next_pair = html.index('<div class="calendar-month-pair">', start + 1)
+        pair_block = html[start:next_pair]
+        assert pair_block.count('<span class="calendar-month">') == 2
+
+    def test_last_month_pair_contains_one_label(self):
+        html = render_archive_page_content([make_dated_post(1, "2026-05-24")], build_date=date(2026, 5, 24))
+        start = html.rindex('<div class="calendar-month-pair">')
+        pair_block = html[start:]
+        assert pair_block.count('<span class="calendar-month">') == 1
 
     def test_grid_has_371_day_cells_total(self):
         # build_date=2026-05-24 is itself a Sunday (the last row of its week
@@ -1360,7 +1407,7 @@ class TestRenderContributionCalendar:
             Post(id=1, date=None, date_uk=None, title="No date", url="1.html", body_html="", images=[]),
         ]
         html = render_archive_page_content(posts, build_date=date(2026, 5, 24))
-        assert '<h2><span class="calendar-count">1</span> posts in the last year</h2>' in html
+        assert '<span class="calendar-post-count">1</span>' in html
 
 
 # ---------------------------------------------------------------------------
