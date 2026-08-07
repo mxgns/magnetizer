@@ -1055,8 +1055,10 @@ class TestRenderArchivePageContent:
         assert '<a href="index.html">Blog home</a>' in html
 
     def test_month_heading(self):
+        # <h3>, not <h2> -- a month heading is a subsection under the page's
+        # "Blog Posts" <h2>, not a sibling of it.
         html = render_archive_page_content([make_dated_post(1, "2026-05-24")])
-        assert "<h2>May 2026</h2>" in html
+        assert "<h3>May 2026</h3>" in html
 
     def test_multiple_months_in_reverse_order(self):
         posts = [
@@ -1272,13 +1274,20 @@ class TestRenderContributionCalendar:
     def test_zero_post_day_tooltip(self):
         html = render_archive_page_content([], build_date=date(2026, 5, 24))
         block = _last_week_block(html)
-        assert 'title="24 May: No posts"' in block
+        assert 'data-tooltip="24 May: No posts"' in block
 
     def test_day_with_one_post_is_level_1_and_links_to_index(self):
         posts = [make_dated_post(7, "2026-05-24")]
         html = render_archive_page_content(posts, build_date=date(2026, 5, 24), posts_per_page=12)
         block = _last_week_block(html)
-        assert '<a href="index.html#post-7" class="calendar-day level-1" title="24 May: 1 post" aria-label="24 May: 1 post"></a>' in block
+        assert '<a href="index.html#post-7" class="calendar-day level-1" data-tooltip="24 May: 1 post" aria-label="24 May: 1 post"></a>' in block
+
+    def test_tooltip_uses_data_attribute_not_title(self):
+        # A custom tooltip, not the native browser title="" tooltip.
+        posts = [make_dated_post(7, "2026-05-24")]
+        html = render_archive_page_content(posts, build_date=date(2026, 5, 24), posts_per_page=12)
+        block = _last_week_block(html)
+        assert 'title=' not in block
 
     def test_tooltip_singular_post_and_note(self):
         posts = [
@@ -1287,7 +1296,7 @@ class TestRenderContributionCalendar:
         ]
         html = render_archive_page_content(posts, build_date=date(2026, 5, 24), posts_per_page=12)
         block = _last_week_block(html)
-        assert 'title="24 May: 1 post + 1 note"' in block
+        assert 'data-tooltip="24 May: 1 post + 1 note"' in block
         assert 'aria-label="24 May: 1 post + 1 note"' in block
 
     def test_tooltip_plural_posts_and_notes(self):
@@ -1299,13 +1308,13 @@ class TestRenderContributionCalendar:
         ]
         html = render_archive_page_content(posts, build_date=date(2026, 5, 24), posts_per_page=12)
         block = _last_week_block(html)
-        assert 'title="24 May: 2 posts + 2 notes"' in block
+        assert 'data-tooltip="24 May: 2 posts + 2 notes"' in block
 
     def test_tooltip_notes_only(self):
         posts = [make_dated_post(1, "2026-05-24", post_type="note")]
         html = render_archive_page_content(posts, build_date=date(2026, 5, 24), posts_per_page=12)
         block = _last_week_block(html)
-        assert 'title="24 May: 1 note"' in block
+        assert 'data-tooltip="24 May: 1 note"' in block
 
     def test_bucketing_caps_at_level_5_for_six_or_more_posts(self):
         posts = [make_dated_post(i, "2026-05-24") for i in range(1, 7)]

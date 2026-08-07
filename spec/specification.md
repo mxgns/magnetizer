@@ -942,7 +942,7 @@ The `MAGNETIZER_CONTENT` has the following structure:
 </ul>
 <h2>Blog Posts</h2>
   <section>
-    <h2>May 2026</h2>
+    <h3>May 2026</h3>
     <ul>
       <li class="POST_TYPE"><span class="day">DAY</span><a href="POST_URL">POST_LINK_TEXT</a></li>
       ...
@@ -959,6 +959,7 @@ Where:
 - The `<h2>Categories</h2>` heading and its `<ul>` are only included if `categories` is configured and at least one configured category has a matching post. Each `<li>` links to the corresponding category page (see [Categories](#categories)) and includes the number of posts `(N)` in that category. Categories are listed in descending order of post count; categories with no matching posts are omitted.
 - The `<h2>Short notes</h2>` heading and its `<ul>` are only included when at least one Note exists.
 - The `<h2>Blog Posts</h2>` heading is only included when the categories list, the notes section, or both are shown.
+- Each month heading is an `<h3>` — one level below `<h2>Blog Posts</h2>` — since it's a subsection of the monthly list, not a sibling of it.
 - `DAY` is the day of the month with no leading zero, e.g. `16`
 - `POST_TYPE` is `full-post` or `image-post` (see [Post types](#post-types)) — Notes are excluded from the monthly list entirely.
 - `POST_LINK_TEXT` is derived using this priority order:
@@ -979,7 +980,7 @@ Each day in the window is bucketed by how many posts fall on it: `level-0` (zero
 
 A day later than the build date — i.e. one that hasn't happened yet, which can only occur in the final week column — isn't rendered as a day box at all: it's an empty `<span class="calendar-day-empty">`, carrying no `level-N` class, no link, and no tooltip, so it reads as blank space rather than an (incorrectly) empty box.
 
-Every real (non-future) day box, filled or not, carries a `title` attribute summarising that day, e.g. `25 August: 1 post`, `25 August: No posts`, or — when both ordinary posts and Notes fall on the same day — `25 August: 1 post + 2 notes` (each count pluralised independently, joined with ` + `). A filled day's `<a>` repeats the same text as `aria-label`, so the count is available to assistive technology without relying on the `title` hover tooltip.
+Every real (non-future) day box, filled or not, carries a `data-tooltip` attribute summarising that day, e.g. `25 August: 1 post`, `25 August: No posts`, or — when both ordinary posts and Notes fall on the same day — `25 August: 1 post + 2 notes` (each count pluralised independently, joined with ` + `). This is deliberately a `data-` attribute rather than `title` — Magnetizer emits it as data only; rendering it as an actual hover tooltip (positioning, appearance, show/hide) is the responsibility of the project's own `resources/` CSS, the same way every other visual aspect of the calendar is. A filled day's `<a>` repeats the same text as `aria-label`, so the count is available to assistive technology independently of the visual tooltip.
 
 The `MAGNETIZER_CONTENT` structure is:
 
@@ -994,8 +995,8 @@ The `MAGNETIZER_CONTENT` structure is:
 </div>
 <div class="calendar-weeks">
   <div class="calendar-week">
-    <span class="calendar-day level-0" title="26 May: No posts"></span>
-    <a href="INDEX_PAGE_URL#post-POST_ID" class="calendar-day level-N" title="27 May: 1 post + 1 note" aria-label="27 May: 1 post + 1 note"></a>
+    <span class="calendar-day level-0" data-tooltip="26 May: No posts"></span>
+    <a href="INDEX_PAGE_URL#post-POST_ID" class="calendar-day level-N" data-tooltip="27 May: 1 post + 1 note" aria-label="27 May: 1 post + 1 note"></a>
     <span class="calendar-day-empty"></span>
     ... (7 cells, Monday to Sunday)
   </div>

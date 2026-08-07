@@ -373,9 +373,9 @@ def _render_contribution_calendar(posts, build_date, posts_per_page):
             if day_posts:
                 newest = max(day_posts, key=lambda p: p.id)
                 url = f"{index_page_url(page_num_by_id[newest.id])}#post-{newest.id}"
-                parts.append(f'<a href="{url}" class="calendar-day level-{level}" title="{tooltip}" aria-label="{tooltip}"></a>')
+                parts.append(f'<a href="{url}" class="calendar-day level-{level}" data-tooltip="{tooltip}" aria-label="{tooltip}"></a>')
             else:
-                parts.append(f'<span class="calendar-day level-{level}" title="{tooltip}"></span>')
+                parts.append(f'<span class="calendar-day level-{level}" data-tooltip="{tooltip}"></span>')
         parts.append('</div>')
     parts.append('</div>')
     parts.append('</div>')
@@ -426,7 +426,7 @@ def render_archive_page_content(posts, categories=None, build_date=None, posts_p
     for year, month in sorted(months.keys(), reverse=True):
         label = _date(year, month, 1).strftime('%B %Y')
         parts.append('<section>')
-        parts.append(f'<h2>{label}</h2>')
+        parts.append(f'<h3>{label}</h3>')
         parts.append('<ul>')
         for post in months[(year, month)]:
             day = str(_date.fromisoformat(post.date).day)
