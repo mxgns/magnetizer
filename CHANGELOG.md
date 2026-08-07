@@ -10,8 +10,6 @@
 - Added a GitHub-style contribution calendar to the archive page
 - Fixed archive month headings using `<h2>` instead of `<h3>`
 - Wrapped archive categories/notes/months in column-layout containers
-- Calendar heading is now a plain "Publishing calendar", with counts moved to a summary paragraph below it
-- Calendar redesigned around 10-day columns instead of calendar weeks, so today is always the bottom-right box
 
 ### 6/8/26
 
