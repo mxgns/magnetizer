@@ -930,6 +930,7 @@ The `MAGNETIZER_CONTENT` has the following structure:
 ```html
 <main>
 <h1>Archive</h1>
+<section class="contribution-calendar">...</section>
 <h2>Categories</h2>
 <ul>
   <li><a href="CATEGORY_SLUG.html">CATEGORY_NAME</a> (N)</li>
@@ -954,6 +955,7 @@ The `MAGNETIZER_CONTENT` has the following structure:
 
 Where:
 
+- The contribution calendar (`<section class="contribution-calendar">`) is always present, immediately after the `<h1>` — see [Contribution calendar](#contribution-calendar).
 - The `<h2>Categories</h2>` heading and its `<ul>` are only included if `categories` is configured and at least one configured category has a matching post. Each `<li>` links to the corresponding category page (see [Categories](#categories)) and includes the number of posts `(N)` in that category. Categories are listed in descending order of post count; categories with no matching posts are omitted.
 - The `<h2>Short notes</h2>` heading and its `<ul>` are only included when at least one Note exists.
 - The `<h2>Blog Posts</h2>` heading is only included when the categories list, the notes section, or both are shown.
@@ -964,6 +966,54 @@ Where:
     2. `name`, if set
     3. The post's first `<p>` element, converted to plaintext with tags stripped, if it has any non-whitespace content — truncated to 40 characters after the last full word, with a trailing `…`, if longer than 40
     4. Otherwise, the same generated fallback text used for the heading and meta title (see [Post types](#post-types)): `Photo posted {date}` or `Photos posted {date}` (an Image post always has at least one top-level image, so `Note posted {date}` is never reached here in practice — it only appears for a Note, which isn't listed in the archive at all)
+
+### Contribution calendar
+
+A GitHub-style calendar of posting activity, always present at the top of [the archive page](#archive-page), directly after the `<h1>`. Unlike the archive's monthly list below it, the calendar counts **every published post type, including Notes** — it mirrors what's shown on the index pages, which is also where its links point.
+
+The calendar covers a rolling 53-week (371-day) window ending in the calendar week containing the build date: the start date is the Sunday 52 weeks before the Sunday of the build date's own week. This keeps the grid week-aligned (matching GitHub's own calendar) while covering the last 12 months.
+
+The heading text is always `{N} posts in the last year`, where `N` is the total count of published posts (all types) falling within the window — no singular/plural variant for `N == 1`.
+
+Each day in the window is bucketed by how many posts fall on it: `level-0` (zero), `level-1`, `level-2`, `level-3`, `level-4`, or `level-5` (five or more). A day with one or more posts is a link (`<a>`) to the **newest** post from that day (highest post ID) — not that post's own page, but its anchor on whichever index page it appears on: `{INDEX_PAGE_URL}#post-{post-id}`, using the same pagination as [index pages](#index-pages) (`posts_per_page`, positions in the reverse-chronological post list). A day with no posts is a non-interactive `<span>`.
+
+The `MAGNETIZER_CONTENT` structure is:
+
+```html
+<section class="contribution-calendar">
+<h2><span class="calendar-count">N</span> posts in the last year</h2>
+<div class="calendar">
+<span class="calendar-corner"></span>
+<div class="calendar-months">
+  <span class="calendar-month">Aug</span>
+  <span class="calendar-month"></span>
+  ... (53 spans total, one per week column; empty unless that week is the first to contain a given month)
+</div>
+<div class="calendar-day-labels">
+  <span></span>
+  <span class="calendar-day-label">Mon</span>
+  <span></span>
+  <span class="calendar-day-label">Wed</span>
+  <span></span>
+  <span class="calendar-day-label">Fri</span>
+  <span></span>
+</div>
+<div class="calendar-weeks">
+  <div class="calendar-week">
+    <span class="calendar-day level-0"></span>
+    <a href="INDEX_PAGE_URL#post-POST_ID" class="calendar-day level-N"></a>
+    ... (7 cells, Sunday to Saturday)
+  </div>
+  ... (53 weeks total)
+</div>
+</div>
+</section>
+```
+
+- `.calendar-months` always has exactly 53 `<span>` elements — one per week column, aligned with `.calendar-weeks` — labelled with a 3-letter month abbreviation (e.g. `Aug`) only in the week where that month is first seen in the grid. The leftmost (partial) month is always labelled, regardless of which day of the month the window happens to start on; every subsequent month is labelled at its 1st.
+- `.calendar-day-labels` always has exactly 7 `<span>` elements (Sunday to Saturday); only Monday, Wednesday and Friday carry a `calendar-day-label` class and text — the rest are empty, unlabelled spacers.
+- `.calendar-weeks` always has exactly 53 `.calendar-week` columns of exactly 7 `.calendar-day` cells each (Sunday to Saturday), for 371 cells total, regardless of how many posts exist.
+- As with every other generated page, Magnetizer emits no inline styles — the grid's actual layout, cell sizing, and `level-0`–`level-5` colour scale are entirely the responsibility of the project's own `resources/` CSS.
 
 ### Notes pages
 

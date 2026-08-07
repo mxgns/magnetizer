@@ -601,7 +601,7 @@ def _rebuild_stale_not_found_page(config, content_dir, dist_dir, template, value
     return True
 
 
-def _write_generated_pages(published_posts_sorted_desc, dist_dir, config, template, log):
+def _write_generated_pages(published_posts_sorted_desc, dist_dir, config, template, log, build_date):
     _write_index_pages(published_posts_sorted_desc, dist_dir, config, template, categories=config["categories"])
     per_page = config["posts_per_page"]
     total_pages = max(1, (len(published_posts_sorted_desc) + per_page - 1) // per_page)
@@ -623,7 +623,10 @@ def _write_generated_pages(published_posts_sorted_desc, dist_dir, config, templa
     archive_html = render_template(
         template,
         title=render_page_title(config["site_name"], "Archive", page_num=None),
-        content=render_archive_page_content(published_posts_sorted_desc, categories=config["categories"]),
+        content=render_archive_page_content(
+            published_posts_sorted_desc, categories=config["categories"],
+            build_date=build_date, posts_per_page=config["posts_per_page"],
+        ),
         canonical=canonical_url(config["site_url"], "archive.html"),
         navigation=render_navigation(config["navigation"], "archive.html"),
         page_id="archive",
@@ -726,9 +729,11 @@ def build(cwd, filename=None, flush=False, resources=False, on_progress=None):
     _check_no_invalid_posts(published_posts_sorted_desc, special_page_posts, not_found_post)
     warnings.extend(_orphan_comment_warnings(content_dir, set(published_post_ids_sorted_desc)))
 
+    build_date = _date.today()
+
     # Sitewide dynamic-value computation runs unconditionally (even for a single-page
     # preview build) so that any shortcodes on the page(s) being built expand correctly.
-    values = _compute_dynamic_values(published_posts_sorted_desc, special_page_posts, _date.today(), warnings)
+    values = _compute_dynamic_values(published_posts_sorted_desc, special_page_posts, build_date, warnings)
 
     pages_dynamic_updates = {}
     deleted_page_filenames = set()
@@ -798,7 +803,7 @@ def build(cwd, filename=None, flush=False, resources=False, on_progress=None):
         specials_rebuilt = specials_rebuilt or not_found_rebuilt
 
     if not filename and post_ids_to_build:
-        _write_generated_pages(published_posts_sorted_desc, dist_dir, config, template, _log)
+        _write_generated_pages(published_posts_sorted_desc, dist_dir, config, template, _log, build_date)
 
     if not filename and log:
         _write_sitemap_and_robots(

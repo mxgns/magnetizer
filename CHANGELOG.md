@@ -5,6 +5,10 @@
 
 ## Released changes
 
+### 7/8/26
+
+- Added a GitHub-style contribution calendar to the archive page
+
 ### 6/8/26
 
 - Added comments, published manually using .md

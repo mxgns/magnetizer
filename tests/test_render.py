@@ -1,5 +1,6 @@
 """Tests for magnetizer/render.py — all HTML generation functions"""
 
+from datetime import date
 from html.parser import HTMLParser
 
 import pytest
@@ -1072,7 +1073,7 @@ class TestRenderArchivePageContent:
 
     def test_day_in_span_outside_link(self):
         html = render_archive_page_content([make_dated_post(1, "2026-05-24", title="Sunny day")])
-        assert html.index('<span class="day">') < html.index('<a href=')
+        assert html.index('<span class="day">') < html.index('<a href="1.html">')
 
     def test_each_entry_is_a_link_to_post(self):
         html = render_archive_page_content([make_dated_post(5, "2026-05-24", title="Hello")])
@@ -1155,6 +1156,140 @@ class TestRenderArchivePageContent:
                     url="1.html", body_html="", images=[], is_favourite=False, post_type="full")
         html = render_archive_page_content([post])
         assert '<li class="full-post favourite">' not in html
+
+
+# ---------------------------------------------------------------------------
+# render_archive_page_content — contribution calendar
+# ---------------------------------------------------------------------------
+
+def _last_week_block(html):
+    """The final <div class="calendar-week">...</div> block — always the week
+    containing build_date, so it's a stable place to check a specific day's cell."""
+    start = html.rindex('<div class="calendar-week">')
+    end = html.index('</div>', start)
+    return html[start:end]
+
+
+class TestRenderContributionCalendar:
+
+    def test_section_present(self):
+        html = render_archive_page_content([make_dated_post(1, "2026-05-24")], build_date=date(2026, 5, 24))
+        assert '<section class="contribution-calendar">' in html
+
+    def test_section_after_h1_and_before_categories(self):
+        post = make_dated_post(1, "2026-05-24", category="photography")
+        html = render_archive_page_content([post], categories=_CATEGORIES, build_date=date(2026, 5, 24))
+        assert html.index("<h1>Archive</h1>") < html.index('<section class="contribution-calendar">')
+        assert html.index('<section class="contribution-calendar">') < html.index("<h2>Categories</h2>")
+
+    def test_title_counts_posts_in_window(self):
+        posts = [
+            make_dated_post(1, "2026-05-20"),
+            make_dated_post(2, "2026-05-21"),
+        ]
+        html = render_archive_page_content(posts, build_date=date(2026, 5, 24))
+        assert '<h2><span class="calendar-count">2</span> posts in the last year</h2>' in html
+
+    def test_title_excludes_posts_outside_window(self):
+        # build_date=2026-01-04 (a Sunday) -> window start_date is 2025-01-05.
+        # A post the day before start_date must not be counted.
+        posts = [make_dated_post(1, "2025-01-04")]
+        html = render_archive_page_content(posts, build_date=date(2026, 1, 4))
+        assert '<h2><span class="calendar-count">0</span> posts in the last year</h2>' in html
+
+    def test_title_includes_note_posts(self):
+        posts = [make_dated_post(1, "2026-05-20", post_type="note")]
+        html = render_archive_page_content(posts, build_date=date(2026, 5, 24))
+        assert '<h2><span class="calendar-count">1</span> posts in the last year</h2>' in html
+
+    def test_empty_posts_list_still_renders_grid(self):
+        html = render_archive_page_content([], build_date=date(2026, 5, 24))
+        assert '<h2><span class="calendar-count">0</span> posts in the last year</h2>' in html
+        assert html.count('<div class="calendar-week">') == 53
+
+    def test_grid_has_53_week_columns(self):
+        html = render_archive_page_content([make_dated_post(1, "2026-05-24")], build_date=date(2026, 5, 24))
+        assert html.count('<div class="calendar-week">') == 53
+
+    def test_grid_has_53_month_column_cells(self):
+        html = render_archive_page_content([make_dated_post(1, "2026-05-24")], build_date=date(2026, 5, 24))
+        assert html.count('<span class="calendar-month">') == 53
+
+    def test_grid_has_371_day_cells(self):
+        html = render_archive_page_content([make_dated_post(1, "2026-05-24")], build_date=date(2026, 5, 24))
+        assert html.count('class="calendar-day level-') == 371
+
+    def test_day_of_week_labels_mon_wed_fri_only(self):
+        html = render_archive_page_content([make_dated_post(1, "2026-05-24")], build_date=date(2026, 5, 24))
+        assert html.count('class="calendar-day-label"') == 3
+        assert html.index('>Mon<') < html.index('>Wed<') < html.index('>Fri<')
+
+    def test_leftmost_partial_month_is_labelled(self):
+        # build_date=2026-01-04 is a Sunday -> start_date=2025-01-05, so the
+        # leftmost week column is a partial January, not a day-1 boundary.
+        html = render_archive_page_content([make_dated_post(1, "2025-06-01")], build_date=date(2026, 1, 4))
+        first_month_cell = html.index('<span class="calendar-month">')
+        assert html[first_month_cell:first_month_cell + 40].startswith('<span class="calendar-month">Jan</span>')
+
+    def test_month_labels_in_left_to_right_chronological_order(self):
+        html = render_archive_page_content([make_dated_post(1, "2026-05-24")], build_date=date(2026, 8, 7))
+        assert html.index(">Aug<") < html.index(">Sep<") < html.index(">Dec<") < html.index(">Jan<") < html.index(">Jul<")
+
+    def test_day_with_zero_posts_is_level_0_and_not_a_link(self):
+        html = render_archive_page_content([], build_date=date(2026, 5, 24))
+        block = _last_week_block(html)
+        assert '<span class="calendar-day level-0"></span>' in block
+
+    def test_day_with_one_post_is_level_1_and_links_to_index(self):
+        posts = [make_dated_post(7, "2026-05-24")]
+        html = render_archive_page_content(posts, build_date=date(2026, 5, 24), posts_per_page=12)
+        block = _last_week_block(html)
+        assert '<a href="index.html#post-7" class="calendar-day level-1"></a>' in block
+
+    def test_bucketing_caps_at_level_5_for_six_or_more_posts(self):
+        posts = [make_dated_post(i, "2026-05-24") for i in range(1, 7)]
+        html = render_archive_page_content(posts, build_date=date(2026, 5, 24))
+        block = _last_week_block(html)
+        assert 'level-5' in block
+        assert 'level-6' not in block
+
+    def test_bucketing_exact_levels(self):
+        for count, expected_level in [(1, 1), (2, 2), (3, 3), (4, 4), (5, 5)]:
+            posts = [make_dated_post(i, "2026-05-24") for i in range(1, count + 1)]
+            html = render_archive_page_content(posts, build_date=date(2026, 5, 24))
+            block = _last_week_block(html)
+            assert f'level-{expected_level}"' in block
+            assert f'level-{expected_level + 1}"' not in block
+
+    def test_multiple_posts_same_day_links_to_newest(self):
+        posts = [
+            make_dated_post(3, "2026-05-24"),
+            make_dated_post(9, "2026-05-24"),
+            make_dated_post(1, "2026-05-24"),
+        ]
+        html = render_archive_page_content(posts, build_date=date(2026, 5, 24), posts_per_page=12)
+        block = _last_week_block(html)
+        assert 'href="index.html#post-9"' in block
+
+    def test_link_target_paginates_by_position_in_list(self):
+        # posts_per_page=2, three posts newest-first -> the 3rd post (index 2)
+        # lands on page 2 (index-2.html).
+        posts = [
+            make_dated_post(3, "2026-05-22"),
+            make_dated_post(2, "2026-05-23"),
+            make_dated_post(1, "2026-05-24"),
+        ]
+        html = render_archive_page_content(posts, build_date=date(2026, 5, 24), posts_per_page=2)
+        block = _last_week_block(html)
+        assert 'href="index-2.html#post-1"' in block
+
+    def test_post_without_date_not_counted_in_calendar(self):
+        posts = [
+            make_dated_post(2, "2026-05-24"),
+            Post(id=1, date=None, date_uk=None, title="No date", url="1.html", body_html="", images=[]),
+        ]
+        html = render_archive_page_content(posts, build_date=date(2026, 5, 24))
+        assert '<h2><span class="calendar-count">1</span> posts in the last year</h2>' in html
 
 
 # ---------------------------------------------------------------------------

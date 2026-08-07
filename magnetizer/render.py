@@ -1,6 +1,6 @@
 import re
 from collections import Counter
-from datetime import date as _date
+from datetime import date as _date, timedelta as _timedelta
 from html import escape as _escape, unescape as _unescape
 
 from magnetizer.content import resized_filename as _resized_filename
@@ -291,7 +291,90 @@ def _archive_item_class(post):
     return cls
 
 
-def render_archive_page_content(posts, categories=None):
+_CALENDAR_WEEKS = 53
+_CALENDAR_DAYS = _CALENDAR_WEEKS * 7
+
+
+def _calendar_window(build_date):
+    """The Sunday-aligned 53-week (371-day) window ending in build_date's own
+    week, mirroring GitHub's own contribution calendar span."""
+    days_since_sunday = (build_date.weekday() + 1) % 7
+    current_week_start = build_date - _timedelta(days=days_since_sunday)
+    return current_week_start - _timedelta(weeks=_CALENDAR_WEEKS - 1)
+
+
+def _calendar_month_labels(start_date):
+    labels = {}
+    seen_months = set()
+    for i in range(_CALENDAR_DAYS):
+        d = start_date + _timedelta(days=i)
+        month_key = (d.year, d.month)
+        if month_key in seen_months:
+            continue
+        if d.day == 1 or i == 0:
+            seen_months.add(month_key)
+            labels[i // 7] = d.strftime('%b')
+    return labels
+
+
+def _render_contribution_calendar(posts, build_date, posts_per_page):
+    start_date = _calendar_window(build_date)
+
+    page_num_by_id = {}
+    for idx, post in enumerate(posts):
+        page_num_by_id[post.id] = idx // posts_per_page + 1
+
+    posts_by_date = {}
+    for post in posts:
+        if not post.date:
+            continue
+        posts_by_date.setdefault(post.date, []).append(post)
+
+    total = sum(len(day_posts) for date_str, day_posts in posts_by_date.items()
+                if start_date <= _date.fromisoformat(date_str) < start_date + _timedelta(days=_CALENDAR_DAYS))
+
+    month_labels = _calendar_month_labels(start_date)
+
+    parts = [
+        '<section class="contribution-calendar">',
+        f'<h2><span class="calendar-count">{total}</span> posts in the last year</h2>',
+        '<div class="calendar">',
+        '<span class="calendar-corner"></span>',
+        '<div class="calendar-months">',
+    ]
+    for week in range(_CALENDAR_WEEKS):
+        label = month_labels.get(week, '')
+        parts.append(f'<span class="calendar-month">{label}</span>')
+    parts.append('</div>')
+
+    parts.append('<div class="calendar-day-labels">')
+    for weekday in range(7):
+        label = {1: 'Mon', 3: 'Wed', 5: 'Fri'}.get(weekday)
+        parts.append(f'<span class="calendar-day-label">{label}</span>' if label else '<span></span>')
+    parts.append('</div>')
+
+    parts.append('<div class="calendar-weeks">')
+    for week in range(_CALENDAR_WEEKS):
+        parts.append('<div class="calendar-week">')
+        for weekday in range(7):
+            d = start_date + _timedelta(days=week * 7 + weekday)
+            day_posts = posts_by_date.get(d.isoformat(), [])
+            level = min(len(day_posts), 5)
+            if day_posts:
+                newest = max(day_posts, key=lambda p: p.id)
+                url = f"{index_page_url(page_num_by_id[newest.id])}#post-{newest.id}"
+                parts.append(f'<a href="{url}" class="calendar-day level-{level}"></a>')
+            else:
+                parts.append(f'<span class="calendar-day level-{level}"></span>')
+        parts.append('</div>')
+    parts.append('</div>')
+
+    parts.append('</div>')
+    parts.append('</section>')
+    return '\n'.join(parts)
+
+
+def render_archive_page_content(posts, categories=None, build_date=None, posts_per_page=12):
     blog_posts = [p for p in posts if p.date and p.post_type != "note"]
 
     months = {}
@@ -303,6 +386,7 @@ def render_archive_page_content(posts, categories=None):
     notes_count = sum(1 for p in posts if p.post_type == "note")
 
     parts = ['<main>', '<h1>Archive</h1>']
+    parts.append(_render_contribution_calendar(posts, build_date or _date.today(), posts_per_page))
     has_sections = False
 
     if categories:

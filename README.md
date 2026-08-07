@@ -300,7 +300,28 @@ Because a page like this can go stale purely from *other* content changing (a ne
 
 ## Archive page
 
-The archive page (`dist/archive.html`) lists all dated blog posts grouped by month (Notes are excluded from this list). It opens with an `<h1>Archive</h1>` heading:
+The archive page (`dist/archive.html`) lists all dated blog posts grouped by month (Notes are excluded from this list). It opens with an `<h1>Archive</h1>` heading, immediately followed by a GitHub-style contribution calendar — a rolling 53-week grid of every published post (Notes included this time) from the last 12 months, coloured by how many posts fell on each day (`level-0` for none up to `level-5` for five or more). Clicking a filled-in day links to the newest post from that day, at its anchor on `index.html` (or whichever paginated index page it falls on):
+
+```html
+<section class="contribution-calendar">
+  <h2><span class="calendar-count">248</span> posts in the last year</h2>
+  <div class="calendar">
+    <span class="calendar-corner"></span>
+    <div class="calendar-months">...</div>
+    <div class="calendar-day-labels">...</div>
+    <div class="calendar-weeks">
+      <div class="calendar-week">
+        <span class="calendar-day level-0"></span>
+        <a href="index.html#post-42" class="calendar-day level-2"></a>
+        ...
+      </div>
+      ...
+    </div>
+  </div>
+</section>
+```
+
+As with everything else Magnetizer generates, this is bare structure only — no inline styles — so the actual grid layout, sizing, and colour scale come entirely from the project's own `resources/` CSS.
 
 ```html
 <main>
