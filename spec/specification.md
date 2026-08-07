@@ -993,7 +993,7 @@ A GitHub-style calendar of posting activity, always present at the top of [the a
 
 The calendar covers a rolling 370-day window ending exactly on the build date, split into 37 columns of 10 days each: `start_date = build_date - 369 days`. Unlike a calendar-week-aligned grid, this isn't anchored to any weekday boundary — a column is simply "10 consecutive days," and the very last cell of the very last column is always the build date itself, whatever day of the week that happens to be. There is deliberately no per-row weekday meaning (row 3 might be a Tuesday in one column and a Friday in the next) — this is a considered trade-off in exchange for build_date always sitting in the same (bottom-right) place in the grid.
 
-Above the heading, a summary paragraph (`<p class="calendar-summary">`) states the same window's totals in prose, split by type: `I have posted {X} posts and {Y} notes so far this year`, where `X` is the count of non-Note published posts and `Y` is the count of Notes falling within the window — again no singular/plural variant. The heading itself is always the literal text `Publishing calendar`, with no post count in it, and comes *before* the summary paragraph.
+Below the heading, a summary paragraph (`<p class="calendar-summary">`) states the same window's totals in prose, split by type: `I have posted {X} posts and {Y} notes`, where `X` is the count of non-Note published posts and `Y` is the count of Notes falling within the window — again no singular/plural variant. The heading itself is always the literal text `Publishing calendar`, with no post count in it, and comes *before* the summary paragraph.
 
 Each day in the window is bucketed by how many posts fall on it: `level-0` (zero), `level-1`, `level-2`, `level-3`, `level-4`, or `level-5` (five or more). A day with one or more posts is a link (`<a>`) to the **newest** post from that day (highest post ID) — not that post's own page, but its anchor on whichever index page it appears on: `{INDEX_PAGE_URL}#post-{post-id}`, using the same pagination as [index pages](#index-pages) (`posts_per_page`, positions in the reverse-chronological post list). A day with no posts is a non-interactive `<span>`. Because the window always ends exactly on the build date, there is no "hasn't happened yet" case any more — every one of the 370 cells is always a real day.
 
@@ -1004,7 +1004,7 @@ The `MAGNETIZER_CONTENT` structure is:
 ```html
 <section class="contribution-calendar">
 <h2>Publishing calendar</h2>
-<p class="calendar-summary">I have posted <span class="calendar-post-count">X</span> posts and <span class="calendar-note-count">Y</span> notes so far this year.</p>
+<p class="calendar-summary">I have posted <span class="calendar-post-count">X</span> posts and <span class="calendar-note-count">Y</span> notes.</p>
 <div class="calendar">
 <div class="calendar-months">
   <span class="calendar-month">Aug</span>

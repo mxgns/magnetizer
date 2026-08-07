@@ -1210,7 +1210,7 @@ class TestRenderContributionCalendar:
         assert (
             '<p class="calendar-summary">I have posted '
             '<span class="calendar-post-count">2</span> posts and '
-            '<span class="calendar-note-count">1</span> notes so far this year.</p>'
+            '<span class="calendar-note-count">1</span> notes.</p>'
         ) in html
 
     def test_summary_excludes_posts_outside_window(self):

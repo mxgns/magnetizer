@@ -357,7 +357,7 @@ def _render_contribution_calendar(posts, build_date, posts_per_page):
         '<h2>Publishing calendar</h2>',
         '<p class="calendar-summary">I have posted '
         f'<span class="calendar-post-count">{post_count}</span> posts and '
-        f'<span class="calendar-note-count">{note_count}</span> notes so far this year.</p>',
+        f'<span class="calendar-note-count">{note_count}</span> notes.</p>',
         '<div class="calendar">',
         '<div class="calendar-months">',
     ]
