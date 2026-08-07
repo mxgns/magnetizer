@@ -1,6 +1,6 @@
 """Tests for magnetizer/render.py — all HTML generation functions"""
 
-from datetime import date
+from datetime import date, timedelta
 from html.parser import HTMLParser
 
 import pytest
@@ -1164,16 +1164,17 @@ class TestRenderArchivePageContent:
 # render_archive_page_content — contribution calendar
 # ---------------------------------------------------------------------------
 
-def _last_week_block(html):
-    """The final <div class="calendar-week">...</div> block — always the week
-    containing build_date, so it's a stable place to check a specific day's cell."""
-    start = html.rindex('<div class="calendar-week">')
+def _last_column_block(html):
+    """The final <div class="calendar-column">...</div> block — always the
+    column ending exactly on build_date, so it's a stable place to check
+    build_date's own cell (always the last one)."""
+    start = html.rindex('<div class="calendar-column">')
     end = html.index('</div>', start)
     return html[start:end]
 
 
-def _first_week_block(html):
-    start = html.index('<div class="calendar-week">')
+def _first_column_block(html):
+    start = html.index('<div class="calendar-column">')
     end = html.index('</div>', start)
     return html[start:end]
 
@@ -1195,9 +1196,9 @@ class TestRenderContributionCalendar:
         assert '<h2>Publishing calendar</h2>' in html
         assert 'calendar-count' not in html
 
-    def test_summary_paragraph_before_heading(self):
+    def test_summary_paragraph_after_heading(self):
         html = render_archive_page_content([make_dated_post(1, "2026-05-24")], build_date=date(2026, 5, 24))
-        assert html.index('<p class="calendar-summary">') < html.index('<h2>Publishing calendar</h2>')
+        assert html.index('<h2>Publishing calendar</h2>') < html.index('<p class="calendar-summary">')
 
     def test_summary_counts_posts_and_notes_separately(self):
         posts = [
@@ -1213,9 +1214,9 @@ class TestRenderContributionCalendar:
         ) in html
 
     def test_summary_excludes_posts_outside_window(self):
-        # build_date=2026-01-04 (a Sunday) -> window start_date is 2024-12-30 (Monday).
-        # A post the day before start_date must not be counted.
-        posts = [make_dated_post(1, "2024-12-29")]
+        # build_date=2026-01-04 -> window start_date is 2024-12-31 (370 days
+        # back). A post the day before start_date must not be counted.
+        posts = [make_dated_post(1, "2024-12-30")]
         html = render_archive_page_content(posts, build_date=date(2026, 1, 4))
         assert '<span class="calendar-post-count">0</span>' in html
         assert '<span class="calendar-note-count">0</span>' in html
@@ -1224,59 +1225,30 @@ class TestRenderContributionCalendar:
         html = render_archive_page_content([], build_date=date(2026, 5, 24))
         assert '<span class="calendar-post-count">0</span>' in html
         assert '<span class="calendar-note-count">0</span>' in html
-        assert html.count('<div class="calendar-week">') == 53
+        assert html.count('<div class="calendar-column">') == 37
 
-    def test_grid_has_53_week_columns(self):
+    def test_grid_has_37_columns(self):
         html = render_archive_page_content([make_dated_post(1, "2026-05-24")], build_date=date(2026, 5, 24))
-        assert html.count('<div class="calendar-week">') == 53
+        assert html.count('<div class="calendar-column">') == 37
 
-    def test_grid_has_53_month_column_cells(self):
+    def test_grid_has_37_month_column_cells(self):
         html = render_archive_page_content([make_dated_post(1, "2026-05-24")], build_date=date(2026, 5, 24))
-        assert html.count('<span class="calendar-month">') == 53
+        assert html.count('<span class="calendar-month">') == 37
 
-    def test_weeks_grouped_into_27_pairs(self):
-        # 53 weeks -> 26 pairs of 2 + 1 trailing single -> 27 groups. CSS uses
-        # these to merge each pair into a single 2-week column on small screens.
+    def test_grid_has_370_day_cells_total(self):
+        # 37 columns of 10 days each -> 370 cells, always -- there's no
+        # "hasn't happened yet" case any more, since the grid always ends
+        # exactly on build_date regardless of which weekday it falls on.
         html = render_archive_page_content([make_dated_post(1, "2026-05-24")], build_date=date(2026, 5, 24))
-        assert html.count('<div class="calendar-week-pair">') == 27
+        assert html.count('class="calendar-day level-') == 370
 
-    def test_first_week_pair_contains_two_weeks(self):
-        html = render_archive_page_content([make_dated_post(1, "2026-05-24")], build_date=date(2026, 5, 24))
-        start = html.index('<div class="calendar-week-pair">')
-        next_pair = html.index('<div class="calendar-week-pair">', start + 1)
-        pair_block = html[start:next_pair]
-        assert pair_block.count('<div class="calendar-week">') == 2
-
-    def test_last_week_pair_contains_one_week(self):
-        html = render_archive_page_content([make_dated_post(1, "2026-05-24")], build_date=date(2026, 5, 24))
-        start = html.rindex('<div class="calendar-week-pair">')
-        pair_block = html[start:]
-        assert pair_block.count('<div class="calendar-week">') == 1
-
-    def test_month_labels_grouped_into_27_pairs(self):
-        html = render_archive_page_content([make_dated_post(1, "2026-05-24")], build_date=date(2026, 5, 24))
-        assert html.count('<div class="calendar-month-pair">') == 27
-
-    def test_first_month_pair_contains_two_labels(self):
-        html = render_archive_page_content([make_dated_post(1, "2026-05-24")], build_date=date(2026, 5, 24))
-        start = html.index('<div class="calendar-month-pair">')
-        next_pair = html.index('<div class="calendar-month-pair">', start + 1)
-        pair_block = html[start:next_pair]
-        assert pair_block.count('<span class="calendar-month">') == 2
-
-    def test_last_month_pair_contains_one_label(self):
-        html = render_archive_page_content([make_dated_post(1, "2026-05-24")], build_date=date(2026, 5, 24))
-        start = html.rindex('<div class="calendar-month-pair">')
-        pair_block = html[start:]
-        assert pair_block.count('<span class="calendar-month">') == 1
-
-    def test_grid_has_371_day_cells_total(self):
-        # build_date=2026-05-24 is itself a Sunday (the last row of its week
-        # in Monday-first order), so this window has zero "hasn't happened
-        # yet" cells and all 371 are real day cells.
-        html = render_archive_page_content([make_dated_post(1, "2026-05-24")], build_date=date(2026, 5, 24))
-        assert html.count('class="calendar-day level-') == 371
-        assert html.count('class="calendar-day-empty"') == 0
+    def test_no_empty_future_cells_concept_remains(self):
+        # Previously a Monday/Wednesday build_date left trailing blank cells
+        # in the final week. With 10-day columns always ending on build_date,
+        # that concept no longer applies, for any build_date/weekday.
+        for build_date in (date(2026, 5, 25), date(2026, 5, 27), date(2026, 5, 29)):
+            html = render_archive_page_content([], build_date=build_date)
+            assert 'calendar-day-empty' not in html
 
     def test_no_weekday_labels_or_label_column(self):
         html = render_archive_page_content([make_dated_post(1, "2026-05-24")], build_date=date(2026, 5, 24))
@@ -1284,26 +1256,29 @@ class TestRenderContributionCalendar:
         assert 'calendar-corner' not in html
         assert 'calendar-day-labels' not in html
 
-    def test_first_week_column_starts_on_monday(self):
-        # build_date=2026-05-24 -> start_date=2025-05-19, a Monday.
-        posts = [make_dated_post(1, "2025-05-19")]
-        html = render_archive_page_content(posts, build_date=date(2026, 5, 24), posts_per_page=12)
-        block = _first_week_block(html)
-        assert block.startswith('<div class="calendar-week">\n<a href="index.html#post-1"')
+    def test_build_date_is_always_the_last_cell_regardless_of_weekday(self):
+        # The headline behaviour of the 10-day-column redesign: today is
+        # always the bottom-right box, whichever day of the week it is.
+        for build_date in (date(2026, 5, 25), date(2026, 5, 26), date(2026, 5, 27), date(2026, 5, 30)):
+            posts = [make_dated_post(1, build_date.isoformat())]
+            html = render_archive_page_content(posts, build_date=build_date, posts_per_page=12)
+            block = _last_column_block(html)
+            assert block.rstrip().endswith('<a href="index.html#post-1" class="calendar-day level-1" data-tooltip="'
+                                            f'{build_date.day} {build_date.strftime("%B")}: 1 post" '
+                                            f'aria-label="{build_date.day} {build_date.strftime("%B")}: 1 post"></a>')
 
-    def test_future_days_in_final_week_render_as_empty_not_boxes(self):
-        # build_date=2026-05-27 is a Wednesday, so Thu/Fri/Sat/Sun of its own
-        # week haven't happened yet and shouldn't render as ordinary boxes.
-        html = render_archive_page_content([], build_date=date(2026, 5, 27))
-        block = _last_week_block(html)
-        assert block.count('class="calendar-day-empty"') == 4
-        assert block.count('class="calendar-day level-') == 3
+    def test_first_column_starts_370_days_before_build_date(self):
+        build_date = date(2026, 5, 24)
+        start_date = build_date - timedelta(days=369)
+        posts = [make_dated_post(1, start_date.isoformat())]
+        html = render_archive_page_content(posts, build_date=build_date, posts_per_page=12)
+        block = _first_column_block(html)
+        assert block.startswith('<div class="calendar-column">\n<a href="index.html#post-1"')
 
     def test_leftmost_partial_month_is_labelled(self):
-        # build_date=2026-01-04 is a Sunday -> start_date=2024-12-30 (Monday).
-        # The first week column spans Dec 30 - Jan 5, so it straddles a month
-        # boundary; Jan 1 (day 3 of that column) is the later month and wins
-        # the single label slot available for that column.
+        # build_date=2026-01-04 -> start_date=2024-12-31. The first column
+        # spans Dec 31 - Jan 9, straddling a month boundary; Jan 1 (day 2 of
+        # that column) is the later month and wins the single label slot.
         html = render_archive_page_content([make_dated_post(1, "2025-06-01")], build_date=date(2026, 1, 4))
         first_month_cell = html.index('<span class="calendar-month">')
         assert html[first_month_cell:first_month_cell + 40].startswith('<span class="calendar-month">Jan</span>')
@@ -1314,27 +1289,27 @@ class TestRenderContributionCalendar:
 
     def test_day_with_zero_posts_is_level_0_and_not_a_link(self):
         html = render_archive_page_content([], build_date=date(2026, 5, 24))
-        block = _last_week_block(html)
+        block = _last_column_block(html)
         assert '<span class="calendar-day level-0"' in block
         assert '<a' not in block
 
     def test_zero_post_day_has_no_tooltip(self):
         html = render_archive_page_content([], build_date=date(2026, 5, 24))
-        block = _last_week_block(html)
+        block = _last_column_block(html)
         assert '<span class="calendar-day level-0"></span>' in block
         assert 'data-tooltip' not in block
 
     def test_day_with_one_post_is_level_1_and_links_to_index(self):
         posts = [make_dated_post(7, "2026-05-24")]
         html = render_archive_page_content(posts, build_date=date(2026, 5, 24), posts_per_page=12)
-        block = _last_week_block(html)
+        block = _last_column_block(html)
         assert '<a href="index.html#post-7" class="calendar-day level-1" data-tooltip="24 May: 1 post" aria-label="24 May: 1 post"></a>' in block
 
     def test_tooltip_uses_data_attribute_not_title(self):
         # A custom tooltip, not the native browser title="" tooltip.
         posts = [make_dated_post(7, "2026-05-24")]
         html = render_archive_page_content(posts, build_date=date(2026, 5, 24), posts_per_page=12)
-        block = _last_week_block(html)
+        block = _last_column_block(html)
         assert 'title=' not in block
 
     def test_tooltip_singular_post_and_note(self):
@@ -1343,7 +1318,7 @@ class TestRenderContributionCalendar:
             make_dated_post(2, "2026-05-24", post_type="note"),
         ]
         html = render_archive_page_content(posts, build_date=date(2026, 5, 24), posts_per_page=12)
-        block = _last_week_block(html)
+        block = _last_column_block(html)
         assert 'data-tooltip="24 May: 1 post + 1 note"' in block
         assert 'aria-label="24 May: 1 post + 1 note"' in block
 
@@ -1355,19 +1330,19 @@ class TestRenderContributionCalendar:
             make_dated_post(4, "2026-05-24", post_type="note"),
         ]
         html = render_archive_page_content(posts, build_date=date(2026, 5, 24), posts_per_page=12)
-        block = _last_week_block(html)
+        block = _last_column_block(html)
         assert 'data-tooltip="24 May: 2 posts + 2 notes"' in block
 
     def test_tooltip_notes_only(self):
         posts = [make_dated_post(1, "2026-05-24", post_type="note")]
         html = render_archive_page_content(posts, build_date=date(2026, 5, 24), posts_per_page=12)
-        block = _last_week_block(html)
+        block = _last_column_block(html)
         assert 'data-tooltip="24 May: 1 note"' in block
 
     def test_bucketing_caps_at_level_5_for_six_or_more_posts(self):
         posts = [make_dated_post(i, "2026-05-24") for i in range(1, 7)]
         html = render_archive_page_content(posts, build_date=date(2026, 5, 24))
-        block = _last_week_block(html)
+        block = _last_column_block(html)
         assert 'level-5' in block
         assert 'level-6' not in block
 
@@ -1375,7 +1350,7 @@ class TestRenderContributionCalendar:
         for count, expected_level in [(1, 1), (2, 2), (3, 3), (4, 4), (5, 5)]:
             posts = [make_dated_post(i, "2026-05-24") for i in range(1, count + 1)]
             html = render_archive_page_content(posts, build_date=date(2026, 5, 24))
-            block = _last_week_block(html)
+            block = _last_column_block(html)
             assert f'level-{expected_level}"' in block
             assert f'level-{expected_level + 1}"' not in block
 
@@ -1386,7 +1361,7 @@ class TestRenderContributionCalendar:
             make_dated_post(1, "2026-05-24"),
         ]
         html = render_archive_page_content(posts, build_date=date(2026, 5, 24), posts_per_page=12)
-        block = _last_week_block(html)
+        block = _last_column_block(html)
         assert 'href="index.html#post-9"' in block
 
     def test_link_target_paginates_by_position_in_list(self):
@@ -1398,7 +1373,7 @@ class TestRenderContributionCalendar:
             make_dated_post(1, "2026-05-24"),
         ]
         html = render_archive_page_content(posts, build_date=date(2026, 5, 24), posts_per_page=2)
-        block = _last_week_block(html)
+        block = _last_column_block(html)
         assert 'href="index-2.html#post-1"' in block
 
     def test_post_without_date_not_counted_in_calendar(self):

@@ -300,37 +300,29 @@ Because a page like this can go stale purely from *other* content changing (a ne
 
 ## Archive page
 
-The archive page (`dist/archive.html`) lists all dated blog posts grouped by month (Notes are excluded from this list). It opens with an `<h1>Archive</h1>` heading, immediately followed by a GitHub-style contribution calendar — a rolling 53-week grid (Monday to Sunday) of every published post (Notes included this time) from the last 12 months, coloured by how many posts fell on each day (`level-0` for none up to `level-5` for five or more). A day later than the build date hasn't happened yet, so it renders as blank space rather than an empty box. Clicking a filled-in day links to the newest post from that day, at its anchor on `index.html` (or whichever paginated index page it falls on); a day with one or more posts carries a `data-tooltip` attribute describing it (plus `aria-label` on its link), e.g. `25 August: 1 post + 2 notes` — deliberately a data attribute rather than `title`, since Magnetizer emits data only and a project's own CSS renders the actual tooltip. A day with no posts has no tooltip. Above the `<h2>Publishing calendar</h2>` heading (which carries no number itself) is a summary paragraph stating the same window's total in prose, split by type: `I have posted 248 posts and 12 notes so far this year.` The categories/notes/monthly-list sections described below follow the calendar, in the same order as before:
+The archive page (`dist/archive.html`) lists all dated blog posts grouped by month (Notes are excluded from this list). It opens with an `<h1>Archive</h1>` heading, immediately followed by a GitHub-style contribution calendar — a rolling 370-day grid of every published post (Notes included this time), split into 37 columns of 10 days each, coloured by how many posts fell on each day (`level-0` for none up to `level-5` for five or more). Unlike a calendar-week-aligned grid, a column here is just "10 consecutive days" with no weekday meaning — the very last cell of the very last column is always the build date itself, whatever day of the week that is, so today always sits in the same (bottom-right) spot in the grid. Because the window always ends exactly on the build date, every one of the 370 cells is always a real day — there's no "hasn't happened yet" case to render as blank space. Clicking a filled-in day links to the newest post from that day, at its anchor on `index.html` (or whichever paginated index page it falls on); a day with one or more posts carries a `data-tooltip` attribute describing it (plus `aria-label` on its link), e.g. `25 August: 1 post + 2 notes` — deliberately a data attribute rather than `title`, since Magnetizer emits data only and a project's own CSS renders the actual tooltip. A day with no posts has no tooltip. The `<h2>Publishing calendar</h2>` heading carries no number itself; a summary paragraph below it states the same window's total in prose, split by type: `I have posted 248 posts and 12 notes so far this year.` The categories/notes/monthly-list sections described below follow the calendar, in the same order as before:
 
 ```html
 <section class="contribution-calendar">
-  <p class="calendar-summary">I have posted <span class="calendar-post-count">248</span> posts and <span class="calendar-note-count">12</span> notes so far this year.</p>
   <h2>Publishing calendar</h2>
+  <p class="calendar-summary">I have posted <span class="calendar-post-count">248</span> posts and <span class="calendar-note-count">12</span> notes so far this year.</p>
   <div class="calendar">
     <div class="calendar-months">
-      <div class="calendar-month-pair">
-        <span class="calendar-month">Aug</span>
-        <span class="calendar-month"></span>
-      </div>
+      <span class="calendar-month">Aug</span>
+      <span class="calendar-month"></span>
       ...
     </div>
-    <div class="calendar-weeks">
-      <div class="calendar-week-pair">
-        <div class="calendar-week">
-          <span class="calendar-day level-0"></span>
-          <a href="index.html#post-42" class="calendar-day level-2" data-tooltip="27 May: 2 posts" aria-label="27 May: 2 posts"></a>
-          <span class="calendar-day-empty"></span>
-          ...
-        </div>
-        <div class="calendar-week">...</div>
+    <div class="calendar-columns">
+      <div class="calendar-column">
+        <span class="calendar-day level-0"></span>
+        <a href="index.html#post-42" class="calendar-day level-2" data-tooltip="27 May: 2 posts" aria-label="27 May: 2 posts"></a>
+        ...
       </div>
       ...
     </div>
   </div>
 </section>
 ```
-
-Both `.calendar-months` and `.calendar-weeks` group their 53 columns into 27 pairs (`calendar-month-pair` / `calendar-week-pair` — 26 pairs of 2 plus one trailing single, since 53 is odd). This is what lets a project's CSS turn each pair into a single 2-week-wide column on small screens — e.g. `display: contents` on the pair wrapper by default (so its children behave as if unwrapped, one column per week, as shown above), switched to `display: flex; flex-direction: column` under a narrow-viewport media query, with `display: contents` pushed one level deeper onto each `.calendar-week` so its 7 cells join its sibling week's 7 cells as 14 stacked rows in one column. Magnetizer itself has no opinion on the breakpoint.
 
 As with everything else Magnetizer generates, this is bare structure only — no inline styles — so the actual grid layout, sizing, colour scale, and tooltip appearance come entirely from the project's own `resources/` CSS.
 

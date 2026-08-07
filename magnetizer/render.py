@@ -291,15 +291,16 @@ def _archive_item_class(post):
     return cls
 
 
-_CALENDAR_WEEKS = 53
-_CALENDAR_DAYS = _CALENDAR_WEEKS * 7
+_CALENDAR_DAYS_PER_COLUMN = 10
+_CALENDAR_COLUMNS = 37
+_CALENDAR_DAYS = _CALENDAR_COLUMNS * _CALENDAR_DAYS_PER_COLUMN
 
 
 def _calendar_window(build_date):
-    """The Monday-aligned 53-week (371-day) window ending in build_date's own
-    week, mirroring GitHub's own contribution calendar span."""
-    current_week_start = build_date - _timedelta(days=build_date.weekday())
-    return current_week_start - _timedelta(weeks=_CALENDAR_WEEKS - 1)
+    """The 370-day window ending exactly on build_date, split into 37 columns
+    of 10 days each -- so build_date is always the grid's last cell,
+    regardless of which day of the week it falls on."""
+    return build_date - _timedelta(days=_CALENDAR_DAYS - 1)
 
 
 def _calendar_month_labels(start_date):
@@ -312,7 +313,7 @@ def _calendar_month_labels(start_date):
             continue
         if d.day == 1 or i == 0:
             seen_months.add(month_key)
-            labels[i // 7] = d.strftime('%b')
+            labels[i // _CALENDAR_DAYS_PER_COLUMN] = d.strftime('%b')
     return labels
 
 
@@ -353,41 +354,32 @@ def _render_contribution_calendar(posts, build_date, posts_per_page):
 
     parts = [
         '<section class="contribution-calendar">',
+        '<h2>Publishing calendar</h2>',
         '<p class="calendar-summary">I have posted '
         f'<span class="calendar-post-count">{post_count}</span> posts and '
         f'<span class="calendar-note-count">{note_count}</span> notes so far this year.</p>',
-        '<h2>Publishing calendar</h2>',
         '<div class="calendar">',
         '<div class="calendar-months">',
     ]
-    for pair_start in range(0, _CALENDAR_WEEKS, 2):
-        parts.append('<div class="calendar-month-pair">')
-        for week in range(pair_start, min(pair_start + 2, _CALENDAR_WEEKS)):
-            label = month_labels.get(week, '')
-            parts.append(f'<span class="calendar-month">{label}</span>')
-        parts.append('</div>')
+    for col in range(_CALENDAR_COLUMNS):
+        label = month_labels.get(col, '')
+        parts.append(f'<span class="calendar-month">{label}</span>')
     parts.append('</div>')
 
-    parts.append('<div class="calendar-weeks">')
-    for pair_start in range(0, _CALENDAR_WEEKS, 2):
-        parts.append('<div class="calendar-week-pair">')
-        for week in range(pair_start, min(pair_start + 2, _CALENDAR_WEEKS)):
-            parts.append('<div class="calendar-week">')
-            for weekday in range(7):
-                d = start_date + _timedelta(days=week * 7 + weekday)
-                if d > build_date:
-                    parts.append('<span class="calendar-day-empty"></span>')
-                    continue
-                day_posts = posts_by_date.get(d.isoformat(), [])
-                level = min(len(day_posts), 5)
-                if day_posts:
-                    newest = max(day_posts, key=lambda p: p.id)
-                    url = f"{index_page_url(page_num_by_id[newest.id])}#post-{newest.id}"
-                    tooltip = _escape(_calendar_day_tooltip(d, day_posts), quote=True)
-                    parts.append(f'<a href="{url}" class="calendar-day level-{level}" data-tooltip="{tooltip}" aria-label="{tooltip}"></a>')
-                else:
-                    parts.append(f'<span class="calendar-day level-{level}"></span>')
-            parts.append('</div>')
+    parts.append('<div class="calendar-columns">')
+    for col in range(_CALENDAR_COLUMNS):
+        parts.append('<div class="calendar-column">')
+        for row in range(_CALENDAR_DAYS_PER_COLUMN):
+            d = start_date + _timedelta(days=col * _CALENDAR_DAYS_PER_COLUMN + row)
+            day_posts = posts_by_date.get(d.isoformat(), [])
+            level = min(len(day_posts), 5)
+            if day_posts:
+                newest = max(day_posts, key=lambda p: p.id)
+                url = f"{index_page_url(page_num_by_id[newest.id])}#post-{newest.id}"
+                tooltip = _escape(_calendar_day_tooltip(d, day_posts), quote=True)
+                parts.append(f'<a href="{url}" class="calendar-day level-{level}" data-tooltip="{tooltip}" aria-label="{tooltip}"></a>')
+            else:
+                parts.append(f'<span class="calendar-day level-{level}"></span>')
         parts.append('</div>')
     parts.append('</div>')
     parts.append('</div>')

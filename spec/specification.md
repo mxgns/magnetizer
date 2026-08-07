@@ -991,49 +991,40 @@ Magnetizer emits no inline styles and ships no default column CSS, same as every
 
 A GitHub-style calendar of posting activity, always present at the top of [the archive page](#archive-page), directly after the `<h1>`. Unlike the archive's monthly list below it, the calendar counts **every published post type, including Notes** — it mirrors what's shown on the index pages, which is also where its links point.
 
-The calendar covers a rolling 53-week (371-day) window ending in the calendar week containing the build date: the start date is the Monday 52 weeks before the Monday of the build date's own week, and each week column runs Monday to Sunday. This keeps the grid week-aligned (matching GitHub's own calendar) while covering the last 12 months.
+The calendar covers a rolling 370-day window ending exactly on the build date, split into 37 columns of 10 days each: `start_date = build_date - 369 days`. Unlike a calendar-week-aligned grid, this isn't anchored to any weekday boundary — a column is simply "10 consecutive days," and the very last cell of the very last column is always the build date itself, whatever day of the week that happens to be. There is deliberately no per-row weekday meaning (row 3 might be a Tuesday in one column and a Friday in the next) — this is a considered trade-off in exchange for build_date always sitting in the same (bottom-right) place in the grid.
 
-Above the heading, a summary paragraph (`<p class="calendar-summary">`) states the same window's totals in prose, split by type: `I have posted {X} posts and {Y} notes so far this year`, where `X` is the count of non-Note published posts and `Y` is the count of Notes falling within the window — again no singular/plural variant. The heading itself is always the literal text `Publishing calendar`, with no post count in it.
+Above the heading, a summary paragraph (`<p class="calendar-summary">`) states the same window's totals in prose, split by type: `I have posted {X} posts and {Y} notes so far this year`, where `X` is the count of non-Note published posts and `Y` is the count of Notes falling within the window — again no singular/plural variant. The heading itself is always the literal text `Publishing calendar`, with no post count in it, and comes *before* the summary paragraph.
 
-Each day in the window is bucketed by how many posts fall on it: `level-0` (zero), `level-1`, `level-2`, `level-3`, `level-4`, or `level-5` (five or more). A day with one or more posts is a link (`<a>`) to the **newest** post from that day (highest post ID) — not that post's own page, but its anchor on whichever index page it appears on: `{INDEX_PAGE_URL}#post-{post-id}`, using the same pagination as [index pages](#index-pages) (`posts_per_page`, positions in the reverse-chronological post list). A day with no posts (but that has already happened) is a non-interactive `<span>`.
+Each day in the window is bucketed by how many posts fall on it: `level-0` (zero), `level-1`, `level-2`, `level-3`, `level-4`, or `level-5` (five or more). A day with one or more posts is a link (`<a>`) to the **newest** post from that day (highest post ID) — not that post's own page, but its anchor on whichever index page it appears on: `{INDEX_PAGE_URL}#post-{post-id}`, using the same pagination as [index pages](#index-pages) (`posts_per_page`, positions in the reverse-chronological post list). A day with no posts is a non-interactive `<span>`. Because the window always ends exactly on the build date, there is no "hasn't happened yet" case any more — every one of the 370 cells is always a real day.
 
-A day later than the build date — i.e. one that hasn't happened yet, which can only occur in the final week column — isn't rendered as a day box at all: it's an empty `<span class="calendar-day-empty">`, carrying no `level-N` class, no link, and no tooltip, so it reads as blank space rather than an (incorrectly) empty box.
-
-A day with one or more posts carries a `data-tooltip` attribute summarising it, e.g. `25 August: 1 post`, or — when both ordinary posts and Notes fall on the same day — `25 August: 1 post + 2 notes` (each count pluralised independently, joined with ` + `). This is deliberately a `data-` attribute rather than `title` — Magnetizer emits it as data only; rendering it as an actual hover tooltip (positioning, appearance, show/hide) is the responsibility of the project's own `resources/` CSS, the same way every other visual aspect of the calendar is. The `<a>` repeats the same text as `aria-label`, so the count is available to assistive technology independently of the visual tooltip. A day with no posts (but that has already happened) has no tooltip — there's nothing to report.
+A day with one or more posts carries a `data-tooltip` attribute summarising it, e.g. `25 August: 1 post`, or — when both ordinary posts and Notes fall on the same day — `25 August: 1 post + 2 notes` (each count pluralised independently, joined with ` + `). This is deliberately a `data-` attribute rather than `title` — Magnetizer emits it as data only; rendering it as an actual hover tooltip (positioning, appearance, show/hide) is the responsibility of the project's own `resources/` CSS, the same way every other visual aspect of the calendar is. The `<a>` repeats the same text as `aria-label`, so the count is available to assistive technology independently of the visual tooltip. A day with no posts has no tooltip — there's nothing to report.
 
 The `MAGNETIZER_CONTENT` structure is:
 
 ```html
 <section class="contribution-calendar">
-<p class="calendar-summary">I have posted <span class="calendar-post-count">X</span> posts and <span class="calendar-note-count">Y</span> notes so far this year.</p>
 <h2>Publishing calendar</h2>
+<p class="calendar-summary">I have posted <span class="calendar-post-count">X</span> posts and <span class="calendar-note-count">Y</span> notes so far this year.</p>
 <div class="calendar">
 <div class="calendar-months">
-  <div class="calendar-month-pair">
-    <span class="calendar-month">Aug</span>
-    <span class="calendar-month"></span>
-  </div>
-  ... (27 pairs total: 26 of 2 week-columns' worth of label slots, 1 trailing pair of just 1 — 53 label slots overall)
+  <span class="calendar-month">Aug</span>
+  <span class="calendar-month"></span>
+  ... (37 spans total, one per column; empty unless that column is the first to contain a given month)
 </div>
-<div class="calendar-weeks">
-  <div class="calendar-week-pair">
-    <div class="calendar-week">
-      <span class="calendar-day level-0"></span>
-      <a href="INDEX_PAGE_URL#post-POST_ID" class="calendar-day level-N" data-tooltip="27 May: 1 post + 1 note" aria-label="27 May: 1 post + 1 note"></a>
-      <span class="calendar-day-empty"></span>
-      ... (7 cells, Monday to Sunday)
-    </div>
-    <div class="calendar-week">... (a second week, same shape)</div>
+<div class="calendar-columns">
+  <div class="calendar-column">
+    <span class="calendar-day level-0"></span>
+    <a href="INDEX_PAGE_URL#post-POST_ID" class="calendar-day level-N" data-tooltip="27 May: 1 post + 1 note" aria-label="27 May: 1 post + 1 note"></a>
+    ... (10 cells)
   </div>
-  ... (27 pairs total: 26 of 2 weeks, 1 trailing pair of just 1 week — 53 weeks overall)
+  ... (37 columns total)
 </div>
 </div>
 </section>
 ```
 
-- `.calendar-months` and `.calendar-weeks` both group their 53 columns into 27 `calendar-month-pair` / `calendar-week-pair` wrappers — 26 pairs of 2, plus one trailing pair holding a single column (53 is odd). This grouping exists purely so a project's CSS can merge each pair into one wider column (e.g. via `display: contents` toggled off at a narrow-viewport breakpoint) — a 2-week-per-column view for small screens — without Magnetizer needing any opinion on breakpoints; see [Archive column layout](#archive-column-layout) for the analogous pattern used elsewhere on the archive page.
-- Within `.calendar-months`, each `<span>` is labelled with a 3-letter month abbreviation (e.g. `Aug`) only in the week where that month is first seen in the grid. The leftmost (partial) month is always labelled, regardless of which day of the month the window happens to start on; every subsequent month is labelled at its 1st. If a week column happens to straddle a month boundary (so two different months would both want the same column's single label slot), the later month wins.
-- Within `.calendar-weeks`, each `.calendar-week` has exactly 7 cells (Monday to Sunday), for 371 cells total regardless of how many posts exist — each cell is a real day box (`.calendar-day`, either `<span>` or `<a>`) or, for a day later than the build date, an empty `.calendar-day-empty` placeholder.
+- `.calendar-months` always has exactly 37 `<span>` elements — one per column, aligned with `.calendar-columns` — labelled with a 3-letter month abbreviation (e.g. `Aug`) only in the column where that month is first seen in the grid. The leftmost (partial) month is always labelled, regardless of which day of the month the window happens to start on; every subsequent month is labelled at its 1st. If a column happens to straddle a month boundary (so two different months would both want the same column's single label slot), the later month wins.
+- `.calendar-columns` always has exactly 37 `.calendar-column` columns of exactly 10 cells each, for 370 cells total regardless of how many posts exist — every cell is a real day box (`.calendar-day`, either `<span>` or `<a>`).
 - There's no weekday-label column — the calendar has no reserved space for row labels, so it's free to fill the full width of its container.
 - As with every other generated page, Magnetizer emits no inline styles — the grid's actual layout, cell sizing, and `level-0`–`level-5` colour scale are entirely the responsibility of the project's own `resources/` CSS.
 
