@@ -983,12 +983,15 @@ The `MAGNETIZER_CONTENT` structure is:
 <section class="contribution-calendar">
 <h2><span class="calendar-count">N</span> posts in the last year</h2>
 <div class="calendar">
+<div class="calendar-header">
 <span class="calendar-corner"></span>
 <div class="calendar-months">
   <span class="calendar-month">Aug</span>
   <span class="calendar-month"></span>
   ... (53 spans total, one per week column; empty unless that week is the first to contain a given month)
 </div>
+</div>
+<div class="calendar-body">
 <div class="calendar-day-labels">
   <span></span>
   <span class="calendar-day-label">Mon</span>
@@ -1007,9 +1010,11 @@ The `MAGNETIZER_CONTENT` structure is:
   ... (53 weeks total)
 </div>
 </div>
+</div>
 </section>
 ```
 
+- `.calendar-header` groups the label-column spacer (`.calendar-corner`) with `.calendar-months`; `.calendar-body` groups `.calendar-day-labels` with `.calendar-weeks` — deliberately flat, nested-flex groupings rather than CSS grid areas, so a project's CSS can lay the whole thing out with plain shrink-to-fit flexbox (`flex: 1 1 0; min-width: 0`) instead of running into CSS Grid's "blowout" behaviour, where a grid track can refuse to shrink below its items' content size even past its container's available width.
 - `.calendar-months` always has exactly 53 `<span>` elements — one per week column, aligned with `.calendar-weeks` — labelled with a 3-letter month abbreviation (e.g. `Aug`) only in the week where that month is first seen in the grid. The leftmost (partial) month is always labelled, regardless of which day of the month the window happens to start on; every subsequent month is labelled at its 1st.
 - `.calendar-day-labels` always has exactly 7 `<span>` elements (Sunday to Saturday); only Monday, Wednesday and Friday carry a `calendar-day-label` class and text — the rest are empty, unlabelled spacers.
 - `.calendar-weeks` always has exactly 53 `.calendar-week` columns of exactly 7 `.calendar-day` cells each (Sunday to Saturday), for 371 cells total, regardless of how many posts exist.

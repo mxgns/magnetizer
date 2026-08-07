@@ -306,16 +306,20 @@ The archive page (`dist/archive.html`) lists all dated blog posts grouped by mon
 <section class="contribution-calendar">
   <h2><span class="calendar-count">248</span> posts in the last year</h2>
   <div class="calendar">
-    <span class="calendar-corner"></span>
-    <div class="calendar-months">...</div>
-    <div class="calendar-day-labels">...</div>
-    <div class="calendar-weeks">
-      <div class="calendar-week">
-        <span class="calendar-day level-0"></span>
-        <a href="index.html#post-42" class="calendar-day level-2"></a>
+    <div class="calendar-header">
+      <span class="calendar-corner"></span>
+      <div class="calendar-months">...</div>
+    </div>
+    <div class="calendar-body">
+      <div class="calendar-day-labels">...</div>
+      <div class="calendar-weeks">
+        <div class="calendar-week">
+          <span class="calendar-day level-0"></span>
+          <a href="index.html#post-42" class="calendar-day level-2"></a>
+          ...
+        </div>
         ...
       </div>
-      ...
     </div>
   </div>
 </section>

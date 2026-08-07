@@ -339,6 +339,7 @@ def _render_contribution_calendar(posts, build_date, posts_per_page):
         '<section class="contribution-calendar">',
         f'<h2><span class="calendar-count">{total}</span> posts in the last year</h2>',
         '<div class="calendar">',
+        '<div class="calendar-header">',
         '<span class="calendar-corner"></span>',
         '<div class="calendar-months">',
     ]
@@ -346,7 +347,9 @@ def _render_contribution_calendar(posts, build_date, posts_per_page):
         label = month_labels.get(week, '')
         parts.append(f'<span class="calendar-month">{label}</span>')
     parts.append('</div>')
+    parts.append('</div>')
 
+    parts.append('<div class="calendar-body">')
     parts.append('<div class="calendar-day-labels">')
     for weekday in range(7):
         label = {1: 'Mon', 3: 'Wed', 5: 'Fri'}.get(weekday)
@@ -367,6 +370,7 @@ def _render_contribution_calendar(posts, build_date, posts_per_page):
             else:
                 parts.append(f'<span class="calendar-day level-{level}"></span>')
         parts.append('</div>')
+    parts.append('</div>')
     parts.append('</div>')
 
     parts.append('</div>')
