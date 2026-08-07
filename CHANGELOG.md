@@ -9,6 +9,7 @@
 
 - Added a GitHub-style contribution calendar to the archive page
 - Fixed archive month headings using `<h2>` instead of `<h3>`
+- Wrapped archive categories/notes/months in column-layout containers
 
 ### 6/8/26
 

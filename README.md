@@ -300,18 +300,22 @@ Because a page like this can go stale purely from *other* content changing (a ne
 
 ## Archive page
 
-The archive page (`dist/archive.html`) lists all dated blog posts grouped by month (Notes are excluded from this list). It opens with an `<h1>Archive</h1>` heading, immediately followed by a GitHub-style contribution calendar — a rolling 53-week grid (Monday to Sunday) of every published post (Notes included this time) from the last 12 months, coloured by how many posts fell on each day (`level-0` for none up to `level-5` for five or more). A day later than the build date hasn't happened yet, so it renders as blank space rather than an empty box. Clicking a filled-in day links to the newest post from that day, at its anchor on `index.html` (or whichever paginated index page it falls on); a day with one or more posts carries a `data-tooltip` attribute describing it (plus `aria-label` on its link), e.g. `25 August: 1 post + 2 notes` — deliberately a data attribute rather than `title`, since Magnetizer emits data only and a project's own CSS renders the actual tooltip. A day with no posts has no tooltip. The categories/notes/monthly-list sections described below follow the calendar, in the same order as before:
+The archive page (`dist/archive.html`) lists all dated blog posts grouped by month (Notes are excluded from this list). It opens with an `<h1>Archive</h1>` heading, immediately followed by a GitHub-style contribution calendar — a rolling 370-day grid of every published post (Notes included this time), split into 37 columns of 10 days each, coloured by how many posts fell on each day (`level-0` for none up to `level-5` for five or more). Unlike a calendar-week-aligned grid, a column here is just "10 consecutive days" with no weekday meaning — the very last cell of the very last column is always the build date itself, whatever day of the week that is, so today always sits in the same (bottom-right) spot in the grid. Because the window always ends exactly on the build date, every one of the 370 cells is always a real day — there's no "hasn't happened yet" case to render as blank space. Clicking a filled-in day links to the newest post from that day, at its anchor on `index.html` (or whichever paginated index page it falls on); a day with one or more posts carries a `data-tooltip` attribute describing it (plus `aria-label` on its link), e.g. `25 August: 1 post + 2 notes` — deliberately a data attribute rather than `title`, since Magnetizer emits data only and a project's own CSS renders the actual tooltip. A day with no posts has no tooltip. The `<h2>Publishing calendar</h2>` heading carries no number itself; a summary paragraph below it states the same window's total in prose, split by type: `I have posted 248 posts and 12 notes.` The categories/notes/monthly-list sections described below follow the calendar, in the same order as before:
 
 ```html
 <section class="contribution-calendar">
-  <h2><span class="calendar-count">248</span> posts in the last year</h2>
+  <h2>Publishing calendar</h2>
+  <p class="calendar-summary">I have posted <span class="calendar-post-count">248</span> posts and <span class="calendar-note-count">12</span> notes.</p>
   <div class="calendar">
-    <div class="calendar-months">...</div>
-    <div class="calendar-weeks">
-      <div class="calendar-week">
+    <div class="calendar-months">
+      <span class="calendar-month">Aug</span>
+      <span class="calendar-month"></span>
+      ...
+    </div>
+    <div class="calendar-columns">
+      <div class="calendar-column">
         <span class="calendar-day level-0"></span>
         <a href="index.html#post-42" class="calendar-day level-2" data-tooltip="27 May: 2 posts" aria-label="27 May: 2 posts"></a>
-        <span class="calendar-day-empty"></span>
         ...
       </div>
       ...
@@ -325,18 +329,20 @@ As with everything else Magnetizer generates, this is bare structure only — no
 ```html
 <main>
   <h1>Archive</h1>
-  <section>
-    <h3>May 2026</h3>
-    <ul>
-      <li class="full-post"><span class="day">16</span><a href="42.html">Post title</a></li>
-      ...
-    </ul>
-  </section>
-  ...
+  <div class="archive-months">
+    <section>
+      <h3>May 2026</h3>
+      <ul>
+        <li class="full-post"><span class="day">16</span><a href="42.html">Post title</a></li>
+        ...
+      </ul>
+    </section>
+    ...
+  </div>
 </main>
 ```
 
-Each month heading is an `<h3>`, one level below the page's own `<h2>Blog Posts</h2>` — it's a subsection of the monthly list, not a sibling heading.
+Each month heading is an `<h3>`, one level below the page's own `<h2>Blog Posts</h2>` — it's a subsection of the monthly list, not a sibling heading. Every month `<section>` is wrapped in a single `<div class="archive-months">`, so a project's CSS can flow them across multiple columns on wide viewports via `column-count` — see [Archive column layout](spec/specification.md#archive-column-layout) in the spec for the full detail. Magnetizer itself doesn't decide which months land in which column; the browser balances them.
 
 Each `<li>` gets the post's type class (`full-post` or `image-post` — Notes never appear here) and its link text follows the title → `name` → excerpt → generated-fallback priority order described in [Post types](#post-types).
 
@@ -345,21 +351,29 @@ If `categories` is configured and at least one category has a matching post, a c
 ```html
 <main>
   <h1>Archive</h1>
-  <h2>Categories</h2>
-  <ul>
-    <li><a href="photography.html">Photography</a> (34)</li>
-    <li><a href="travel.html">Travel</a> (12)</li>
-  </ul>
-  <h2>Short notes</h2>
-  <ul>
-    <li><a href="notes.html">All short notes</a></li>
-  </ul>
+  <div class="archive-columns">
+    <div class="archive-categories">
+      <h2>Categories</h2>
+      <ul>
+        <li><a href="photography.html">Photography</a> (34)</li>
+        <li><a href="travel.html">Travel</a> (12)</li>
+      </ul>
+    </div>
+    <div class="archive-notes">
+      <h2>Short notes</h2>
+      <ul>
+        <li><a href="notes.html">All short notes</a></li>
+      </ul>
+    </div>
+  </div>
   <h2>Blog Posts</h2>
   ...
 </main>
 ```
 
 Each category link shows the number of posts in that category in parentheses. Categories are listed in descending order of post count, and only if they have at least one matching post.
+
+`archive-categories` and `archive-notes` sit side by side inside `archive-columns` — whichever of the two exist; if only one does, it's the sole child. Like `archive-months`, this is bare structure for a project's CSS to lay out on wide viewports (e.g. a two-column flex row); Magnetizer ships no default column CSS or breakpoint of its own.
 
 ## Publishing
 
