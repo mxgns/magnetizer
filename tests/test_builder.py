@@ -615,6 +615,127 @@ class TestSitemap:
 
 
 # ---------------------------------------------------------------------------
+# posts.json
+# ---------------------------------------------------------------------------
+
+class TestPostsIndex:
+
+    def test_posts_json_created_on_full_build(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD})
+        build(p)
+        assert (p / "dist" / "posts.json").exists()
+
+    def test_posts_json_not_created_on_single_file_build(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD})
+        build(p, filename="1.md")
+        assert not (p / "dist" / "posts.json").exists()
+
+    def test_posts_json_recreated_on_flush(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD})
+        build(p)
+        (p / "dist" / "posts.json").write_text("old content")
+        build(p, flush=True)
+        assert "old content" not in (p / "dist" / "posts.json").read_text()
+
+    def test_posts_json_in_log(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD})
+        assert ("UPDATED", "posts.json") in build(p)["log"]
+
+    def test_posts_json_is_id_keyed_object(self, tmp_path):
+        p = make_project(tmp_path, posts={1: TITLED_MD})
+        build(p)
+        data = json.loads((p / "dist" / "posts.json").read_text())
+        assert data["1"]["title"] == "My Post"
+
+    def test_post_entry_uses_archive_display_text_fallback(self, tmp_path):
+        # No title, no name, no images: falls through to the excerpt of the
+        # first paragraph — same fallback chain as the archive listing.
+        md = "---\ndate: 2026-05-24\n---\n\nA short thought.\n"
+        p = make_project(tmp_path, posts={1: md})
+        build(p)
+        data = json.loads((p / "dist" / "posts.json").read_text())
+        assert data["1"]["title"] == "A short thought."
+
+    def test_post_entry_includes_category(self, tmp_path):
+        p = make_project(tmp_path, posts={1: _CATEGORY_MD}, config=_CATEGORIES_CONFIG)
+        build(p)
+        data = json.loads((p / "dist" / "posts.json").read_text())
+        assert data["1"]["category"] == "photography"
+
+    def test_post_entry_category_null_when_uncategorised(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD})
+        build(p)
+        data = json.loads((p / "dist" / "posts.json").read_text())
+        assert data["1"]["category"] is None
+
+    def test_post_entry_includes_date(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD})
+        build(p)
+        data = json.loads((p / "dist" / "posts.json").read_text())
+        assert data["1"]["date"] == "2026-05-24"
+
+    def test_index_page_entry_present(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD})
+        build(p)
+        data = json.loads((p / "dist" / "posts.json").read_text())
+        assert "index" in data
+
+    def test_paginated_index_page_entry_present(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD, 2: MINIMAL_MD, 3: MINIMAL_MD})
+        build(p)
+        data = json.loads((p / "dist" / "posts.json").read_text())
+        assert "index-2" in data
+
+    def test_category_page_entry_present(self, tmp_path):
+        p = make_project(tmp_path, posts={1: _CATEGORY_MD}, config=_CATEGORIES_CONFIG)
+        build(p)
+        data = json.loads((p / "dist" / "posts.json").read_text())
+        assert data["photography"]["title"] == "Photography"
+        assert data["photography"]["category"] == "photography"
+
+    def test_category_page_entry_absent_when_no_matching_posts(self, tmp_path):
+        p = make_project(tmp_path, posts={1: _CATEGORY_MD}, config=_CATEGORIES_CONFIG)
+        build(p)
+        data = json.loads((p / "dist" / "posts.json").read_text())
+        assert "travel" not in data
+
+    def test_notes_page_entry_present(self, tmp_path):
+        note_md = "---\ndate: 2026-05-24\n---\n\nA quick note.\n"
+        p = make_project(tmp_path, posts={1: note_md})
+        build(p)
+        data = json.loads((p / "dist" / "posts.json").read_text())
+        assert data["notes"]["title"] == "Short notes"
+
+    def test_notes_page_entry_absent_when_no_notes(self, tmp_path):
+        p = make_project(tmp_path, posts={1: TITLED_MD})
+        build(p)
+        data = json.loads((p / "dist" / "posts.json").read_text())
+        assert "notes" not in data
+
+    def test_archive_entry_present(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD})
+        build(p)
+        data = json.loads((p / "dist" / "posts.json").read_text())
+        assert data["archive"]["title"] == "Archive"
+
+    def test_special_page_entry_present(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD}, config=_ABOUT_CONFIG)
+        (p / "content" / "about.md").write_text(ABOUT_MD)
+        build(p)
+        data = json.loads((p / "dist" / "posts.json").read_text())
+        assert data["about"]["title"] == "About"
+
+    def test_noindex_post_still_included(self, tmp_path):
+        # Deliberately diverges from sitemap.xml, which excludes noindex pages
+        # for SEO reasons — posts.json exists to identify traffic by page_id
+        # regardless of a page's search-indexing preference.
+        p = make_project(tmp_path, posts={1: _NOINDEX_MD})
+        build(p)
+        data = json.loads((p / "dist" / "posts.json").read_text())
+        assert data["1"]["title"] == "Noindex Post"
+
+
+# ---------------------------------------------------------------------------
 # Post navigation
 # ---------------------------------------------------------------------------
 
