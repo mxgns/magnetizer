@@ -18,6 +18,7 @@ from magnetizer.manifest import (
     update_page_dynamic_flag,
 )
 from magnetizer.render import (
+    archive_display_text,
     canonical_url,
     category_page_url,
     index_page_url,
@@ -33,6 +34,7 @@ from magnetizer.render import (
     render_template,
 )
 from magnetizer.feed import render_feed
+from magnetizer.posts_index import render_posts_index
 from magnetizer.sitemap import render_sitemap, render_robots_txt
 from magnetizer.validate import validate_config, validate_content, validate_project
 
@@ -692,6 +694,48 @@ def _write_sitemap_and_robots(published_post_ids_sorted_desc, published_posts_so
     log(("UPDATED", "robots.txt"))
 
 
+def _write_posts_index(published_posts_sorted_desc, config, special_page_posts_by_name, not_found_post, dist_dir, log):
+    entries = [
+        (post.id, archive_display_text(post), post.category, post.date)
+        for post in published_posts_sorted_desc
+    ]
+
+    per_page = config["posts_per_page"]
+    total_pages = max(1, (len(published_posts_sorted_desc) + per_page - 1) // per_page)
+    index_title = config["index_title"] or config["site_name"]
+    for page_num in range(1, total_pages + 1):
+        title = index_title if page_num == 1 else f"{index_title} (page {page_num})"
+        entries.append((_page_id(index_page_url(page_num)), title, None, None))
+
+    categories = config["categories"]
+    for slug, display_name, _, total_cat_pages in _category_pages(published_posts_sorted_desc, categories, per_page):
+        for page_num in range(1, total_cat_pages + 1):
+            title = display_name if page_num == 1 else f"{display_name} (page {page_num})"
+            entries.append((_page_id(category_page_url(slug, page_num)), title, slug, None))
+
+    note_posts = [p for p in published_posts_sorted_desc if p.post_type == "note"]
+    if note_posts:
+        notes_per_page = config["notes_per_page"]
+        total_notes_pages = max(1, (len(note_posts) + notes_per_page - 1) // notes_per_page)
+        for page_num in range(1, total_notes_pages + 1):
+            title = "Short notes" if page_num == 1 else f"Short notes (page {page_num})"
+            entries.append((_page_id(notes_page_url(page_num)), title, None, None))
+
+    entries.append(("archive", "Archive", None, None))
+
+    for name in config["special_pages"]:
+        post = special_page_posts_by_name[name]
+        entries.append((name, post_display_text(post), None, post.date))
+
+    not_found_name = _not_found_page_name(config)
+    if not_found_name and not_found_post is not None:
+        output_filename = config["404-page-output-filename"]
+        entries.append((_page_id(output_filename), post_display_text(not_found_post), None, not_found_post.date))
+
+    (dist_dir / "posts.json").write_text(render_posts_index(entries))
+    log(("UPDATED", "posts.json"))
+
+
 def build(cwd, filename=None, flush=False, resources=False, on_progress=None):
     cwd = Path(cwd)
     content_dir = cwd / "content"
@@ -809,6 +853,9 @@ def build(cwd, filename=None, flush=False, resources=False, on_progress=None):
         _write_sitemap_and_robots(
             published_post_ids_sorted_desc, published_posts_sorted_desc, posts_cache,
             content_dir, dist_dir, config, special_page_posts_by_name, _log,
+        )
+        _write_posts_index(
+            published_posts_sorted_desc, config, special_page_posts_by_name, not_found_post, dist_dir, _log,
         )
 
     resources_dir = cwd / "resources"

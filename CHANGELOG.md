@@ -5,6 +5,11 @@
 
 ## Released changes
 
+### 13/8/26
+
+- Added `dist/posts.json`, generated on every full build: an id-keyed lookup of every page's title, category, and date, so an external consumer (the Magnalytics analytics UI) can resolve a raw `page_id` into something readable without fetching the page itself. Covers posts, index/category/notes pages, the archive, special pages, and the 404 page — including `noindex` pages, which `sitemap.xml` excludes but `posts.json` doesn't, since it exists to identify traffic rather than aid search indexing
+- Extracted `archive_display_text()` (plain-text title/name/excerpt/generated-label fallback) out of the archive listing's HTML-escaping `_archive_description()`, for reuse by `posts.json`
+
 ### 7/8/26
 
 - Added a GitHub-style contribution calendar to the archive page

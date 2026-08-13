@@ -163,7 +163,7 @@ This is the single reference for every frontmatter key a post or special page ca
 - **`category`** — assigns the post to a category. Matching against `categories` in `config.yaml` is case-insensitive and the value is normalised to lowercase. Adds a category link to the post's footer and includes the post on that category's page (`{slug}.html`). If `categories` is configured, a build warning is printed for posts with no category or with a category not found in `categories`.
 - **`favourite`** — adds an additional `favourite` CSS class to the post's entry in the archive.
 - **`ai_assisted`** — inserts a disclosure banner above the post's heading, wherever it's shown (individual page, and index/category excerpts or full body). The banner text comes from `ai_disclosure_html` in `config.yaml` (raw HTML, so it can include a link) — Magnetizer falls back to a generic sentence if `ai_disclosure_html` isn't set. The banner needs the `.container-brown` and `.ai-disclosure` CSS rules to be present in the project's `resources/` directory — the icon itself is a CSS background image, base64-encoded in the project's own stylesheet, same as every other icon on the site.
-- **`noindex`** — excludes the page from `sitemap.xml` and adds a `<meta name="robots" content="noindex">` tag via `MAGNETIZER_METADATA`, but is otherwise treated normally (still shown on index pages, category pages, the feed, the archive, and post navigation) — it only affects search indexing. Works the same way on special pages as on posts.
+- **`noindex`** — excludes the page from `sitemap.xml` and adds a `<meta name="robots" content="noindex">` tag via `MAGNETIZER_METADATA`, but is otherwise treated normally (still shown on index pages, category pages, the feed, the archive, post navigation, and `posts.json`) — it only affects search indexing. Works the same way on special pages as on posts.
 
 ## Comments
 
@@ -204,6 +204,8 @@ Run `build.py` from your project directory.
 Use `--flush` after editing templates. Resource file changes (CSS, JS) are picked up automatically on the next build. A `.` is printed for each file generated so you can see progress — in normal mode the dots are erased when the build finishes; in `--verbose` mode they remain. Warnings (missing alt text, missing category, etc.) are always shown inline next to the affected post, with the whole row coloured yellow in a terminal for visibility, e.g. `037   37.html   ⚠ Missing alt text`. Fatal errors are prefixed with a red `ERROR` label.
 
 Every full build also generates `dist/sitemap.xml` (all published posts, index, category, notes, special, and archive pages with `lastmod` dates) and `dist/robots.txt` (pointing to the sitemap). These are not generated on single-file preview builds.
+
+Every full build also generates `dist/posts.json` — an id-keyed lookup of every page's title, category, and date, for an external consumer like the Magnalytics analytics UI to resolve a raw `page_id` (see `MAGNETIZER_PAGE_ID`) into something readable. Unlike the sitemap, it includes `noindex` pages and the 404 page, since it's for identifying traffic, not search indexing. Also not generated on single-file preview builds.
 
 ## Templates
 

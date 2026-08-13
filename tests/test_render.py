@@ -6,6 +6,7 @@ from html.parser import HTMLParser
 import pytest
 from magnetizer.content import Image, Post
 from magnetizer.render import (
+    archive_display_text,
     canonical_url,
     category_page_url,
     notes_page_url,
@@ -1695,6 +1696,46 @@ class TestArchiveDescriptions:
             make_dated_post(1, "2026-05-24", body_html="<p>A &amp; B</p>")
         ])
         assert "A &amp; B" in html
+
+
+# ---------------------------------------------------------------------------
+# archive_display_text — the same title-fallback chain as the archive
+# listing, but as plain text (unescaped) for non-HTML consumers
+# ---------------------------------------------------------------------------
+
+class TestArchiveDisplayText:
+
+    def test_title_used_when_present(self):
+        assert archive_display_text(make_dated_post(1, "2026-05-24", title="My Title")) == "My Title"
+
+    def test_name_used_when_no_title(self):
+        post = make_dated_post(1, "2026-05-24", name="A quiet morning",
+                                images=[Image("1-image-01.jpg")], post_type="image")
+        assert archive_display_text(post) == "A quiet morning"
+
+    def test_title_wins_over_name(self):
+        post = make_dated_post(1, "2026-05-24", title="Real Title", name="Fallback name", post_type="full")
+        assert archive_display_text(post) == "Real Title"
+
+    def test_excerpt_used_when_no_title_or_name(self):
+        post = make_dated_post(1, "2026-05-24", body_html="<p>A short thought.</p>",
+                                images=[Image("1-image-01.jpg")], post_type="image")
+        assert archive_display_text(post) == "A short thought."
+
+    def test_excerpt_truncated_over_40_chars(self):
+        text = "a" * 41
+        post = make_dated_post(1, "2026-05-24", body_html=f"<p>{text}</p>",
+                                images=[Image("1-image-01.jpg")], post_type="image")
+        assert archive_display_text(post) == "a" * 40 + "…"
+
+    def test_generated_label_used_when_no_title_name_or_text(self):
+        post = make_dated_post(1, "2026-05-24", date_uk="24 May 2026",
+                                images=[Image("1-image-01.jpg")], post_type="image")
+        assert archive_display_text(post) == "Photo posted 24 May 2026"
+
+    def test_result_is_not_html_escaped(self):
+        post = make_dated_post(1, "2026-05-24", body_html="<p>A &amp; B</p>")
+        assert archive_display_text(post) == "A & B"
 
 
 # ---------------------------------------------------------------------------

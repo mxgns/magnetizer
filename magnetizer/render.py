@@ -267,21 +267,28 @@ def canonical_url(site_url, filename):
     return f"{base}/{filename}"
 
 
-def _archive_description(post):
+def archive_display_text(post):
+    """The archive's title-fallback chain (title -> name -> first-paragraph
+    excerpt, truncated to 40 chars at a word boundary -> generated label) as
+    plain, unescaped text — for non-HTML consumers such as posts.json."""
     if post.title:
-        return _escape(post.title)
+        return post.title
     if post.name:
-        return _escape(post.name)
+        return post.name
     if post.body_html:
         m = re.search(r'<p\b[^>]*>(.*?)</p>', post.body_html, re.DOTALL | re.IGNORECASE)
         if m:
             text = _unescape(re.sub(r'<[^>]+>', '', m.group(1))).strip()
             if text:
                 if len(text) <= 40:
-                    return _escape(text)
+                    return text
                 truncated = text[:40].rsplit(' ', 1)[0]
-                return _escape(truncated) + '…'
-    return _escape(_generated_post_label(post))
+                return truncated + '…'
+    return _generated_post_label(post)
+
+
+def _archive_description(post):
+    return _escape(archive_display_text(post))
 
 
 def _archive_item_class(post):
