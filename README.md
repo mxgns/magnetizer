@@ -127,7 +127,7 @@ A blank or whitespace-only `title`, `name`, or body counts as unset for all of t
 
 Images placed inline via `{{ image N }}` don't count as top-level images for this — a post with only inline images and no title is a Note, not an Image post. All in-post features (`<!-- more -->`, `{{ image N }}`, container blocks, dynamic values) work the same way across all three types; Magnetizer doesn't restrict any of them by post type.
 
-Notes replace what used to be called microblog posts. The behaviour is the same except there's no length cap any more, and the paginated listing page is `notes.html` (was `microblog.html`). Notes get a `<a href="notes.html" class="notes">Short note</a>` link in their footer, before the category link if any. Notes are excluded from the Atom feed (`feed.xml`) — only Full and Image posts get feed entries.
+Notes replace what used to be called microblog posts. The behaviour is the same except there's no length cap any more, and the paginated listing page is `notes.html` (was `microblog.html`). Notes get a `<a href="notes.html" class="notes">Short note</a>` link in their footer, before the category link if any.
 
 A post with no `title`, no images and no content is invalid — the build exits with an error. A post with a `title` but no images and no content triggers a build warning (it doesn't make much use of its own page), as does a post with both `title` and `name` set — the `title` wins and `name` is ignored. ("Images" here means any image, including one used only inline via `{{ image N }}` — unlike the Full/Image/Note classification above, these two checks don't distinguish top-level from inline.)
 
