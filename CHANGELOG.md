@@ -7,12 +7,12 @@
 
 ### 16/8/26
 
-- Reverted the 2/8/26 change that excluded short notes from the Atom feed (`feed.xml`) — all dated posts, including Notes, get feed entries again
+- Reverted the Atom feed to also include notes.
 
 ### 13/8/26
 
-- Added `dist/posts.json`, generated on every full build: an id-keyed lookup of every page's title, category, and date, so an external consumer (the Magnalytics analytics UI) can resolve a raw `page_id` into something readable without fetching the page itself. Covers posts, index/category/notes pages, the archive, special pages, and the 404 page — including `noindex` pages, which `sitemap.xml` excludes but `posts.json` doesn't, since it exists to identify traffic rather than aid search indexing
-- Extracted `archive_display_text()` (plain-text title/name/excerpt/generated-label fallback) out of the archive listing's HTML-escaping `_archive_description()`, for reuse by `posts.json`
+- Added posts.json for looking up title and category from a post id.
+- Extracted `archive_display_text()` for reuse by `posts.json`
 
 ### 7/8/26
 
@@ -26,35 +26,35 @@
 
 ### 2/8/26
 
-- Atom feed entries' `<link>` now carries a `?src=atom` query param (for the tracking pixel's traffic-source attribution); `<id>` stays a clean, tracking-free URL per the Atom spec's stable-identifier convention
-- Short notes are now excluded from the Atom feed (`feed.xml`) — only Full and Image posts get entries
+- Atom feed entry links now carry a `?src=atom` tracking param
+- Short notes excluded from the Atom feed
 
 ### 1/8/26
 
-- AI-assisted disclosure banner now renders above the post heading instead of inside `.post-body`
+- AI disclosure banner now renders above the post heading
 
 ### 29/7/26
 
-- Renamed "Notes" to "Short notes" in headings/links (post footer, archive, notes page); URLs and class names unchanged
-- New `MAGNETIZER_PAGE_ID` template placeholder: each page's bare id, for template-level use like per-page tracking
+- Renamed "Notes" to "Short notes" in headings/links
+- New `MAGNETIZER_PAGE_ID` template placeholder
 
 ### 28/7/26
 
-- 404 page support: `404-page-input-filename`/`404-page-output-filename` config, post id 404 reserved
+- Added 404 page support
 
 ### 26/7/26
 
-- External post links now open in a new tab with `rel="noopener"` and an `external-link` class
+- External post links now open in a new tab
 - Simplified "Back to homepage" links to a single "Blog home" link
 
 ### 23/7/26
 
 - Removed the unused `draft` feature
-- `images_per_post` config: how many top-level images to show per post on multi-post pages
+- New `images_per_post` config
 
 ### 22/7/26
 
-- New post types: Full post, Image post, and Note, replacing title/photo-based classification
+- New post types: Full post, Image post, and Note
 - `name` frontmatter field: fallback label for untitled posts
 - Untitled posts now always get a heading and meta title
 - Renamed microblog posts to Notes; removed the length cap
@@ -64,11 +64,11 @@
 
 ### 19/7/26
 
-- `noindex` frontmatter key: excludes a page from `sitemap.xml` and adds a noindex meta tag
-- Refactored page `<head>` metadata into a single `MAGNETIZER_METADATA` template placeholder
+- New `noindex` frontmatter key
+- Refactored `<head>` metadata into `MAGNETIZER_METADATA` placeholder
 - Removed `{{ days_since_last_post }}` shortcode
-- Smart typography now also converts `--`/`---` to en/em dashes and `...` to an ellipsis
-- Split `build()` into named phase functions in `builder.py` (no behaviour change)
+- Smart typography also converts dashes and ellipses
+- Split `build()` into named phase functions
 - Consolidated config and frontmatter reference docs
 - Fixed category pages never appearing in the build log
 
@@ -122,7 +122,7 @@
 ### 16/6/26
 
 - Post categories and category pages
-- Article heading hierarchy, using h1 on individual post pages and h2 on index pages
+- Article heading hierarchy: h1 on posts, h2 on index
 
 ### 15/6/26
 
@@ -173,7 +173,7 @@
 
 ### 1/6/26
 
-- `MAGNETIZER_BUILD_ID` template placeholder busting the cache for resource files on build
+- New `MAGNETIZER_BUILD_ID` cache-busting placeholder
 - Archive page listing all blogposts
 - Image alt texts via frontmatter with build warning when missing
 
