@@ -5,6 +5,10 @@
 
 ## Released changes
 
+### 16/8/26
+
+- Reverted the 2/8/26 change that excluded short notes from the Atom feed (`feed.xml`) — all dated posts, including Notes, get feed entries again
+
 ### 13/8/26
 
 - Added `dist/posts.json`, generated on every full build: an id-keyed lookup of every page's title, category, and date, so an external consumer (the Magnalytics analytics UI) can resolve a raw `page_id` into something readable without fetching the page itself. Covers posts, index/category/notes pages, the archive, special pages, and the 404 page — including `noindex` pages, which `sitemap.xml` excludes but `posts.json` doesn't, since it exists to identify traffic rather than aid search indexing
