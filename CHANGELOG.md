@@ -7,7 +7,7 @@
 
 ### 26/8/26
 
-- Added support for pipe tables in post bodies via Markdown's `tables` ext.
+- Added support for tables
 
 ### 16/8/26
 
