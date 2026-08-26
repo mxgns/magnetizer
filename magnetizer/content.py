@@ -20,7 +20,7 @@ def special_page_comment_pattern(name):
     return re.compile(rf'^{re.escape(name)}-comment-(\d{{2}})\.md$')
 
 _ALLOWED_FRONTMATTER_KEYS = frozenset({'date', 'title', 'name', 'images', 'favourite', 'category', 'ai_assisted', 'noindex'})
-_MARKDOWN_EXTENSIONS = ['pymdownx.mark', 'smarty', 'magnetizer.containers']
+_MARKDOWN_EXTENSIONS = ['pymdownx.mark', 'smarty', 'tables', 'magnetizer.containers']
 _COMMENT_ALLOWED_FRONTMATTER_KEYS = frozenset({'date', 'author'})
 _COMMENT_MARKDOWN_EXTENSIONS = ['pymdownx.mark', 'smarty']
 _COMMENT_NUMBER_RE = re.compile(r'-comment-(\d+)')
