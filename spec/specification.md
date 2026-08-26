@@ -485,7 +485,7 @@ The class name is optional — a bare `:::` fence renders `<div class="container
 
 A post's Markdown body supports standard pipe tables:
 
-```
+```markdown
 | Column 1 | Column 2 |
 |----------|----------|
 | Item 1   | Item 2   |
