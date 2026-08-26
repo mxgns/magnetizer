@@ -5,6 +5,10 @@
 
 ## Released changes
 
+### 26/8/26
+
+- Added support for tables
+
 ### 16/8/26
 
 - Reverted the Atom feed to also include notes.

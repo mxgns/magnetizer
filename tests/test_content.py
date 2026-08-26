@@ -245,6 +245,17 @@ class TestBodyHtml:
         assert post.excerpt_html is not None
         assert "<mark>marked</mark>" in post.excerpt_html
 
+    def test_table_syntax_converted_to_table_element(self):
+        body = (
+            "| Column 1 | Column 2 |\n"
+            "|----------|----------|\n"
+            "| Item 1   | Item 2   |"
+        )
+        post = parse_post(make_md(body=body), 1, [])
+        assert "<table>" in post.body_html
+        assert "<th>Column 1</th>" in post.body_html
+        assert "<td>Item 1</td>" in post.body_html
+
 
 # ---------------------------------------------------------------------------
 # External links

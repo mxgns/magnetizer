@@ -97,6 +97,16 @@ My container content
 
 This renders `<div class="container my-container-class"><p>My container content</p></div>`. The class name is optional — a bare `:::` fence renders `<div class="container">`. Content between the fences is parsed as Markdown, and an opening `:::` with no matching closing `:::` is left as ordinary text.
 
+Standard pipe tables are also supported:
+
+```markdown
+| Column 1 | Column 2 |
+|----------|----------|
+| Item 1   | Item 2   |
+```
+
+This renders a regular `<table>`/`<th>`/`<td>` structure — styling it is up to the project's own stylesheet, same as container colour variants.
+
 Place a specific image inline in the body with `{{ image N }}`, where `N` is the image's number from its filename (`{{ image 3 }}` → `{post-id}-image-03.{ext}`):
 
 ```markdown
