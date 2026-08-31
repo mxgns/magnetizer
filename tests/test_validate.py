@@ -615,6 +615,18 @@ class TestValidateConfig:
         with pytest.raises(SystemExit):
             validate_config({"site_url": "https://example.github.io", "categories": {"index-2": "Whatever"}})
 
+    def test_fails_when_category_slug_matches_gallery_pagination_pattern(self):
+        with pytest.raises(SystemExit):
+            validate_config({"site_url": "https://example.github.io", "categories": {"gallery-2": "Whatever"}})
+
+    @pytest.mark.parametrize("name", ["index", "archive", "gallery", "gallery-2", "index-2"])
+    def test_fails_when_special_page_name_is_reserved(self, name):
+        with pytest.raises(SystemExit):
+            validate_config({"site_url": "https://example.github.io", "special_pages": [name]})
+
+    def test_passes_with_non_reserved_special_page_name(self):
+        validate_config({"site_url": "https://example.github.io", "special_pages": ["about"]})  # should not raise
+
     def test_fails_when_category_slug_is_purely_numeric(self):
         with pytest.raises(SystemExit):
             validate_config({"site_url": "https://example.github.io", "categories": {"42": "Whatever"}})

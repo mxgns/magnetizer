@@ -137,6 +137,13 @@ def _delete_post_files(dist_dir, post_id):
             f.unlink()
 
 
+def _delete_special_page_image_files(dist_dir, name):
+    pattern = re.compile(rf'^{re.escape(name)}-image-')
+    for f in list(dist_dir.iterdir()):
+        if pattern.match(f.name):
+            f.unlink()
+
+
 def _build_post(post, dist_dir, content_dir, config):
     _delete_post_files(dist_dir, post.id)
 
@@ -386,6 +393,7 @@ def _build_special_page(name, content_dir, dist_dir, config, template, values, w
     post.body_html = expanded_body
     dynamic_flag = bool(used_names)
 
+    _delete_special_page_image_files(dist_dir, name)
     for image in post.images:
         if image.filename.lower().endswith('.svg'):
             shutil.copy2(content_dir / image.filename, dist_dir / image.filename)

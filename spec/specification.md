@@ -293,7 +293,7 @@ For each raster image (`.jpg`, `.jpeg`, `.png`) in a post, Magnetizer writes two
 
 Both follow the rule that an image already within the limit is not scaled up. Both are generated in the same per-post (or per-special-page) step, from the same source file, and both are deleted along with the rest of the post's files when the post is reprocessed or removed. SVG images are neither resized nor thumbnailed — they are copied as-is to `dist/` and referenced by their original filename.
 
-A thumbnail is regenerated only when its source image changes, not when the gallery is regenerated. The gallery is a listing page; it re-renders far more often than the images it points at.
+A thumbnail is regenerated whenever its post is rebuilt — the same trigger as the resized image, which includes not just the post's own file or image changing but also a neighboring post being added or removed (which touches this post too, for its newer/older links). Regenerating the gallery page itself never regenerates a thumbnail: the gallery is a listing page that only reads existing thumbnail files (for their pixel dimensions) and re-renders far more often than the images it points at.
 
 ### Templates
 

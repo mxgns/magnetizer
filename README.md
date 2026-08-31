@@ -216,7 +216,7 @@ Run `build.py` from your project directory.
 
 Use `--flush` after editing templates. Resource file changes (CSS, JS) are picked up automatically on the next build. A `.` is printed for each file generated so you can see progress — in normal mode the dots are erased when the build finishes; in `--verbose` mode they remain. Warnings (missing alt text, missing category, etc.) are always shown inline next to the affected post, with the whole row coloured yellow in a terminal for visibility, e.g. `037   37.html   ⚠ Missing alt text`. Fatal errors are prefixed with a red `ERROR` label.
 
-Every full build also generates `dist/sitemap.xml` (all published posts, index, category, notes, gallery, special, and archive pages with `lastmod` dates) and `dist/robots.txt` (pointing to the sitemap). These are not generated on single-file preview builds.
+Every full build also generates `dist/sitemap.xml` (all published posts and special pages that aren't `noindex`, plus index, category, notes, gallery, and archive pages, with `lastmod` dates) and `dist/robots.txt` (pointing to the sitemap). These are not generated on single-file preview builds.
 
 Every full build also generates `dist/posts.json` — an id-keyed lookup of every page's title, category, and date, for an external consumer like the Magnalytics analytics UI to resolve a raw `page_id` (see `MAGNETIZER_PAGE_ID`) into something readable. Unlike the sitemap, it includes `noindex` pages and the 404 page, since it's for identifying traffic, not search indexing. Also not generated on single-file preview builds.
 

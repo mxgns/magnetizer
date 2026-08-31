@@ -221,7 +221,7 @@ class TestThumbnailGeneration:
         make_jpg(p / "content" / "1-image-01.jpg")
         log = build(p)["log"]
         entry = next(e for e in log if e[0] == "THUMBNAIL")
-        action, name, src_size, dest_size = entry
+        _action, _name, src_size, dest_size = entry
         assert isinstance(src_size, int) and src_size > 0
         assert isinstance(dest_size, int) and dest_size > 0
 
@@ -1447,6 +1447,19 @@ class TestSpecialPagesGeneric:
         make_jpg(p / "content" / "now-image-01.jpg")
         build(p)
         assert (p / "dist" / "now-image-01-resized.jpg").exists()
+
+    def test_special_page_removed_image_derivatives_are_cleaned_up(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD}, config=_NOW_CONFIG)
+        (p / "content" / "now.md").write_text(NOW_MD)
+        make_jpg(p / "content" / "now-image-01.jpg")
+        build(p)
+        assert (p / "dist" / "now-image-01-resized.jpg").exists()
+        assert (p / "dist" / "now-image-01-thumb.jpg").exists()
+
+        (p / "content" / "now-image-01.jpg").unlink()
+        build(p)
+        assert not (p / "dist" / "now-image-01-resized.jpg").exists()
+        assert not (p / "dist" / "now-image-01-thumb.jpg").exists()
 
     def test_category_slug_matching_configured_special_page_name_errors(self, tmp_path):
         config = (
