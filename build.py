@@ -64,7 +64,8 @@ def _pages_summary(log, verbose, special_pages=(), categories=None):
 
     names = [e[1] for e in entries]
     index_pages = [n for n in names if n == "index.html" or n.startswith("index-")]
-    non_index = [n for n in names if n not in index_pages]
+    gallery_pages = [n for n in names if n == "gallery.html" or n.startswith("gallery-")]
+    non_index = [n for n in names if n not in index_pages and n not in gallery_pages]
 
     boilerplate = {"archive.html", "sitemap.xml", "robots.txt"}
     if not verbose:
@@ -80,6 +81,10 @@ def _pages_summary(log, verbose, special_pages=(), categories=None):
     if index_pages:
         n = len(index_pages)
         parts.append(f"index(+{n})" if n > 1 else "index")
+
+    if gallery_pages:
+        n = len(gallery_pages)
+        parts.append(f"gallery(+{n})" if n > 1 else "gallery")
 
     category_pages = _category_page_names(non_index, categories)
     if category_pages:

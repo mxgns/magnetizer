@@ -4,11 +4,13 @@ import json
 import re
 import shutil
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 from PIL import Image as PILImage
 
 from magnetizer.builder import build
+from magnetizer.image import image_dimensions
 from conftest import MINIMAL_MD, make_project
 
 
@@ -147,6 +149,285 @@ class TestImageProcessing:
         build(p)
         assert (p / "dist" / "1-image-01-resized.jpg").exists()
         assert (p / "dist" / "1-image-02.svg").exists()
+
+
+# ---------------------------------------------------------------------------
+# Thumbnail generation
+# ---------------------------------------------------------------------------
+
+class TestThumbnailGeneration:
+
+    def test_thumbnail_created_in_dist(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD})
+        make_jpg(p / "content" / "1-image-01.jpg", 2400, 1800)
+        build(p)
+        assert (p / "dist" / "1-image-01-thumb.jpg").exists()
+
+    def test_thumbnail_long_edge_within_default_max(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD})
+        make_jpg(p / "content" / "1-image-01.jpg", 2400, 1800)
+        build(p)
+        img = PILImage.open(p / "dist" / "1-image-01-thumb.jpg")
+        assert max(img.size) <= 400
+
+    def test_thumbnail_long_edge_uses_configured_max_dimension(self, tmp_path):
+        p = make_project(
+            tmp_path, posts={1: MINIMAL_MD},
+            config="site_url: https://example.github.io\nthumbnail_max_dimension: 200\nposts_per_page: 12\n",
+        )
+        make_jpg(p / "content" / "1-image-01.jpg", 2400, 1800)
+        build(p)
+        img = PILImage.open(p / "dist" / "1-image-01-thumb.jpg")
+        assert max(img.size) <= 200
+
+    def test_small_image_thumbnail_not_upscaled(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD})
+        make_jpg(p / "content" / "1-image-01.jpg", 100, 80)
+        build(p)
+        assert PILImage.open(p / "dist" / "1-image-01-thumb.jpg").size == (100, 80)
+
+    def test_multiple_thumbnails_all_created(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD})
+        make_jpg(p / "content" / "1-image-01.jpg")
+        make_jpg(p / "content" / "1-image-02.jpg")
+        build(p)
+        assert (p / "dist" / "1-image-01-thumb.jpg").exists()
+        assert (p / "dist" / "1-image-02-thumb.jpg").exists()
+
+    def test_svg_has_no_thumbnail(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD})
+        make_svg(p / "content" / "1-image-01.svg")
+        build(p)
+        assert not (p / "dist" / "1-image-01-thumb.svg").exists()
+
+    def test_thumbnail_removed_when_post_removed(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD, 2: MINIMAL_MD})
+        make_jpg(p / "content" / "1-image-01.jpg")
+        build(p)
+        assert (p / "dist" / "1-image-01-thumb.jpg").exists()
+        (p / "content" / "1.md").unlink()
+        (p / "content" / "1-image-01.jpg").unlink()
+        build(p)
+        assert not (p / "dist" / "1-image-01-thumb.jpg").exists()
+
+    def test_thumbnail_log_entry(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD})
+        make_jpg(p / "content" / "1-image-01.jpg")
+        log = build(p)["log"]
+        assert any(e[0] == "THUMBNAIL" and e[1] == "1-image-01-thumb.jpg" for e in log)
+
+    def test_thumbnail_log_entry_includes_src_and_dest_sizes(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD})
+        make_jpg(p / "content" / "1-image-01.jpg")
+        log = build(p)["log"]
+        entry = next(e for e in log if e[0] == "THUMBNAIL")
+        _action, _name, src_size, dest_size = entry
+        assert isinstance(src_size, int) and src_size > 0
+        assert isinstance(dest_size, int) and dest_size > 0
+
+
+# ---------------------------------------------------------------------------
+# Gallery pages
+# ---------------------------------------------------------------------------
+
+class TestGalleryPages:
+
+    def test_gallery_html_created_when_raster_image_exists(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD})
+        make_jpg(p / "content" / "1-image-01.jpg")
+        build(p)
+        assert (p / "dist" / "gallery.html").exists()
+
+    def test_gallery_not_created_when_no_raster_images(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD})
+        build(p)
+        assert not (p / "dist" / "gallery.html").exists()
+
+    def test_gallery_not_created_when_only_svg_images(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD})
+        make_svg(p / "content" / "1-image-01.svg")
+        build(p)
+        assert not (p / "dist" / "gallery.html").exists()
+
+    def test_gallery_page_title(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD})
+        make_jpg(p / "content" / "1-image-01.jpg")
+        build(p)
+        assert "<title>Photo archive - Test Blog</title>" in (p / "dist" / "gallery.html").read_text()
+
+    def test_gallery_h1_photo_archive(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD})
+        make_jpg(p / "content" / "1-image-01.jpg")
+        build(p)
+        assert "<h1>Photo archive</h1>" in (p / "dist" / "gallery.html").read_text()
+
+    def test_gallery_item_count_matches_images(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD})
+        make_jpg(p / "content" / "1-image-01.jpg")
+        make_jpg(p / "content" / "1-image-02.jpg")
+        build(p)
+        html = (p / "dist" / "gallery.html").read_text()
+        assert html.count('class="gallery-item"') == 2
+
+    def test_gallery_references_thumbnail_and_resized_files(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD})
+        make_jpg(p / "content" / "1-image-01.jpg")
+        build(p)
+        html = (p / "dist" / "gallery.html").read_text()
+        assert 'src="1-image-01-thumb.jpg"' in html
+        assert 'data-full="1-image-01-resized.jpg"' in html
+
+    def test_gallery_links_to_post(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD})
+        make_jpg(p / "content" / "1-image-01.jpg")
+        build(p)
+        assert 'href="1.html"' in (p / "dist" / "gallery.html").read_text()
+
+    def test_gallery_uses_actual_thumbnail_dimensions(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD})
+        make_jpg(p / "content" / "1-image-01.jpg", 2400, 1800)
+        build(p)
+        html = (p / "dist" / "gallery.html").read_text()
+        assert 'width="400"' in html
+        assert 'height="300"' in html
+
+    def test_gallery_uses_alt_text_from_frontmatter(self, tmp_path):
+        md = "---\ndate: 2026-05-24\nimages:\n  - A lovely sunset\n---\n\nHello world\n"
+        p = make_project(tmp_path, posts={1: md})
+        make_jpg(p / "content" / "1-image-01.jpg")
+        build(p)
+        assert 'alt="A lovely sunset"' in (p / "dist" / "gallery.html").read_text()
+
+    def test_gallery_svg_excluded_from_items(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD})
+        make_jpg(p / "content" / "1-image-01.jpg")
+        make_svg(p / "content" / "1-image-02.svg")
+        build(p)
+        html = (p / "dist" / "gallery.html").read_text()
+        assert html.count('class="gallery-item"') == 1
+
+    def test_gallery_inline_image_included(self, tmp_path):
+        md = "---\ndate: 2026-05-24\n---\n{{ image 1 }}\n"
+        p = make_project(tmp_path, posts={1: md})
+        make_jpg(p / "content" / "1-image-01.jpg")
+        build(p)
+        html = (p / "dist" / "gallery.html").read_text()
+        assert html.count('class="gallery-item"') == 1
+        assert 'data-post="1"' in html
+
+    def test_gallery_excludes_special_page_images(self, tmp_path):
+        config = (
+            "site_name: Test Blog\nsite_url: https://example.github.io\n"
+            "posts_per_page: 2\nspecial_pages:\n  - about\n"
+        )
+        p = make_project(tmp_path, posts={1: MINIMAL_MD}, config=config)
+        (p / "content" / "about.md").write_text("---\ntitle: About\n---\n\nAbout page.\n")
+        make_jpg(p / "content" / "1-image-01.jpg")
+        make_jpg(p / "content" / "about-image-01.jpg")
+        build(p)
+        html = (p / "dist" / "gallery.html").read_text()
+        assert html.count('class="gallery-item"') == 1
+        assert 'data-post="about"' not in html
+
+    def test_gallery_includes_noindex_post_images(self, tmp_path):
+        md = "---\ndate: 2026-05-24\nnoindex: true\n---\n\nHello world\n"
+        p = make_project(tmp_path, posts={1: md})
+        make_jpg(p / "content" / "1-image-01.jpg")
+        build(p)
+        html = (p / "dist" / "gallery.html").read_text()
+        assert html.count('class="gallery-item"') == 1
+
+    def test_gallery_order_newest_post_first(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD, 2: MINIMAL_MD})
+        make_jpg(p / "content" / "1-image-01.jpg")
+        make_jpg(p / "content" / "2-image-01.jpg")
+        build(p)
+        html = (p / "dist" / "gallery.html").read_text()
+        assert html.index('data-post="2"') < html.index('data-post="1"')
+
+    def test_gallery_order_within_post_by_image_number(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD})
+        make_jpg(p / "content" / "1-image-01.jpg")
+        make_jpg(p / "content" / "1-image-02.jpg")
+        build(p)
+        html = (p / "dist" / "gallery.html").read_text()
+        assert html.index('1-image-01-thumb.jpg') < html.index('1-image-02-thumb.jpg')
+
+    def test_gallery_pagination_creates_second_page(self, tmp_path):
+        config = "site_name: Test Blog\nsite_url: https://example.github.io\nposts_per_page: 2\ngallery_per_page: 2\n"
+        p = make_project(tmp_path, posts={1: MINIMAL_MD, 2: MINIMAL_MD, 3: MINIMAL_MD}, config=config)
+        make_jpg(p / "content" / "1-image-01.jpg")
+        make_jpg(p / "content" / "2-image-01.jpg")
+        make_jpg(p / "content" / "3-image-01.jpg")
+        build(p)
+        page1 = (p / "dist" / "gallery.html").read_text()
+        page2 = (p / "dist" / "gallery-2.html").read_text()
+        assert 'data-post="3"' in page1 and 'data-post="2"' in page1
+        assert 'data-post="1"' not in page1
+        assert 'data-post="1"' in page2
+
+    def test_gallery_pagination_can_split_single_post_across_pages(self, tmp_path):
+        config = "site_name: Test Blog\nsite_url: https://example.github.io\nposts_per_page: 2\ngallery_per_page: 2\n"
+        p = make_project(tmp_path, posts={1: MINIMAL_MD}, config=config)
+        make_jpg(p / "content" / "1-image-01.jpg")
+        make_jpg(p / "content" / "1-image-02.jpg")
+        make_jpg(p / "content" / "1-image-03.jpg")
+        build(p)
+        page1 = (p / "dist" / "gallery.html").read_text()
+        page2 = (p / "dist" / "gallery-2.html").read_text()
+        assert page1.count('class="gallery-item"') == 2
+        assert page2.count('class="gallery-item"') == 1
+        assert '1-image-01-thumb.jpg' in page1 and '1-image-02-thumb.jpg' in page1
+        assert '1-image-03-thumb.jpg' in page2
+
+    def test_gallery_pagination_nav_older_has_load_more_class(self, tmp_path):
+        config = "site_name: Test Blog\nsite_url: https://example.github.io\nposts_per_page: 2\ngallery_per_page: 1\n"
+        p = make_project(tmp_path, posts={1: MINIMAL_MD, 2: MINIMAL_MD}, config=config)
+        make_jpg(p / "content" / "1-image-01.jpg")
+        make_jpg(p / "content" / "2-image-01.jpg")
+        build(p)
+        page1 = (p / "dist" / "gallery.html").read_text()
+        assert '<li class="older"><a href="gallery-2.html" class="load-more">Older photos</a></li>' in page1
+
+    def test_gallery_pagination_no_nav_when_single_page(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD})
+        make_jpg(p / "content" / "1-image-01.jpg")
+        build(p)
+        assert 'gallery-2.html' not in (p / "dist" / "gallery.html").read_text()
+
+    def test_gallery_has_blog_home_link(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD})
+        make_jpg(p / "content" / "1-image-01.jpg")
+        build(p)
+        assert '<a href="index.html">Blog home</a>' in (p / "dist" / "gallery.html").read_text()
+
+    def test_gallery_not_created_on_single_file_build(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD})
+        make_jpg(p / "content" / "1-image-01.jpg")
+        build(p, filename="1.md")
+        assert not (p / "dist" / "gallery.html").exists()
+
+    def test_gallery_regenerated_when_new_post_added(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD})
+        make_jpg(p / "content" / "1-image-01.jpg")
+        build(p)
+        (p / "content" / "2.md").write_text(MINIMAL_MD)
+        make_jpg(p / "content" / "2-image-01.jpg")
+        build(p)
+        html = (p / "dist" / "gallery.html").read_text()
+        assert html.count('class="gallery-item"') == 2
+
+    def test_gallery_log_entry(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD})
+        make_jpg(p / "content" / "1-image-01.jpg")
+        assert ("UPDATED", "gallery.html") in build(p)["log"]
+
+    def test_gallery_photos_computed_once_per_build(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD})
+        make_jpg(p / "content" / "1-image-01.jpg")
+        with patch("magnetizer.builder.image_dimensions", wraps=image_dimensions) as mock_dimensions:
+            build(p)
+        assert mock_dimensions.call_count == 1
 
 
 # ---------------------------------------------------------------------------
@@ -613,6 +894,48 @@ class TestSitemap:
         sitemap_after = (p / "dist" / "sitemap.xml").read_text()
         assert sitemap_before != sitemap_after
 
+    def test_sitemap_contains_gallery_url(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD})
+        make_jpg(p / "content" / "1-image-01.jpg")
+        build(p)
+        assert "gallery.html" in (p / "dist" / "sitemap.xml").read_text()
+
+    def test_sitemap_excludes_gallery_url_when_no_photos(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD})
+        build(p)
+        assert "gallery.html" not in (p / "dist" / "sitemap.xml").read_text()
+
+    def test_sitemap_contains_paginated_gallery_url(self, tmp_path):
+        config = "site_name: Test Blog\nsite_url: https://example.github.io\nposts_per_page: 2\ngallery_per_page: 1\n"
+        p = make_project(tmp_path, posts={1: MINIMAL_MD, 2: MINIMAL_MD}, config=config)
+        make_jpg(p / "content" / "1-image-01.jpg")
+        make_jpg(p / "content" / "2-image-01.jpg")
+        build(p)
+        assert "gallery-2.html" in (p / "dist" / "sitemap.xml").read_text()
+
+    def test_gallery_lastmod_is_scoped_per_page(self, tmp_path):
+        import os
+        import re
+        config = "site_name: Test Blog\nsite_url: https://example.github.io\nposts_per_page: 2\ngallery_per_page: 1\n"
+        p = make_project(tmp_path, posts={1: MINIMAL_MD, 2: MINIMAL_MD}, config=config)
+        make_jpg(p / "content" / "1-image-01.jpg")
+        make_jpg(p / "content" / "2-image-01.jpg")
+        old_mtime = 1000000000.0  # long before either build
+        new_mtime = 1640995200.0  # also long before the build, but after old_mtime
+        os.utime(p / "content" / "1-image-01.jpg", (old_mtime, old_mtime))
+        os.utime(p / "content" / "2-image-01.jpg", (new_mtime, new_mtime))
+        build(p)
+        sitemap = (p / "dist" / "sitemap.xml").read_text()
+
+        def lastmod_of(loc):
+            m = re.search(rf'<loc>https://example\.github\.io/{re.escape(loc)}</loc>\n    <lastmod>([^<]+)</lastmod>', sitemap)
+            return m.group(1)
+
+        # gallery.html (newest post's photo, new_mtime) and gallery-2.html (oldest
+        # post's photo, old_mtime) must differ — proving each page's lastmod is
+        # scoped to its own photos rather than shared across the whole gallery.
+        assert lastmod_of("gallery.html") != lastmod_of("gallery-2.html")
+
 
 # ---------------------------------------------------------------------------
 # posts.json
@@ -711,6 +1034,30 @@ class TestPostsIndex:
         build(p)
         data = json.loads((p / "dist" / "posts.json").read_text())
         assert "notes" not in data
+
+    def test_gallery_page_entry_present(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD})
+        make_jpg(p / "content" / "1-image-01.jpg")
+        build(p)
+        data = json.loads((p / "dist" / "posts.json").read_text())
+        assert data["gallery"]["title"] == "Photo archive"
+        assert data["gallery"]["category"] is None
+        assert data["gallery"]["date"] is None
+
+    def test_gallery_page_entry_absent_when_no_photos(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD})
+        build(p)
+        data = json.loads((p / "dist" / "posts.json").read_text())
+        assert "gallery" not in data
+
+    def test_paginated_gallery_page_entry_title(self, tmp_path):
+        config = "site_name: Test Blog\nsite_url: https://example.github.io\nposts_per_page: 2\ngallery_per_page: 1\n"
+        p = make_project(tmp_path, posts={1: MINIMAL_MD, 2: MINIMAL_MD}, config=config)
+        make_jpg(p / "content" / "1-image-01.jpg")
+        make_jpg(p / "content" / "2-image-01.jpg")
+        build(p)
+        data = json.loads((p / "dist" / "posts.json").read_text())
+        assert data["gallery-2"]["title"] == "Photo archive (page 2)"
 
     def test_archive_entry_present(self, tmp_path):
         p = make_project(tmp_path, posts={1: MINIMAL_MD})
@@ -883,6 +1230,15 @@ class TestAboutPage:
         build(p)
         assert (p / "dist" / "about-image-01-resized.jpg").exists()
 
+    def test_about_image_thumbnail_created(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD}, config=_ABOUT_CONFIG)
+        (p / "content" / "about.md").write_text(ABOUT_MD)
+        make_jpg(p / "content" / "about-image-01.jpg", 2400, 1800)
+        build(p)
+        assert (p / "dist" / "about-image-01-thumb.jpg").exists()
+        img = PILImage.open(p / "dist" / "about-image-01-thumb.jpg")
+        assert max(img.size) <= 400
+
     def test_about_svg_image_copied_not_resized(self, tmp_path):
         p = make_project(tmp_path, posts={1: MINIMAL_MD}, config=_ABOUT_CONFIG)
         (p / "content" / "about.md").write_text(ABOUT_MD)
@@ -890,6 +1246,7 @@ class TestAboutPage:
         build(p)
         assert (p / "dist" / "about-image-01.svg").exists()
         assert not (p / "dist" / "about-image-01-resized.svg").exists()
+        assert not (p / "dist" / "about-image-01-thumb.svg").exists()
 
     def test_build_errors_on_second_build_when_about_md_deleted_while_configured(self, tmp_path):
         p = make_project(tmp_path, posts={1: MINIMAL_MD}, config=_ABOUT_CONFIG)
@@ -1091,6 +1448,19 @@ class TestSpecialPagesGeneric:
         build(p)
         assert (p / "dist" / "now-image-01-resized.jpg").exists()
 
+    def test_special_page_removed_image_derivatives_are_cleaned_up(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD}, config=_NOW_CONFIG)
+        (p / "content" / "now.md").write_text(NOW_MD)
+        make_jpg(p / "content" / "now-image-01.jpg")
+        build(p)
+        assert (p / "dist" / "now-image-01-resized.jpg").exists()
+        assert (p / "dist" / "now-image-01-thumb.jpg").exists()
+
+        (p / "content" / "now-image-01.jpg").unlink()
+        build(p)
+        assert not (p / "dist" / "now-image-01-resized.jpg").exists()
+        assert not (p / "dist" / "now-image-01-thumb.jpg").exists()
+
     def test_category_slug_matching_configured_special_page_name_errors(self, tmp_path):
         config = (
             "site_name: Test Blog\nsite_url: https://example.github.io\n"
@@ -1190,6 +1560,13 @@ class TestNotFoundPage:
         make_jpg(p / "content" / "error-404-image-01.jpg")
         build(p)
         assert (p / "dist" / "error-404-image-01-resized.jpg").exists()
+
+    def test_404_page_image_thumbnail_created(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD}, config=_NOT_FOUND_CONFIG)
+        (p / "content" / "error-404.md").write_text(NOT_FOUND_MD)
+        make_jpg(p / "content" / "error-404-image-01.jpg")
+        build(p)
+        assert (p / "dist" / "error-404-image-01-thumb.jpg").exists()
 
     def test_single_file_build_of_404_page(self, tmp_path):
         p = make_project(tmp_path, posts={1: MINIMAL_MD}, config=_NOT_FOUND_CONFIG)
@@ -1501,6 +1878,13 @@ class TestPageId:
         (p / "templates" / "index.html").write_text(PAGE_ID_TEMPLATE)
         build(p)
         assert '<span id="page-id">archive</span>' in (p / "dist" / "archive.html").read_text()
+
+    def test_gallery_page_id_is_gallery(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD})
+        make_jpg(p / "content" / "1-image-01.jpg")
+        (p / "templates" / "index.html").write_text(PAGE_ID_TEMPLATE)
+        build(p)
+        assert '<span id="page-id">gallery</span>' in (p / "dist" / "gallery.html").read_text()
 
     def test_404_page_id_is_output_filename_stem(self, tmp_path):
         p = make_project(tmp_path, posts={1: MINIMAL_MD}, config=_NOT_FOUND_CONFIG)

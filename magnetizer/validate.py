@@ -8,13 +8,23 @@ from magnetizer.content import IMAGE_EXTENSIONS, _IMAGE_EXT_RE, special_page_com
 _MD_PATTERN = re.compile(r'^([1-9]\d*)\.md$')
 _IMAGE_PATTERN = re.compile(rf'^([1-9]\d*)-image-(\d{{2}})\.({_IMAGE_EXT_RE})$')
 _COMMENT_PATTERN = re.compile(r'^([1-9]\d*)-comment-(\d{2})\.md$')
-_BASE_RESERVED_SLUGS = {"index", "archive"}
+_BASE_RESERVED_SLUGS = {"index", "archive", "gallery"}
 _INDEX_PAGE_SLUG_PATTERN = re.compile(r'^index-\d+$')
+_GALLERY_PAGE_SLUG_PATTERN = re.compile(r'^gallery-\d+$')
 
 
 def _error(msg) -> NoReturn:
     print(f"\033[31mERROR\033[0m: {msg}", file=sys.stderr)
     sys.exit(1)
+
+
+def _is_reserved_slug(slug, reserved):
+    return (
+        slug in reserved
+        or _INDEX_PAGE_SLUG_PATTERN.match(slug)
+        or _GALLERY_PAGE_SLUG_PATTERN.match(slug)
+        or slug.isdigit()
+    )
 
 
 def validate_config(config):
@@ -25,9 +35,13 @@ def validate_config(config):
         _error("'404-page-input-filename' and '404-page-output-filename' in config.yaml must both be set, or neither")
     if not_found_output and ("/" in not_found_output or not_found_output in (".", "..")):
         _error(f"'404-page-output-filename' in config.yaml is invalid: '{not_found_output}' — it must be a plain filename with no path separators")
-    reserved = _BASE_RESERVED_SLUGS | set(config.get("special_pages", []))
+    special_pages = set(config.get("special_pages", []))
+    for name in special_pages:
+        if _is_reserved_slug(name, _BASE_RESERVED_SLUGS):
+            _error(f"special page name '{name}' in config.yaml is reserved and would overwrite a generated page — choose a different name")
+    reserved = _BASE_RESERVED_SLUGS | special_pages
     for slug in config.get("categories", {}):
-        if slug in reserved or _INDEX_PAGE_SLUG_PATTERN.match(slug) or slug.isdigit():
+        if _is_reserved_slug(slug, reserved):
             _error(f"category slug '{slug}' in config.yaml is reserved and would overwrite a generated page — choose a different slug")
 
 

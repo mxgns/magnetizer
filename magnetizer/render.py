@@ -29,6 +29,10 @@ def notes_page_url(page_num):
     return "notes.html" if page_num == 1 else f"notes-{page_num}.html"
 
 
+def gallery_page_url(page_num):
+    return "gallery.html" if page_num == 1 else f"gallery-{page_num}.html"
+
+
 _POST_TYPE_CLASS = {"full": "full-post", "image": "image-post", "note": "note"}
 
 
@@ -210,6 +214,36 @@ def render_notes_page_content(posts, page_num, total_pages, categories=None, ai_
     return content
 
 
+def render_gallery_page_content(photos, page_num, total_pages):
+    items = []
+    for photo in photos:
+        alt = _escape(photo["alt"], quote=True)
+        items.append(
+            f'<li class="gallery-item" data-post="{photo["post_id"]}">'
+            f'<a href="{photo["post_url"]}" data-full="{photo["full"]}">'
+            f'<img src="{photo["thumb"]}" alt="{alt}" width="{photo["width"]}" height="{photo["height"]}" loading="lazy">'
+            f'</a></li>'
+        )
+    content = (
+        f'<main>\n<h1>Photo archive</h1>\n'
+        f'<p>These are all the photos from my blog posts.</p>\n'
+        f'<ul id="gallery">\n{"".join(items)}\n</ul>\n</main>'
+    )
+
+    if total_pages > 1:
+        nav_items = []
+        if page_num > 1:
+            prev_url = gallery_page_url(page_num - 1)
+            nav_items.append(f'<li class="newer"><a href="{prev_url}">Newer photos</a></li>')
+        if page_num < total_pages:
+            next_url = gallery_page_url(page_num + 1)
+            nav_items.append(f'<li class="older"><a href="{next_url}" class="load-more">Older photos</a></li>')
+        content += f'\n<nav><ul>{"".join(nav_items)}</ul></nav>'
+
+    content += '\n<nav><a href="index.html">Blog home</a></nav>'
+    return content
+
+
 def _nav_item_class(href):
     stem = href.rsplit('.', 1)[0]
     slug = re.sub(r'[^a-z0-9]+', '-', stem.lower()).strip('-')
@@ -364,7 +398,7 @@ def _render_contribution_calendar(posts, build_date, posts_per_page):
         '<h2>Publishing calendar</h2>',
         '<p class="calendar-summary">I have posted '
         f'<span class="calendar-post-count">{post_count}</span> posts and '
-        f'<span class="calendar-note-count">{note_count}</span> notes.</p>',
+        f'<span class="calendar-note-count">{note_count}</span> notes so far.</p>',
         '<div class="calendar">',
         '<div class="calendar-months">',
     ]
@@ -395,7 +429,7 @@ def _render_contribution_calendar(posts, build_date, posts_per_page):
     return '\n'.join(parts)
 
 
-def render_archive_page_content(posts, categories=None, build_date=None, posts_per_page=12):
+def render_archive_page_content(posts, categories=None, build_date=None, posts_per_page=12, has_photos=False):
     blog_posts = [p for p in posts if p.date and p.post_type != "note"]
 
     months = {}
@@ -432,7 +466,16 @@ def render_archive_page_content(posts, categories=None, build_date=None, posts_p
             '</ul>',
         ]
 
-    has_sections = bool(category_block) or bool(notes_block)
+    photos_block = []
+    if has_photos:
+        photos_block = [
+            '<h2>Photo archive</h2>',
+            '<ul>',
+            '<li><a href="gallery.html">All photos</a></li>',
+            '</ul>',
+        ]
+
+    has_sections = bool(category_block) or bool(notes_block) or bool(photos_block)
 
     if has_sections:
         parts.append('<div class="archive-columns">')
@@ -440,9 +483,10 @@ def render_archive_page_content(posts, categories=None, build_date=None, posts_p
             parts.append('<div class="archive-categories">')
             parts.extend(category_block)
             parts.append('</div>')
-        if notes_block:
+        if notes_block or photos_block:
             parts.append('<div class="archive-notes">')
             parts.extend(notes_block)
+            parts.extend(photos_block)
             parts.append('</div>')
         parts.append('</div>')
 

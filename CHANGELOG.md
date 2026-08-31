@@ -5,6 +5,10 @@
 
 ## Released changes
 
+### 31/8/26
+
+- Added image thumbnails and a paginated gallery page
+
 ### 26/8/26
 
 - Added support for tables

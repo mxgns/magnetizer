@@ -1,7 +1,7 @@
 """Tests for magnetizer/content.py — Post dataclass and parse_post()"""
 
 import pytest
-from magnetizer.content import Post, parse_post, Comment, parse_comment, special_page_comment_pattern
+from magnetizer.content import Post, parse_post, Comment, parse_comment, special_page_comment_pattern, thumbnail_filename
 
 
 # ---------------------------------------------------------------------------
@@ -1057,3 +1057,19 @@ class TestPostComments:
         c1 = parse_comment(make_comment_md(), "1-comment-01.md")
         post = parse_post(make_md(), 1, [], comments=[c3, c1])
         assert [c.filename for c in post.comments] == ["1-comment-01.md", "1-comment-03.md"]
+
+
+# ---------------------------------------------------------------------------
+# thumbnail_filename
+# ---------------------------------------------------------------------------
+
+class TestThumbnailFilename:
+
+    def test_jpg_gets_thumb_suffix(self):
+        assert thumbnail_filename("1-image-01.jpg") == "1-image-01-thumb.jpg"
+
+    def test_png_gets_thumb_suffix(self):
+        assert thumbnail_filename("1-image-01.png") == "1-image-01-thumb.png"
+
+    def test_svg_unchanged(self):
+        assert thumbnail_filename("1-image-01.svg") == "1-image-01.svg"

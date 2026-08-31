@@ -10,8 +10,11 @@ DEFAULTS = {
     "site_url": "",
     "image_max_dimension": 1600,
     "image_quality": 75,
+    "thumbnail_max_dimension": 400,
+    "thumbnail_quality": 70,
     "posts_per_page": 12,
     "notes_per_page": 20,
+    "gallery_per_page": 60,
     "images_per_post": 2,
     "index_meta_description": None,
     "index_title": None,
@@ -48,11 +51,20 @@ class TestDefaults:
     def test_image_quality_default(self, tmp_path):
         assert load_config(tmp_path / "config.yaml")["image_quality"] == 75
 
+    def test_thumbnail_max_dimension_default(self, tmp_path):
+        assert load_config(tmp_path / "config.yaml")["thumbnail_max_dimension"] == 400
+
+    def test_thumbnail_quality_default(self, tmp_path):
+        assert load_config(tmp_path / "config.yaml")["thumbnail_quality"] == 70
+
     def test_posts_per_page_default(self, tmp_path):
         assert load_config(tmp_path / "config.yaml")["posts_per_page"] == 12
 
     def test_notes_per_page_default(self, tmp_path):
         assert load_config(tmp_path / "config.yaml")["notes_per_page"] == 20
+
+    def test_gallery_per_page_default(self, tmp_path):
+        assert load_config(tmp_path / "config.yaml")["gallery_per_page"] == 60
 
     def test_images_per_post_default(self, tmp_path):
         assert load_config(tmp_path / "config.yaml")["images_per_post"] == 2
@@ -86,6 +98,14 @@ class TestCustomValues:
         p = write_config(tmp_path, "image_quality: 70\n")
         assert load_config(p)["image_quality"] == 70
 
+    def test_thumbnail_max_dimension_overridden(self, tmp_path):
+        p = write_config(tmp_path, "thumbnail_max_dimension: 300\n")
+        assert load_config(p)["thumbnail_max_dimension"] == 300
+
+    def test_thumbnail_quality_overridden(self, tmp_path):
+        p = write_config(tmp_path, "thumbnail_quality: 60\n")
+        assert load_config(p)["thumbnail_quality"] == 60
+
     def test_posts_per_page_overridden(self, tmp_path):
         p = write_config(tmp_path, "posts_per_page: 6\n")
         assert load_config(p)["posts_per_page"] == 6
@@ -93,6 +113,10 @@ class TestCustomValues:
     def test_notes_per_page_overridden(self, tmp_path):
         p = write_config(tmp_path, "notes_per_page: 10\n")
         assert load_config(p)["notes_per_page"] == 10
+
+    def test_gallery_per_page_overridden(self, tmp_path):
+        p = write_config(tmp_path, "gallery_per_page: 30\n")
+        assert load_config(p)["gallery_per_page"] == 30
 
     def test_images_per_post_overridden(self, tmp_path):
         p = write_config(tmp_path, "images_per_post: 4\n")
@@ -147,6 +171,16 @@ class TestCustomValues:
 
     def test_notes_per_page_negative_raises_error(self, tmp_path):
         p = write_config(tmp_path, "notes_per_page: -1\n")
+        with pytest.raises(ValueError):
+            load_config(p)
+
+    def test_gallery_per_page_zero_raises_error(self, tmp_path):
+        p = write_config(tmp_path, "gallery_per_page: 0\n")
+        with pytest.raises(ValueError):
+            load_config(p)
+
+    def test_gallery_per_page_negative_raises_error(self, tmp_path):
+        p = write_config(tmp_path, "gallery_per_page: -1\n")
         with pytest.raises(ValueError):
             load_config(p)
 

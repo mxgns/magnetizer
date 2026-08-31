@@ -7,9 +7,17 @@ from datetime import datetime as _datetime
 from pathlib import Path
 
 from magnetizer.config import load_config
-from magnetizer.content import _IMAGE_EXT_RE, parse_comment, parse_post, special_page_comment_pattern, special_page_image_pattern
+from magnetizer.content import (
+    _IMAGE_EXT_RE,
+    parse_comment,
+    parse_post,
+    resized_filename,
+    special_page_comment_pattern,
+    special_page_image_pattern,
+    thumbnail_filename,
+)
 from magnetizer.dynamic import compute_base_values, compute_word_count, expand_shortcodes, format_int, wrap_scalar
-from magnetizer.image import resize_image
+from magnetizer.image import image_dimensions, resize_image
 from magnetizer.manifest import (
     get_changed_post_ids,
     get_changed_resource_filenames,
@@ -21,11 +29,13 @@ from magnetizer.render import (
     archive_display_text,
     canonical_url,
     category_page_url,
+    gallery_page_url,
     index_page_url,
     notes_page_url,
     post_display_text,
     render_archive_page_content,
     render_category_page_content,
+    render_gallery_page_content,
     render_index_page_content,
     render_notes_page_content,
     render_navigation,
@@ -127,6 +137,13 @@ def _delete_post_files(dist_dir, post_id):
             f.unlink()
 
 
+def _delete_special_page_image_files(dist_dir, name):
+    pattern = re.compile(rf'^{re.escape(name)}-image-')
+    for f in list(dist_dir.iterdir()):
+        if pattern.match(f.name):
+            f.unlink()
+
+
 def _build_post(post, dist_dir, content_dir, config):
     _delete_post_files(dist_dir, post.id)
 
@@ -140,6 +157,12 @@ def _build_post(post, dist_dir, content_dir, config):
                 dist_dir / f"{stem}-resized.{ext}",
                 max_dimension=config["image_max_dimension"],
                 quality=config["image_quality"],
+            )
+            resize_image(
+                content_dir / image.filename,
+                dist_dir / f"{stem}-thumb.{ext}",
+                max_dimension=config["thumbnail_max_dimension"],
+                quality=config["thumbnail_quality"],
             )
 
 
@@ -294,6 +317,57 @@ def _write_notes_pages(posts_sorted_desc, dist_dir, config, template):
         (dist_dir / filename).write_text(html)
 
 
+def _gallery_photos(posts_sorted_desc, dist_dir):
+    """Every raster photo across all published posts (top-level and inline
+    alike — see the Gallery page spec), newest post first, image number
+    ascending within a post. Special-page images never contribute, since
+    posts_sorted_desc only ever holds published posts."""
+    photos = []
+    for post in posts_sorted_desc:
+        for image in post.images:
+            if image.filename.lower().endswith('.svg'):
+                continue
+            thumb_name = thumbnail_filename(image.filename)
+            width, height = image_dimensions(dist_dir / thumb_name)
+            photos.append({
+                "post_id": post.id,
+                "post_url": post.url,
+                "source": image.filename,
+                "full": resized_filename(image.filename),
+                "thumb": thumb_name,
+                "alt": image.alt,
+                "width": width,
+                "height": height,
+            })
+    return photos
+
+
+def _gallery_pages(photos, per_page):
+    """Yield (page_num, photos_slice, total_pages) for each gallery page —
+    the single source of truth for gallery pagination, shared by rendering,
+    build logging, the sitemap and posts.json. Paginates strictly by photo
+    count, so a post's photos can straddle a page boundary."""
+    total = len(photos)
+    if not total:
+        return
+    total_pages = max(1, (total + per_page - 1) // per_page)
+    for page_num in range(1, total_pages + 1):
+        yield page_num, photos[(page_num - 1) * per_page: page_num * per_page], total_pages
+
+
+def _write_gallery_pages(photos, dist_dir, config, template):
+    per_page = config["gallery_per_page"]
+    for page_num, slice_, total_pages in _gallery_pages(photos, per_page):
+        content_html = render_gallery_page_content(slice_, page_num, total_pages)
+        title = render_page_title(config["site_name"], "Photo archive", page_num=None)
+        filename = gallery_page_url(page_num)
+        html = render_template(template, title=title, content=content_html,
+                               canonical=canonical_url(config["site_url"], filename),
+                               navigation=render_navigation(config["navigation"], filename),
+                               page_id=_page_id(filename))
+        (dist_dir / filename).write_text(html)
+
+
 def _special_page_image_filenames(content_dir, name):
     pattern = special_page_image_pattern(name)
     return sorted(f.name for f in content_dir.iterdir() if pattern.match(f.name))
@@ -319,6 +393,7 @@ def _build_special_page(name, content_dir, dist_dir, config, template, values, w
     post.body_html = expanded_body
     dynamic_flag = bool(used_names)
 
+    _delete_special_page_image_files(dist_dir, name)
     for image in post.images:
         if image.filename.lower().endswith('.svg'):
             shutil.copy2(content_dir / image.filename, dist_dir / image.filename)
@@ -329,6 +404,12 @@ def _build_special_page(name, content_dir, dist_dir, config, template, values, w
                 dist_dir / f"{stem}-resized.{ext}",
                 max_dimension=config["image_max_dimension"],
                 quality=config["image_quality"],
+            )
+            resize_image(
+                content_dir / image.filename,
+                dist_dir / f"{stem}-thumb.{ext}",
+                max_dimension=config["thumbnail_max_dimension"],
+                quality=config["thumbnail_quality"],
             )
 
     content_html = render_post_page_content(post, ai_disclosure_html=config["ai_disclosure_html"])
@@ -554,6 +635,9 @@ def _build_changed_posts(post_ids_to_build, changed_post_ids, posts_cache, manif
                 resized_name = f"{stem}-resized.{ext}"
                 dest_size = (dist_dir / resized_name).stat().st_size
                 log(("RESIZED", resized_name, src_sizes[image.filename], dest_size))
+                thumb_name = f"{stem}-thumb.{ext}"
+                thumb_size = (dist_dir / thumb_name).stat().st_size
+                log(("THUMBNAIL", thumb_name, src_sizes[image.filename], thumb_size))
         newer_url, older_url = _adjacent_post_urls(post_id, published_post_ids_sorted_desc)
         _write_post_html(post, dist_dir, config, template, newer_url=newer_url, older_url=older_url, categories=config["categories"])
         log((action, f"{post_id}.html", post.char_count, post.post_type == "note", len(post.images)))
@@ -603,7 +687,7 @@ def _rebuild_stale_not_found_page(config, content_dir, dist_dir, template, value
     return True
 
 
-def _write_generated_pages(published_posts_sorted_desc, dist_dir, config, template, log, build_date):
+def _write_generated_pages(published_posts_sorted_desc, dist_dir, config, template, log, build_date, photos):
     _write_index_pages(published_posts_sorted_desc, dist_dir, config, template, categories=config["categories"])
     per_page = config["posts_per_page"]
     total_pages = max(1, (len(published_posts_sorted_desc) + per_page - 1) // per_page)
@@ -620,6 +704,9 @@ def _write_generated_pages(published_posts_sorted_desc, dist_dir, config, templa
     total_notes_pages = max(1, (len(note_posts) + notes_per_page - 1) // notes_per_page) if note_posts else 0
     for page_num in range(1, total_notes_pages + 1):
         log(("UPDATED", notes_page_url(page_num)))
+    _write_gallery_pages(photos, dist_dir, config, template)
+    for page_num, _, _ in _gallery_pages(photos, config["gallery_per_page"]):
+        log(("UPDATED", gallery_page_url(page_num)))
     (dist_dir / "feed.xml").write_text(render_feed(published_posts_sorted_desc, config))
     log(("UPDATED", "feed.xml"))
     archive_html = render_template(
@@ -628,6 +715,7 @@ def _write_generated_pages(published_posts_sorted_desc, dist_dir, config, templa
         content=render_archive_page_content(
             published_posts_sorted_desc, categories=config["categories"],
             build_date=build_date, posts_per_page=config["posts_per_page"],
+            has_photos=bool(photos),
         ),
         canonical=canonical_url(config["site_url"], "archive.html"),
         navigation=render_navigation(config["navigation"], "archive.html"),
@@ -637,7 +725,7 @@ def _write_generated_pages(published_posts_sorted_desc, dist_dir, config, templa
     log(("UPDATED", "archive.html"))
 
 
-def _write_sitemap_and_robots(published_post_ids_sorted_desc, published_posts_sorted_desc, posts_cache, content_dir, dist_dir, config, special_page_posts_by_name, log):
+def _write_sitemap_and_robots(published_post_ids_sorted_desc, published_posts_sorted_desc, posts_cache, content_dir, dist_dir, config, special_page_posts_by_name, log, photos):
     per_page = config["posts_per_page"]
     total_pages = max(1, (len(published_post_ids_sorted_desc) + per_page - 1) // per_page)
     index_lastmod = _lastmod(
@@ -678,6 +766,9 @@ def _write_sitemap_and_robots(published_post_ids_sorted_desc, published_posts_so
         total_notes_pages_sitemap = max(1, (len(note_posts_all) + notes_per_page_sitemap - 1) // notes_per_page_sitemap)
         for page_num in range(1, total_notes_pages_sitemap + 1):
             sitemap_pages.append((notes_page_url(page_num), notes_lastmod))
+    for page_num, photos_slice, _ in _gallery_pages(photos, config["gallery_per_page"]):
+        gallery_lastmod = _lastmod([content_dir / photo["source"] for photo in photos_slice])
+        sitemap_pages.append((gallery_page_url(page_num), gallery_lastmod))
     for name in config["special_pages"]:
         if special_page_posts_by_name[name].is_noindex:
             continue
@@ -694,7 +785,7 @@ def _write_sitemap_and_robots(published_post_ids_sorted_desc, published_posts_so
     log(("UPDATED", "robots.txt"))
 
 
-def _write_posts_index(published_posts_sorted_desc, config, special_page_posts_by_name, not_found_post, dist_dir, log):
+def _write_posts_index(published_posts_sorted_desc, config, special_page_posts_by_name, not_found_post, dist_dir, log, photos):
     entries = [
         (post.id, archive_display_text(post), post.category, post.date)
         for post in published_posts_sorted_desc
@@ -720,6 +811,10 @@ def _write_posts_index(published_posts_sorted_desc, config, special_page_posts_b
         for page_num in range(1, total_notes_pages + 1):
             title = "Short notes" if page_num == 1 else f"Short notes (page {page_num})"
             entries.append((_page_id(notes_page_url(page_num)), title, None, None))
+
+    for page_num, _, _ in _gallery_pages(photos, config["gallery_per_page"]):
+        title = "Photo archive" if page_num == 1 else f"Photo archive (page {page_num})"
+        entries.append((_page_id(gallery_page_url(page_num)), title, None, None))
 
     entries.append(("archive", "Archive", None, None))
 
@@ -846,16 +941,23 @@ def build(cwd, filename=None, flush=False, resources=False, on_progress=None):
         )
         specials_rebuilt = specials_rebuilt or not_found_rebuilt
 
+    photos = None
     if not filename and post_ids_to_build:
-        _write_generated_pages(published_posts_sorted_desc, dist_dir, config, template, _log, build_date)
+        photos = _gallery_photos(published_posts_sorted_desc, dist_dir)
+        _write_generated_pages(published_posts_sorted_desc, dist_dir, config, template, _log, build_date, photos)
 
     if not filename and log:
+        # post_ids_to_build can be empty while log is still non-empty (e.g. a
+        # stale special page rebuilt on its own) — in that case photos wasn't
+        # computed above yet.
+        if photos is None:
+            photos = _gallery_photos(published_posts_sorted_desc, dist_dir)
         _write_sitemap_and_robots(
             published_post_ids_sorted_desc, published_posts_sorted_desc, posts_cache,
-            content_dir, dist_dir, config, special_page_posts_by_name, _log,
+            content_dir, dist_dir, config, special_page_posts_by_name, _log, photos,
         )
         _write_posts_index(
-            published_posts_sorted_desc, config, special_page_posts_by_name, not_found_post, dist_dir, _log,
+            published_posts_sorted_desc, config, special_page_posts_by_name, not_found_post, dist_dir, _log, photos,
         )
 
     resources_dir = cwd / "resources"
