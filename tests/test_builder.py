@@ -4,11 +4,13 @@ import json
 import re
 import shutil
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 from PIL import Image as PILImage
 
 from magnetizer.builder import build
+from magnetizer.image import image_dimensions
 from conftest import MINIMAL_MD, make_project
 
 
@@ -419,6 +421,13 @@ class TestGalleryPages:
         p = make_project(tmp_path, posts={1: MINIMAL_MD})
         make_jpg(p / "content" / "1-image-01.jpg")
         assert ("UPDATED", "gallery.html") in build(p)["log"]
+
+    def test_gallery_photos_computed_once_per_build(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD})
+        make_jpg(p / "content" / "1-image-01.jpg")
+        with patch("magnetizer.builder.image_dimensions", wraps=image_dimensions) as mock_dimensions:
+            build(p)
+        assert mock_dimensions.call_count == 1
 
 
 # ---------------------------------------------------------------------------

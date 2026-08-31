@@ -592,7 +592,7 @@ class TestValidateConfig:
     def test_passes_with_non_reserved_category_slugs(self):
         validate_config({"site_url": "https://example.github.io", "categories": {"photography": "Photography"}})  # should not raise
 
-    @pytest.mark.parametrize("slug", ["index", "archive"])
+    @pytest.mark.parametrize("slug", ["index", "archive", "gallery"])
     def test_fails_when_category_slug_is_reserved(self, slug):
         with pytest.raises(SystemExit):
             validate_config({"site_url": "https://example.github.io", "categories": {slug: "Whatever"}})

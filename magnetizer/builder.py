@@ -679,7 +679,7 @@ def _rebuild_stale_not_found_page(config, content_dir, dist_dir, template, value
     return True
 
 
-def _write_generated_pages(published_posts_sorted_desc, dist_dir, config, template, log, build_date):
+def _write_generated_pages(published_posts_sorted_desc, dist_dir, config, template, log, build_date, photos):
     _write_index_pages(published_posts_sorted_desc, dist_dir, config, template, categories=config["categories"])
     per_page = config["posts_per_page"]
     total_pages = max(1, (len(published_posts_sorted_desc) + per_page - 1) // per_page)
@@ -696,7 +696,6 @@ def _write_generated_pages(published_posts_sorted_desc, dist_dir, config, templa
     total_notes_pages = max(1, (len(note_posts) + notes_per_page - 1) // notes_per_page) if note_posts else 0
     for page_num in range(1, total_notes_pages + 1):
         log(("UPDATED", notes_page_url(page_num)))
-    photos = _gallery_photos(published_posts_sorted_desc, dist_dir)
     _write_gallery_pages(photos, dist_dir, config, template)
     for page_num, _, _ in _gallery_pages(photos, config["gallery_per_page"]):
         log(("UPDATED", gallery_page_url(page_num)))
@@ -717,7 +716,7 @@ def _write_generated_pages(published_posts_sorted_desc, dist_dir, config, templa
     log(("UPDATED", "archive.html"))
 
 
-def _write_sitemap_and_robots(published_post_ids_sorted_desc, published_posts_sorted_desc, posts_cache, content_dir, dist_dir, config, special_page_posts_by_name, log):
+def _write_sitemap_and_robots(published_post_ids_sorted_desc, published_posts_sorted_desc, posts_cache, content_dir, dist_dir, config, special_page_posts_by_name, log, photos):
     per_page = config["posts_per_page"]
     total_pages = max(1, (len(published_post_ids_sorted_desc) + per_page - 1) // per_page)
     index_lastmod = _lastmod(
@@ -758,7 +757,6 @@ def _write_sitemap_and_robots(published_post_ids_sorted_desc, published_posts_so
         total_notes_pages_sitemap = max(1, (len(note_posts_all) + notes_per_page_sitemap - 1) // notes_per_page_sitemap)
         for page_num in range(1, total_notes_pages_sitemap + 1):
             sitemap_pages.append((notes_page_url(page_num), notes_lastmod))
-    photos = _gallery_photos(published_posts_sorted_desc, dist_dir)
     for page_num, photos_slice, _ in _gallery_pages(photos, config["gallery_per_page"]):
         gallery_lastmod = _lastmod([content_dir / photo["source"] for photo in photos_slice])
         sitemap_pages.append((gallery_page_url(page_num), gallery_lastmod))
@@ -778,7 +776,7 @@ def _write_sitemap_and_robots(published_post_ids_sorted_desc, published_posts_so
     log(("UPDATED", "robots.txt"))
 
 
-def _write_posts_index(published_posts_sorted_desc, config, special_page_posts_by_name, not_found_post, dist_dir, log):
+def _write_posts_index(published_posts_sorted_desc, config, special_page_posts_by_name, not_found_post, dist_dir, log, photos):
     entries = [
         (post.id, archive_display_text(post), post.category, post.date)
         for post in published_posts_sorted_desc
@@ -805,7 +803,6 @@ def _write_posts_index(published_posts_sorted_desc, config, special_page_posts_b
             title = "Short notes" if page_num == 1 else f"Short notes (page {page_num})"
             entries.append((_page_id(notes_page_url(page_num)), title, None, None))
 
-    photos = _gallery_photos(published_posts_sorted_desc, dist_dir)
     for page_num, _, _ in _gallery_pages(photos, config["gallery_per_page"]):
         title = "Photos" if page_num == 1 else f"Photos (page {page_num})"
         entries.append((_page_id(gallery_page_url(page_num)), title, None, None))
@@ -935,16 +932,23 @@ def build(cwd, filename=None, flush=False, resources=False, on_progress=None):
         )
         specials_rebuilt = specials_rebuilt or not_found_rebuilt
 
+    photos = None
     if not filename and post_ids_to_build:
-        _write_generated_pages(published_posts_sorted_desc, dist_dir, config, template, _log, build_date)
+        photos = _gallery_photos(published_posts_sorted_desc, dist_dir)
+        _write_generated_pages(published_posts_sorted_desc, dist_dir, config, template, _log, build_date, photos)
 
     if not filename and log:
+        # post_ids_to_build can be empty while log is still non-empty (e.g. a
+        # stale special page rebuilt on its own) — in that case photos wasn't
+        # computed above yet.
+        if photos is None:
+            photos = _gallery_photos(published_posts_sorted_desc, dist_dir)
         _write_sitemap_and_robots(
             published_post_ids_sorted_desc, published_posts_sorted_desc, posts_cache,
-            content_dir, dist_dir, config, special_page_posts_by_name, _log,
+            content_dir, dist_dir, config, special_page_posts_by_name, _log, photos,
         )
         _write_posts_index(
-            published_posts_sorted_desc, config, special_page_posts_by_name, not_found_post, dist_dir, _log,
+            published_posts_sorted_desc, config, special_page_posts_by_name, not_found_post, dist_dir, _log, photos,
         )
 
     resources_dir = cwd / "resources"

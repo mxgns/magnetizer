@@ -8,7 +8,7 @@ from magnetizer.content import IMAGE_EXTENSIONS, _IMAGE_EXT_RE, special_page_com
 _MD_PATTERN = re.compile(r'^([1-9]\d*)\.md$')
 _IMAGE_PATTERN = re.compile(rf'^([1-9]\d*)-image-(\d{{2}})\.({_IMAGE_EXT_RE})$')
 _COMMENT_PATTERN = re.compile(r'^([1-9]\d*)-comment-(\d{2})\.md$')
-_BASE_RESERVED_SLUGS = {"index", "archive"}
+_BASE_RESERVED_SLUGS = {"index", "archive", "gallery"}
 _INDEX_PAGE_SLUG_PATTERN = re.compile(r'^index-\d+$')
 
 
