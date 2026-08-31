@@ -253,13 +253,13 @@ class TestGalleryPages:
         p = make_project(tmp_path, posts={1: MINIMAL_MD})
         make_jpg(p / "content" / "1-image-01.jpg")
         build(p)
-        assert "<title>Photos - Test Blog</title>" in (p / "dist" / "gallery.html").read_text()
+        assert "<title>Photo archive - Test Blog</title>" in (p / "dist" / "gallery.html").read_text()
 
-    def test_gallery_h1_photos(self, tmp_path):
+    def test_gallery_h1_photo_archive(self, tmp_path):
         p = make_project(tmp_path, posts={1: MINIMAL_MD})
         make_jpg(p / "content" / "1-image-01.jpg")
         build(p)
-        assert "<h1>Photos</h1>" in (p / "dist" / "gallery.html").read_text()
+        assert "<h1>Photo archive</h1>" in (p / "dist" / "gallery.html").read_text()
 
     def test_gallery_item_count_matches_images(self, tmp_path):
         p = make_project(tmp_path, posts={1: MINIMAL_MD})
@@ -1040,7 +1040,7 @@ class TestPostsIndex:
         make_jpg(p / "content" / "1-image-01.jpg")
         build(p)
         data = json.loads((p / "dist" / "posts.json").read_text())
-        assert data["gallery"]["title"] == "Photos"
+        assert data["gallery"]["title"] == "Photo archive"
         assert data["gallery"]["category"] is None
         assert data["gallery"]["date"] is None
 
@@ -1057,7 +1057,7 @@ class TestPostsIndex:
         make_jpg(p / "content" / "2-image-01.jpg")
         build(p)
         data = json.loads((p / "dist" / "posts.json").read_text())
-        assert data["gallery-2"]["title"] == "Photos (page 2)"
+        assert data["gallery-2"]["title"] == "Photo archive (page 2)"
 
     def test_archive_entry_present(self, tmp_path):
         p = make_project(tmp_path, posts={1: MINIMAL_MD})

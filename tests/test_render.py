@@ -1213,7 +1213,7 @@ class TestRenderContributionCalendar:
         assert (
             '<p class="calendar-summary">I have posted '
             '<span class="calendar-post-count">2</span> posts and '
-            '<span class="calendar-note-count">1</span> notes.</p>'
+            '<span class="calendar-note-count">1</span> notes so far.</p>'
         ) in html
 
     def test_summary_excludes_posts_outside_window(self):
@@ -1526,6 +1526,23 @@ class TestArchiveCategoriesList:
         html = render_archive_page_content([post])
         assert html.index("<h2>Blog Posts</h2>") > html.index("<h2>Short notes</h2>")
 
+    def test_photo_archive_section_shown_when_has_photos(self):
+        html = render_archive_page_content([make_dated_post(1, "2026-05-24")], has_photos=True)
+        assert "<h2>Photo archive</h2>" in html
+
+    def test_photo_archive_section_links_to_gallery_html(self):
+        html = render_archive_page_content([make_dated_post(1, "2026-05-24")], has_photos=True)
+        assert '<a href="gallery.html">All photos</a>' in html
+
+    def test_photo_archive_section_not_shown_when_no_photos(self):
+        html = render_archive_page_content([make_dated_post(1, "2026-05-24")], has_photos=False)
+        assert "<h2>Photo archive</h2>" not in html
+
+    def test_photo_archive_section_after_notes_section(self):
+        post = make_dated_post(1, "2026-05-24", post_type="note")
+        html = render_archive_page_content([post], has_photos=True)
+        assert html.index("<h2>Photo archive</h2>") > html.index("<h2>Short notes</h2>")
+
 
 # ---------------------------------------------------------------------------
 # render_archive_page_content — wide-viewport column layout
@@ -1568,6 +1585,28 @@ class TestArchiveColumnsLayout:
         assert '<div class="archive-columns">' in html
         assert "archive-notes" in html
         assert "archive-categories" not in html
+
+    def test_columns_container_present_with_only_photos(self):
+        html = render_archive_page_content([make_dated_post(1, "2026-05-24")], has_photos=True)
+        assert '<div class="archive-columns">' in html
+        assert "archive-notes" in html
+        assert "archive-categories" not in html
+
+    def test_photo_archive_shares_notes_div(self):
+        post = make_dated_post(1, "2026-05-24", post_type="note")
+        html = render_archive_page_content([post], has_photos=True)
+        assert (
+            '<div class="archive-notes">\n'
+            '<h2>Short notes</h2>\n'
+            '<ul>\n'
+            '<li><a href="notes.html">All short notes</a></li>\n'
+            '</ul>\n'
+            '<h2>Photo archive</h2>\n'
+            '<ul>\n'
+            '<li><a href="gallery.html">All photos</a></li>\n'
+            '</ul>\n'
+            '</div>'
+        ) in html
 
     def test_no_columns_container_when_neither_categories_nor_notes(self):
         html = render_archive_page_content([make_dated_post(1, "2026-05-24")])
@@ -2293,13 +2332,17 @@ def make_photo(
 
 class TestRenderGalleryPage:
 
-    def test_gallery_page_has_h1_photos(self):
+    def test_gallery_page_has_h1_photo_archive(self):
         html = render_gallery_page_content([make_photo()], 1, 1)
-        assert "<h1>Photos</h1>" in html
+        assert "<h1>Photo archive</h1>" in html
+
+    def test_gallery_page_has_description(self):
+        html = render_gallery_page_content([make_photo()], 1, 1)
+        assert "<p>These are all the photos from my blog posts.</p>" in html
 
     def test_h1_inside_main(self):
         html = render_gallery_page_content([make_photo()], 1, 1)
-        assert html.index('<main>') < html.index('<h1>Photos</h1>') < html.index('</main>')
+        assert html.index('<main>') < html.index('<h1>Photo archive</h1>') < html.index('</main>')
 
     def test_h1_before_gallery_list(self):
         html = render_gallery_page_content([make_photo()], 1, 1)

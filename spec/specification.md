@@ -990,6 +990,10 @@ The `MAGNETIZER_CONTENT` has the following structure:
 <ul>
   <li><a href="notes.html">All short notes</a></li>
 </ul>
+<h2>Photo archive</h2>
+<ul>
+  <li><a href="gallery.html">All photos</a></li>
+</ul>
 </div>
 </div>
 <h2>Blog Posts</h2>
@@ -1013,7 +1017,8 @@ Where:
 - `<div class="archive-columns">` wraps whichever of `<div class="archive-categories">` / `<div class="archive-notes">` are present, as a stable pair of blocks a project's CSS can lay out side by side on wide viewports (see [Archive column layout](#archive-column-layout)). It's included whenever either is shown, and omitted entirely when neither is.
 - The `<h2>Categories</h2>` heading and its `<ul>`, together in `<div class="archive-categories">`, are only included if `categories` is configured and at least one configured category has a matching post. Each `<li>` links to the corresponding category page (see [Categories](#categories)) and includes the number of posts `(N)` in that category. Categories are listed in descending order of post count; categories with no matching posts are omitted.
 - The `<h2>Short notes</h2>` heading and its `<ul>`, together in `<div class="archive-notes">`, are only included when at least one Note exists.
-- The `<h2>Blog Posts</h2>` heading is only included when the categories list, the notes section, or both are shown.
+- The `<h2>Photo archive</h2>` heading and its `<ul>` are only included when at least one photo qualifies for the gallery (see [Gallery page](#gallery-page)) — the same condition that decides whether `gallery.html` itself is generated. It shares `<div class="archive-notes">` with the short notes block rather than getting its own column, and always comes after it when both are present.
+- The `<h2>Blog Posts</h2>` heading is only included when the categories list, the notes section, the photo archive section, or any combination of the three, is shown.
 - `<div class="archive-months">` wraps every month `<section>`, so a project's CSS can flow them across multiple columns on wide viewports (see [Archive column layout](#archive-column-layout)). It's included whenever at least one dated blog post exists, and omitted when there are none (e.g. a blog with only Notes).
 - Each month heading is an `<h3>` — one level below `<h2>Blog Posts</h2>` — since it's a subsection of the monthly list, not a sibling of it.
 - `DAY` is the day of the month with no leading zero, e.g. `16`
@@ -1039,7 +1044,7 @@ A GitHub-style calendar of posting activity, always present at the top of [the a
 
 The calendar covers a rolling 370-day window ending exactly on the build date, split into 37 columns of 10 days each: `start_date = build_date - 369 days`. Unlike a calendar-week-aligned grid, this isn't anchored to any weekday boundary — a column is simply "10 consecutive days," and the very last cell of the very last column is always the build date itself, whatever day of the week that happens to be. There is deliberately no per-row weekday meaning (row 3 might be a Tuesday in one column and a Friday in the next) — this is a considered trade-off in exchange for build_date always sitting in the same (bottom-right) place in the grid.
 
-Below the heading, a summary paragraph (`<p class="calendar-summary">`) states the same window's totals in prose, split by type: `I have posted {X} posts and {Y} notes`, where `X` is the count of non-Note published posts and `Y` is the count of Notes falling within the window — again no singular/plural variant. The heading itself is always the literal text `Publishing calendar`, with no post count in it, and comes *before* the summary paragraph.
+Below the heading, a summary paragraph (`<p class="calendar-summary">`) states the same window's totals in prose, split by type: `I have posted {X} posts and {Y} notes so far`, where `X` is the count of non-Note published posts and `Y` is the count of Notes falling within the window — again no singular/plural variant. The heading itself is always the literal text `Publishing calendar`, with no post count in it, and comes *before* the summary paragraph.
 
 Each day in the window is bucketed by how many posts fall on it: `level-0` (zero), `level-1`, `level-2`, `level-3`, `level-4`, or `level-5` (five or more). A day with one or more posts is a link (`<a>`) to the **newest** post from that day (highest post ID) — not that post's own page, but its anchor on whichever index page it appears on: `{INDEX_PAGE_URL}#post-{post-id}`, using the same pagination as [index pages](#index-pages) (`posts_per_page`, positions in the reverse-chronological post list). A day with no posts is a non-interactive `<span>`. Because the window always ends exactly on the build date, there is no "hasn't happened yet" case any more — every one of the 370 cells is always a real day.
 
@@ -1050,7 +1055,7 @@ The `MAGNETIZER_CONTENT` structure is:
 ```html
 <section class="contribution-calendar">
 <h2>Publishing calendar</h2>
-<p class="calendar-summary">I have posted <span class="calendar-post-count">X</span> posts and <span class="calendar-note-count">Y</span> notes.</p>
+<p class="calendar-summary">I have posted <span class="calendar-post-count">X</span> posts and <span class="calendar-note-count">Y</span> notes so far.</p>
 <div class="calendar">
 <div class="calendar-months">
   <span class="calendar-month">Aug</span>
@@ -1105,7 +1110,7 @@ Where:
 
 Magnetizer generates `dist/gallery.html` (and `gallery-2.html`, `gallery-3.html`, etc.) under the same conditions as index pages — on full builds where post changes are detected, but not during single-file preview builds. If no qualifying photos exist, no gallery pages are generated.
 
-The gallery shows every photo on the blog as a thumbnail grid, newest first, paginated at `gallery_per_page` photos per page. The page title is `Photos - {site_name}`.
+The gallery shows every photo on the blog as a thumbnail grid, newest first, paginated at `gallery_per_page` photos per page. The page title is `Photo archive - {site_name}`.
 
 The generated page is complete and usable without JavaScript — it is ordinary paginated HTML. A "load more" experience is layered on top by the project's own JS, using the markup contract described in [Load more](#load-more) below.
 
@@ -1137,7 +1142,8 @@ The `MAGNETIZER_CONTENT` has the following structure:
 
 ```html
 <main>
-<h1>Photos</h1>
+<h1>Photo archive</h1>
+<p>These are all the photos from my blog posts.</p>
 <ul id="gallery">
   <li class="gallery-item" data-post="26">
     <a href="26.html" data-full="26-image-01-resized.jpg">
@@ -1158,6 +1164,7 @@ The `MAGNETIZER_CONTENT` has the following structure:
 
 Where:
 
+- The `<p>` is a fixed, non-configurable description shown on every gallery page, identical on every page of the pagination.
 - The `<ul>` carries the id `gallery`, and each photo is one direct `<li>` child. Both are part of the markup contract in [Load more](#load-more) and are guaranteed stable.
 - `data-post` is the post id the photo belongs to, so a project's CSS or JS can group or filter by post without parsing filenames.
 - The `<a>` links to the photo's post page — the meaningful destination when JavaScript is unavailable. No `#post-{post-id}` anchor: a single-post page's `<article>` is already the only thing in `<main>` (see [Individual post pages](#individual-post-pages)), so the anchor would scroll to the exact same place a plain link to the page does.

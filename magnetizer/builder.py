@@ -352,7 +352,7 @@ def _write_gallery_pages(photos, dist_dir, config, template):
     per_page = config["gallery_per_page"]
     for page_num, slice_, total_pages in _gallery_pages(photos, per_page):
         content_html = render_gallery_page_content(slice_, page_num, total_pages)
-        title = render_page_title(config["site_name"], "Photos", page_num=None)
+        title = render_page_title(config["site_name"], "Photo archive", page_num=None)
         filename = gallery_page_url(page_num)
         html = render_template(template, title=title, content=content_html,
                                canonical=canonical_url(config["site_url"], filename),
@@ -707,6 +707,7 @@ def _write_generated_pages(published_posts_sorted_desc, dist_dir, config, templa
         content=render_archive_page_content(
             published_posts_sorted_desc, categories=config["categories"],
             build_date=build_date, posts_per_page=config["posts_per_page"],
+            has_photos=bool(photos),
         ),
         canonical=canonical_url(config["site_url"], "archive.html"),
         navigation=render_navigation(config["navigation"], "archive.html"),
@@ -804,7 +805,7 @@ def _write_posts_index(published_posts_sorted_desc, config, special_page_posts_b
             entries.append((_page_id(notes_page_url(page_num)), title, None, None))
 
     for page_num, _, _ in _gallery_pages(photos, config["gallery_per_page"]):
-        title = "Photos" if page_num == 1 else f"Photos (page {page_num})"
+        title = "Photo archive" if page_num == 1 else f"Photo archive (page {page_num})"
         entries.append((_page_id(gallery_page_url(page_num)), title, None, None))
 
     entries.append(("archive", "Archive", None, None))
