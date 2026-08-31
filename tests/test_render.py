@@ -9,11 +9,13 @@ from magnetizer.render import (
     archive_display_text,
     canonical_url,
     category_page_url,
+    gallery_page_url,
     notes_page_url,
     post_display_text,
     render_archive_page_content,
     render_article,
     render_category_page_content,
+    render_gallery_page_content,
     render_index_page_content,
     render_notes_page_content,
     render_navigation,
@@ -2246,4 +2248,139 @@ class TestRenderNotesPage:
 
     def test_notes_no_older_link_on_last_page(self):
         html = render_notes_page_content([_NOTE_POST], 2, 2)
+        assert 'class="older"' not in html
+
+
+# ---------------------------------------------------------------------------
+# gallery_page_url
+# ---------------------------------------------------------------------------
+
+class TestGalleryPageUrl:
+
+    def test_first_page_is_gallery_dot_html(self):
+        assert gallery_page_url(1) == "gallery.html"
+
+    def test_second_page_has_number_suffix(self):
+        assert gallery_page_url(2) == "gallery-2.html"
+
+    def test_third_page_has_number_suffix(self):
+        assert gallery_page_url(3) == "gallery-3.html"
+
+
+# ---------------------------------------------------------------------------
+# render_gallery_page_content
+# ---------------------------------------------------------------------------
+
+def make_photo(
+    post_id=26,
+    post_url="26.html",
+    full="26-image-01-resized.jpg",
+    thumb="26-image-01-thumb.jpg",
+    alt="A sunset",
+    width=400,
+    height=267,
+):
+    return {
+        "post_id": post_id,
+        "post_url": post_url,
+        "full": full,
+        "thumb": thumb,
+        "alt": alt,
+        "width": width,
+        "height": height,
+    }
+
+
+class TestRenderGalleryPage:
+
+    def test_gallery_page_has_h1_photos(self):
+        html = render_gallery_page_content([make_photo()], 1, 1)
+        assert "<h1>Photos</h1>" in html
+
+    def test_h1_inside_main(self):
+        html = render_gallery_page_content([make_photo()], 1, 1)
+        assert html.index('<main>') < html.index('<h1>Photos</h1>') < html.index('</main>')
+
+    def test_h1_before_gallery_list(self):
+        html = render_gallery_page_content([make_photo()], 1, 1)
+        assert html.index('<h1>') < html.index('<ul id="gallery">')
+
+    def test_ul_has_gallery_id(self):
+        html = render_gallery_page_content([make_photo()], 1, 1)
+        assert '<ul id="gallery">' in html
+
+    def test_one_li_per_photo(self):
+        photos = [make_photo(post_id=1), make_photo(post_id=2)]
+        html = render_gallery_page_content(photos, 1, 1)
+        assert html.count('class="gallery-item"') == 2
+
+    def test_li_has_data_post_attribute(self):
+        html = render_gallery_page_content([make_photo(post_id=26)], 1, 1)
+        assert 'data-post="26"' in html
+
+    def test_anchor_links_to_post_anchor(self):
+        html = render_gallery_page_content([make_photo(post_id=26, post_url="26.html")], 1, 1)
+        assert 'href="26.html#post-26"' in html
+
+    def test_anchor_has_data_full_attribute(self):
+        html = render_gallery_page_content([make_photo(full="26-image-01-resized.jpg")], 1, 1)
+        assert 'data-full="26-image-01-resized.jpg"' in html
+
+    def test_img_src_is_thumbnail(self):
+        html = render_gallery_page_content([make_photo(thumb="26-image-01-thumb.jpg")], 1, 1)
+        assert 'src="26-image-01-thumb.jpg"' in html
+
+    def test_img_alt_uses_photo_alt(self):
+        html = render_gallery_page_content([make_photo(alt="A sunset")], 1, 1)
+        assert 'alt="A sunset"' in html
+
+    def test_img_alt_empty_when_no_alt(self):
+        html = render_gallery_page_content([make_photo(alt="")], 1, 1)
+        assert 'alt=""' in html
+
+    def test_img_alt_is_escaped(self):
+        html = render_gallery_page_content([make_photo(alt='A "sunset" & sky')], 1, 1)
+        assert 'alt="A &quot;sunset&quot; &amp; sky"' in html
+
+    def test_img_has_width_and_height(self):
+        html = render_gallery_page_content([make_photo(width=400, height=267)], 1, 1)
+        assert 'width="400"' in html
+        assert 'height="267"' in html
+
+    def test_img_has_loading_lazy(self):
+        html = render_gallery_page_content([make_photo()], 1, 1)
+        assert 'loading="lazy"' in html
+
+    def test_gallery_page_has_back_to_homepage_link(self):
+        html = render_gallery_page_content([make_photo()], 1, 1)
+        assert '<a href="index.html">Blog home</a>' in html
+
+    def test_no_pagination_nav_when_single_page(self):
+        html = render_gallery_page_content([make_photo()], 1, 1)
+        assert 'gallery-2.html' not in html
+
+    def test_older_link_present_on_page_1_of_2(self):
+        html = render_gallery_page_content([make_photo()], 1, 2)
+        assert 'href="gallery-2.html"' in html
+        assert 'Older photos' in html
+
+    def test_older_link_has_load_more_class(self):
+        html = render_gallery_page_content([make_photo()], 1, 2)
+        assert '<li class="older"><a href="gallery-2.html" class="load-more">Older photos</a></li>' in html
+
+    def test_newer_link_present_on_page_2_of_2(self):
+        html = render_gallery_page_content([make_photo()], 2, 2)
+        assert 'href="gallery.html"' in html
+        assert 'Newer photos' in html
+
+    def test_newer_link_has_no_load_more_class(self):
+        html = render_gallery_page_content([make_photo()], 2, 2)
+        assert '<li class="newer"><a href="gallery.html">Newer photos</a></li>' in html
+
+    def test_no_newer_link_on_page_1(self):
+        html = render_gallery_page_content([make_photo()], 1, 2)
+        assert 'class="newer"' not in html
+
+    def test_no_older_link_on_last_page(self):
+        html = render_gallery_page_content([make_photo()], 2, 2)
         assert 'class="older"' not in html

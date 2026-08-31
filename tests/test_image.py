@@ -3,7 +3,7 @@
 import pytest
 from pathlib import Path
 from PIL import Image as PILImage
-from magnetizer.image import resize_image
+from magnetizer.image import resize_image, image_dimensions
 
 
 # ---------------------------------------------------------------------------
@@ -119,3 +119,20 @@ class TestNoUpscaling:
         dest = tmp_path / "dest.jpg"
         resize_image(src, dest, max_dimension=2000, quality=85)
         assert open_image(dest).size == (2000, 1500)
+
+
+# ---------------------------------------------------------------------------
+# image_dimensions
+# ---------------------------------------------------------------------------
+
+class TestImageDimensions:
+
+    def test_returns_width_and_height(self, tmp_path):
+        path = make_image(tmp_path / "img.jpg", 400, 267)
+        assert image_dimensions(path) == (400, 267)
+
+    def test_reflects_resized_output(self, tmp_path):
+        src = make_image(tmp_path / "src.jpg", 4000, 3000)
+        dest = tmp_path / "dest.jpg"
+        resize_image(src, dest, max_dimension=400, quality=70)
+        assert image_dimensions(dest) == (400, 300)

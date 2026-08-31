@@ -308,6 +308,53 @@ class TestCLICategoryPagesSummary:
 
 
 # ---------------------------------------------------------------------------
+# Gallery pages summary
+# ---------------------------------------------------------------------------
+
+_GALLERY_CLI_CONFIG = (
+    "site_name: Test Blog\nsite_url: https://example.github.io\n"
+    "posts_per_page: 2\ngallery_per_page: 1\n"
+)
+
+
+def make_gallery_project(tmp_path, post_ids, config=_GALLERY_CLI_CONFIG):
+    p = make_project(tmp_path, posts={pid: MINIMAL_MD for pid in post_ids}, config=config)
+    for pid in post_ids:
+        img = PILImage.new("RGB", (800, 600), color=(100, 150, 200))
+        img.save(p / "content" / f"{pid}-image-01.jpg", "JPEG")
+    return p
+
+
+class TestCLIGalleryPagesSummary:
+
+    def test_verbose_shows_gallery_count_not_individual_names(self, tmp_path):
+        p = make_gallery_project(tmp_path, [1, 2, 3])
+        result = run_build(["--verbose"], cwd=p)
+        assert "gallery(+3)" in result.stdout
+        assert "gallery-2.html" not in result.stdout
+        assert "gallery-3.html" not in result.stdout
+
+    def test_non_verbose_shows_gallery_count_not_individual_names(self, tmp_path):
+        p = make_gallery_project(tmp_path, [1, 2, 3])
+        result = run_build([], cwd=p)
+        assert "gallery(+3)" in result.stdout
+        assert "gallery-2.html" not in result.stdout
+        assert "gallery-3.html" not in result.stdout
+
+    def test_single_gallery_page_shown_without_count(self, tmp_path):
+        p = make_gallery_project(tmp_path, [1], config="site_name: Test Blog\nsite_url: https://example.github.io\nposts_per_page: 2\n")
+        result = run_build(["--verbose"], cwd=p)
+        assert "gallery" in result.stdout
+        assert "gallery(+1)" not in result.stdout
+
+    def test_no_gallery_section_when_no_photos(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD}, config=_GALLERY_CLI_CONFIG)
+        result = run_build(["--verbose"], cwd=p)
+        assert "gallery.html" not in result.stdout
+        assert "gallery(" not in result.stdout
+
+
+# ---------------------------------------------------------------------------
 # Generating header and no-changes message
 # ---------------------------------------------------------------------------
 

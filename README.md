@@ -27,8 +27,11 @@ manifest.json  Build state (created automatically)
 | `site_url` | Absolute base URL of the published site, e.g. `https://example.github.io` — used for canonical links, the Atom feed, and the sitemap | **Required** — build exits with an error if absent or empty |
 | `image_max_dimension` | Long-edge pixel limit when resizing images | `1600` |
 | `image_quality` | JPEG quality for resized images (0–95) | `75` |
+| `thumbnail_max_dimension` | Long-edge pixel limit when generating gallery thumbnails | `400` |
+| `thumbnail_quality` | JPEG quality for gallery thumbnails (0–95) | `70` |
 | `posts_per_page` | Posts shown per index page | `12` |
 | `notes_per_page` | Notes shown per notes page (`notes.html`, `notes-2.html`, …) | `20` |
+| `gallery_per_page` | Photos shown per gallery page (`gallery.html`, `gallery-2.html`, …) | `60` |
 | `images_per_post` | Top-level images shown per post on multi-post pages (index, category, notes) — `0` shows none. The post's own page always shows all top-level images regardless. Inline images (`{{ image N }}`) aren't counted; use `<!-- more -->` to control those | `2` |
 | `index_meta_description` | `<meta name="description">` content on index pages (via `MAGNETIZER_METADATA` placeholder) | Not set |
 | `index_title` | When set, the title of `index.html` becomes `site_name - index_title` | Not set |
@@ -213,7 +216,7 @@ Run `build.py` from your project directory.
 
 Use `--flush` after editing templates. Resource file changes (CSS, JS) are picked up automatically on the next build. A `.` is printed for each file generated so you can see progress — in normal mode the dots are erased when the build finishes; in `--verbose` mode they remain. Warnings (missing alt text, missing category, etc.) are always shown inline next to the affected post, with the whole row coloured yellow in a terminal for visibility, e.g. `037   37.html   ⚠ Missing alt text`. Fatal errors are prefixed with a red `ERROR` label.
 
-Every full build also generates `dist/sitemap.xml` (all published posts, index, category, notes, special, and archive pages with `lastmod` dates) and `dist/robots.txt` (pointing to the sitemap). These are not generated on single-file preview builds.
+Every full build also generates `dist/sitemap.xml` (all published posts, index, category, notes, gallery, special, and archive pages with `lastmod` dates) and `dist/robots.txt` (pointing to the sitemap). These are not generated on single-file preview builds.
 
 Every full build also generates `dist/posts.json` — an id-keyed lookup of every page's title, category, and date, for an external consumer like the Magnalytics analytics UI to resolve a raw `page_id` (see `MAGNETIZER_PAGE_ID`) into something readable. Unlike the sitemap, it includes `noindex` pages and the 404 page, since it's for identifying traffic, not search indexing. Also not generated on single-file preview builds.
 
@@ -386,6 +389,28 @@ If `categories` is configured and at least one category has a matching post, a c
 Each category link shows the number of posts in that category in parentheses. Categories are listed in descending order of post count, and only if they have at least one matching post.
 
 `archive-categories` and `archive-notes` sit side by side inside `archive-columns` — whichever of the two exist; if only one does, it's the sole child. Like `archive-months`, this is bare structure for a project's CSS to lay out on wide viewports (e.g. a two-column flex row); Magnetizer ships no default column CSS or breakpoint of its own.
+
+## Gallery page
+
+Every raster image on the blog — top-level or placed inline via `{{ image N }}`, on any post, including `noindex` ones — gets a second derivative alongside its full-size `-resized` version: a `{post-id}-image-{nn}-thumb.{ext}` thumbnail, capped at `thumbnail_max_dimension`/`thumbnail_quality` from config. SVGs are never thumbnailed, since they're never resized either. A special page's images are resized and thumbnailed the same way, but never appear in the gallery itself.
+
+Magnetizer collects every post's photos, newest post first, into a paginated gallery — `dist/gallery.html`, `gallery-2.html`, etc., `gallery_per_page` photos per page — generated under the same conditions as the index pages (skipped on single-file preview builds; not generated at all if the blog has no raster images). Pagination is strict by photo count, so a post with a lot of photos can have some spill onto the next gallery page.
+
+```html
+<main>
+  <h1>Photos</h1>
+  <ul id="gallery">
+    <li class="gallery-item" data-post="26">
+      <a href="26.html#post-26" data-full="26-image-01-resized.jpg">
+        <img src="26-image-01-thumb.jpg" alt="A sunset" width="400" height="267" loading="lazy">
+      </a>
+    </li>
+    ...
+  </ul>
+</main>
+```
+
+`data-full` points at the full-size resized image, for a project to wire up its own lightbox — Magnetizer ships none. Each gallery page except the last carries exactly one `<a class="load-more">` link to the next (older) page; Magnetizer generates no JavaScript itself, but this stable markup contract — `<ul id="gallery">` with `<li>` children, `.load-more` on the older link — lets a project's own `resources/` JS turn the plain pagination into a "load more" button. See [the spec](spec/specification.md#load-more) for the full markup contract and an illustrative implementation.
 
 ## Publishing
 

@@ -29,6 +29,10 @@ def notes_page_url(page_num):
     return "notes.html" if page_num == 1 else f"notes-{page_num}.html"
 
 
+def gallery_page_url(page_num):
+    return "gallery.html" if page_num == 1 else f"gallery-{page_num}.html"
+
+
 _POST_TYPE_CLASS = {"full": "full-post", "image": "image-post", "note": "note"}
 
 
@@ -204,6 +208,32 @@ def render_notes_page_content(posts, page_num, total_pages, categories=None, ai_
         if page_num < total_pages:
             next_url = notes_page_url(page_num + 1)
             nav_items.append(f'<li class="older"><a href="{next_url}">Older posts</a></li>')
+        content += f'\n<nav><ul>{"".join(nav_items)}</ul></nav>'
+
+    content += '\n<nav><a href="index.html">Blog home</a></nav>'
+    return content
+
+
+def render_gallery_page_content(photos, page_num, total_pages):
+    items = []
+    for photo in photos:
+        alt = _escape(photo["alt"], quote=True)
+        items.append(
+            f'<li class="gallery-item" data-post="{photo["post_id"]}">'
+            f'<a href="{photo["post_url"]}#post-{photo["post_id"]}" data-full="{photo["full"]}">'
+            f'<img src="{photo["thumb"]}" alt="{alt}" width="{photo["width"]}" height="{photo["height"]}" loading="lazy">'
+            f'</a></li>'
+        )
+    content = f'<main>\n<h1>Photos</h1>\n<ul id="gallery">\n{"".join(items)}\n</ul>\n</main>'
+
+    if total_pages > 1:
+        nav_items = []
+        if page_num > 1:
+            prev_url = gallery_page_url(page_num - 1)
+            nav_items.append(f'<li class="newer"><a href="{prev_url}">Newer photos</a></li>')
+        if page_num < total_pages:
+            next_url = gallery_page_url(page_num + 1)
+            nav_items.append(f'<li class="older"><a href="{next_url}" class="load-more">Older photos</a></li>')
         content += f'\n<nav><ul>{"".join(nav_items)}</ul></nav>'
 
     content += '\n<nav><a href="index.html">Blog home</a></nav>'

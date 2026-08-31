@@ -86,6 +86,13 @@ def resized_filename(filename):
     return f"{stem}-resized.{ext}"
 
 
+def thumbnail_filename(filename):
+    if filename.lower().endswith('.svg'):
+        return filename
+    stem, _, ext = filename.rpartition('.')
+    return f"{stem}-thumb.{ext}"
+
+
 def _plain_text(rendered_html):
     text = re.sub(r'<[^>]+>', '', rendered_html)
     text = html.unescape(text)
