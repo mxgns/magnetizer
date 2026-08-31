@@ -220,7 +220,7 @@ def render_gallery_page_content(photos, page_num, total_pages):
         alt = _escape(photo["alt"], quote=True)
         items.append(
             f'<li class="gallery-item" data-post="{photo["post_id"]}">'
-            f'<a href="{photo["post_url"]}#post-{photo["post_id"]}" data-full="{photo["full"]}">'
+            f'<a href="{photo["post_url"]}" data-full="{photo["full"]}">'
             f'<img src="{photo["thumb"]}" alt="{alt}" width="{photo["width"]}" height="{photo["height"]}" loading="lazy">'
             f'</a></li>'
         )

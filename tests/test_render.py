@@ -2318,9 +2318,9 @@ class TestRenderGalleryPage:
         html = render_gallery_page_content([make_photo(post_id=26)], 1, 1)
         assert 'data-post="26"' in html
 
-    def test_anchor_links_to_post_anchor(self):
+    def test_anchor_links_to_post(self):
         html = render_gallery_page_content([make_photo(post_id=26, post_url="26.html")], 1, 1)
-        assert 'href="26.html#post-26"' in html
+        assert 'href="26.html"' in html
 
     def test_anchor_has_data_full_attribute(self):
         html = render_gallery_page_content([make_photo(full="26-image-01-resized.jpg")], 1, 1)

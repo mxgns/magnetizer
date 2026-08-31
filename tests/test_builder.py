@@ -277,11 +277,11 @@ class TestGalleryPages:
         assert 'src="1-image-01-thumb.jpg"' in html
         assert 'data-full="1-image-01-resized.jpg"' in html
 
-    def test_gallery_links_to_post_anchor(self, tmp_path):
+    def test_gallery_links_to_post(self, tmp_path):
         p = make_project(tmp_path, posts={1: MINIMAL_MD})
         make_jpg(p / "content" / "1-image-01.jpg")
         build(p)
-        assert 'href="1.html#post-1"' in (p / "dist" / "gallery.html").read_text()
+        assert 'href="1.html"' in (p / "dist" / "gallery.html").read_text()
 
     def test_gallery_uses_actual_thumbnail_dimensions(self, tmp_path):
         p = make_project(tmp_path, posts={1: MINIMAL_MD})

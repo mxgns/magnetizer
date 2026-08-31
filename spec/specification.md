@@ -1140,7 +1140,7 @@ The `MAGNETIZER_CONTENT` has the following structure:
 <h1>Photos</h1>
 <ul id="gallery">
   <li class="gallery-item" data-post="26">
-    <a href="26.html#post-26" data-full="26-image-01-resized.jpg">
+    <a href="26.html" data-full="26-image-01-resized.jpg">
       <img src="26-image-01-thumb.jpg" alt="ALT_TEXT" width="400" height="267" loading="lazy">
     </a>
   </li>
@@ -1160,7 +1160,7 @@ Where:
 
 - The `<ul>` carries the id `gallery`, and each photo is one direct `<li>` child. Both are part of the markup contract in [Load more](#load-more) and are guaranteed stable.
 - `data-post` is the post id the photo belongs to, so a project's CSS or JS can group or filter by post without parsing filenames.
-- The `<a>` links to the photo's post page, using the post's own `post-{post-id}` anchor (see [Posts](#posts)) — the meaningful destination when JavaScript is unavailable.
+- The `<a>` links to the photo's post page — the meaningful destination when JavaScript is unavailable. No `#post-{post-id}` anchor: a single-post page's `<article>` is already the only thing in `<main>` (see [Individual post pages](#individual-post-pages)), so the anchor would scroll to the exact same place a plain link to the page does.
 - `data-full` is the filename of the full-size resized image, for a lightbox to display. Magnetizer ships no lightbox; this attribute exists so a project can add one.
 - `ALT_TEXT` is the photo's alt text from the post's `images:` frontmatter list, exactly as used elsewhere (see [Alt texts](#alt-texts)). A photo with no corresponding entry gets `alt=""`, and raises no gallery-specific warning — the existing missing-alt-text warning already covers it.
 - `width` and `height` are the actual pixel dimensions of the generated thumbnail file, so the browser can reserve the correct space before the image loads.
