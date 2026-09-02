@@ -14,6 +14,7 @@ DEFAULTS = {
     "notes_per_page": 20,
     "gallery_per_page": 60,
     "images_per_post": 2,
+    "feed_max_posts": 30,
     "index_meta_description": None,
     "index_title": None,
     "categories": {},
@@ -41,4 +42,6 @@ def load_config(path):
         raise ValueError("gallery_per_page must be a positive integer")
     if config["images_per_post"] < 0:
         raise ValueError("images_per_post must not be negative")
+    if config["feed_max_posts"] < 1:
+        raise ValueError("feed_max_posts must be a positive integer")
     return config

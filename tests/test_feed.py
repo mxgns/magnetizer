@@ -375,3 +375,44 @@ class TestFeedReadMoreCutoff:
         )
         xml = render_feed([post], CONFIG)
         assert xml.index("1-image-01-resized.jpg") < xml.index("Intro")
+
+
+# ---------------------------------------------------------------------------
+# feed_max_posts
+# ---------------------------------------------------------------------------
+
+class TestFeedMaxPosts:
+
+    def test_defaults_to_30_posts_when_config_omits_it(self):
+        posts = [make_post(post_id=i, date="2026-05-24") for i in range(1, 41)]
+        root = parse(posts)
+        assert len(root.findall(el("entry"))) == 30
+
+    def test_all_posts_included_when_fewer_than_default_limit(self):
+        posts = [make_post(post_id=i, date="2026-05-24") for i in range(1, 6)]
+        root = parse(posts)
+        assert len(root.findall(el("entry"))) == 5
+
+    def test_custom_feed_max_posts_limits_entries(self):
+        posts = [make_post(post_id=i, date="2026-05-24") for i in range(1, 11)]
+        config = {**CONFIG, "feed_max_posts": 3}
+        root = parse(posts, config=config)
+        assert len(root.findall(el("entry"))) == 3
+
+    def test_custom_feed_max_posts_keeps_most_recent(self):
+        posts = [make_post(post_id=3, date="2026-05-24"),
+                 make_post(post_id=2, date="2026-05-23"),
+                 make_post(post_id=1, date="2026-05-22")]
+        config = {**CONFIG, "feed_max_posts": 2}
+        root = parse(posts, config=config)
+        entries = root.findall(el("entry"))
+        ids = [_req(e.find(el("id"))).text for e in entries]
+        assert ids == ["https://example.github.io/3.html", "https://example.github.io/2.html"]
+
+    def test_updated_reflects_most_recent_post_even_when_limited(self):
+        posts = [make_post(post_id=3, date="2026-05-24"),
+                 make_post(post_id=2, date="2026-05-23"),
+                 make_post(post_id=1, date="2026-05-22")]
+        config = {**CONFIG, "feed_max_posts": 1}
+        root = parse(posts, config=config)
+        assert _req(root.find(el("updated"))).text == "2026-05-24T00:00:03Z"

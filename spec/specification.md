@@ -273,6 +273,7 @@ Examples:
 | `notes_per_page` | Number of Notes per page when generating the notes pages | `20` |
 | `gallery_per_page` | Number of photos per page when generating the gallery pages | `60` |
 | `images_per_post` | Number of top-level images shown per post on multi-post pages (index, category, notes) — 0 is valid and shows none. Never limits an individual post's own page, where all top-level images are always shown. Inline images (via `{{ image N }}`) aren't counted; those are governed by `<!-- more -->` instead. | `2` |
+| `feed_max_posts` | Maximum number of most-recent dated posts included in the Atom feed | `30` |
 | `index_meta_description` | Content for the `<meta name="description">` tag on index pages, via the `MAGNETIZER_METADATA` template placeholder | Not set — line is omitted |
 | `index_title` | When set, the title of `index.html` becomes `site_name - index_title` instead of just `site_name` | Not set — `index.html` title is just `site_name` |
 | `categories` | A map of category slug to display name, e.g. `{photography: Photography}`. See [Categories](#categories). | `{}` (no categories) |
@@ -1348,7 +1349,7 @@ Where:
 - `POST_DATE` is the post date in RFC 3339 format, e.g. `2026-05-24T00:00:00Z`
 - `POST_BODY_HTML` is the HTML generated from the post's Markdown body — if the post has a `<!-- more -->` marker (see [Read more](#read-more)), this is the excerpt only, followed by a `<a class="read-more">Read more</a>` link (tagged with the same `?src=atom` param as the entry's `<link>`) pointing at the full post; otherwise it's the full body. Any `<script>` tags (and their contents) are stripped from the HTML first, regardless of which is used.
 
-Posts are listed in reverse chronological order (highest post ID first).
+Posts are listed in reverse chronological order (highest post ID first), capped at `feed_max_posts` most-recent dated posts (default `30`) — see [Configuration](#configuration).
 
 ## Sitemap
 

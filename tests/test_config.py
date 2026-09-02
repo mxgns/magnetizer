@@ -16,6 +16,7 @@ DEFAULTS = {
     "notes_per_page": 20,
     "gallery_per_page": 60,
     "images_per_post": 2,
+    "feed_max_posts": 30,
     "index_meta_description": None,
     "index_title": None,
     "categories": {},
@@ -68,6 +69,9 @@ class TestDefaults:
 
     def test_images_per_post_default(self, tmp_path):
         assert load_config(tmp_path / "config.yaml")["images_per_post"] == 2
+
+    def test_feed_max_posts_default(self, tmp_path):
+        assert load_config(tmp_path / "config.yaml")["feed_max_posts"] == 30
 
     def test_index_meta_description_default(self, tmp_path):
         assert load_config(tmp_path / "config.yaml")["index_meta_description"] is None
@@ -125,6 +129,10 @@ class TestCustomValues:
     def test_images_per_post_zero_is_valid(self, tmp_path):
         p = write_config(tmp_path, "images_per_post: 0\n")
         assert load_config(p)["images_per_post"] == 0
+
+    def test_feed_max_posts_overridden(self, tmp_path):
+        p = write_config(tmp_path, "feed_max_posts: 10\n")
+        assert load_config(p)["feed_max_posts"] == 10
 
     def test_index_meta_description_overridden(self, tmp_path):
         p = write_config(tmp_path, "index_meta_description: A blog about things.\n")
@@ -186,6 +194,16 @@ class TestCustomValues:
 
     def test_images_per_post_negative_raises_error(self, tmp_path):
         p = write_config(tmp_path, "images_per_post: -1\n")
+        with pytest.raises(ValueError):
+            load_config(p)
+
+    def test_feed_max_posts_zero_raises_error(self, tmp_path):
+        p = write_config(tmp_path, "feed_max_posts: 0\n")
+        with pytest.raises(ValueError):
+            load_config(p)
+
+    def test_feed_max_posts_negative_raises_error(self, tmp_path):
+        p = write_config(tmp_path, "feed_max_posts: -1\n")
         with pytest.raises(ValueError):
             load_config(p)
 

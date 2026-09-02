@@ -24,6 +24,7 @@ def render_feed(posts, config):
     feed_url = f"{site_url}/feed.xml"
     dated_posts = [p for p in posts if p.date]
     most_recent_date = _rfc3339(dated_posts[0].date, dated_posts[0].id) if dated_posts else ""
+    dated_posts = dated_posts[:config.get("feed_max_posts", 30)]
 
     lines = [
         '<?xml version="1.0" encoding="UTF-8"?>',

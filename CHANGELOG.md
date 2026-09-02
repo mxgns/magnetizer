@@ -10,6 +10,7 @@
 - Strip EXIF metadata from resized images; fix lost orientation
 - Strip script tags from the Atom feed
 - Cut Atom feed entries at the Read more marker
+- Added feed_max_posts config option to cap Atom feed length
 
 ### 31/8/26
 
