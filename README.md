@@ -220,6 +220,8 @@ Every full build also generates `dist/sitemap.xml` (all published posts and spec
 
 Every full build also generates `dist/posts.json` — an id-keyed lookup of every page's title, category, and date, for an external consumer like the Magnalytics analytics UI to resolve a raw `page_id` (see `MAGNETIZER_PAGE_ID`) into something readable. Unlike the sitemap, it includes `noindex` pages and the 404 page, since it's for identifying traffic, not search indexing. Also not generated on single-file preview builds.
 
+Every full build also generates `dist/feed.xml`, an Atom feed of all dated posts. Each entry's content is cut at its `<!-- more -->` marker, the same as on index pages, with a "Read more" link to the full post; entries with no marker show the full post. `<script>` tags are stripped from feed content either way. Also not generated on single-file preview builds.
+
 ## Templates
 
 Magnetizer uses a single template file: `templates/index.html`. It must contain two required placeholders, plus optional ones:

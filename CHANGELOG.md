@@ -8,6 +8,8 @@
 ### 2/9/26
 
 - Strip EXIF metadata from resized images; fix lost orientation
+- Strip script tags from the Atom feed
+- Cut Atom feed entries at the Read more marker
 
 ### 31/8/26
 

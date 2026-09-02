@@ -277,3 +277,101 @@ class TestFeedXmlSafety:
                        url="3.html", body_html="", images=[])
         root = parse([undated, dated])
         assert _req(root.find(el("updated"))).text == "2026-05-24T00:00:02Z"
+
+
+# ---------------------------------------------------------------------------
+# Script stripping
+# ---------------------------------------------------------------------------
+
+class TestFeedScriptStripping:
+
+    def test_script_tag_stripped_from_body_html(self):
+        post = make_post(body_html='<p>Hello</p><script>alert(1)</script><p>World</p>')
+        xml = render_feed([post], CONFIG)
+        assert "<script" not in xml.lower()
+        assert "<p>Hello</p>" in xml
+        assert "<p>World</p>" in xml
+
+    def test_script_tag_contents_removed_too(self):
+        post = make_post(body_html='<script>alert("pwned")</script>')
+        xml = render_feed([post], CONFIG)
+        assert "pwned" not in xml
+
+    def test_script_tag_stripped_case_insensitively(self):
+        post = make_post(body_html='<p>Hi</p><SCRIPT>alert(1)</SCRIPT>')
+        xml = render_feed([post], CONFIG)
+        assert "<script" not in xml.lower()
+
+    def test_script_tag_with_attributes_stripped(self):
+        post = make_post(body_html='<script type="text/javascript" src="evil.js"></script><p>Safe</p>')
+        xml = render_feed([post], CONFIG)
+        assert "<script" not in xml.lower()
+        assert "evil.js" not in xml
+        assert "<p>Safe</p>" in xml
+
+    def test_multiple_script_tags_all_stripped(self):
+        post = make_post(body_html='<script>one()</script><p>Mid</p><script>two()</script>')
+        xml = render_feed([post], CONFIG)
+        assert "<script" not in xml.lower()
+        assert "<p>Mid</p>" in xml
+
+    def test_non_script_html_preserved(self):
+        post = make_post(body_html='<p>Text with <strong>bold</strong> and <em>italic</em></p>')
+        xml = render_feed([post], CONFIG)
+        assert "<strong>bold</strong>" in xml
+        assert "<em>italic</em>" in xml
+
+    def test_script_tag_stripped_from_excerpt_html(self):
+        post = make_post(
+            body_html='<p>Full body</p>',
+            excerpt_html='<p>Intro</p><script>alert(1)</script>',
+        )
+        xml = render_feed([post], CONFIG)
+        assert "<script" not in xml.lower()
+        assert "<p>Intro</p>" in xml
+
+
+# ---------------------------------------------------------------------------
+# Read more cutoff
+# ---------------------------------------------------------------------------
+
+class TestFeedReadMoreCutoff:
+
+    def test_full_body_used_when_no_excerpt(self):
+        post = make_post(body_html="<p>Full content shown</p>", excerpt_html=None)
+        xml = render_feed([post], CONFIG)
+        assert "<p>Full content shown</p>" in xml
+
+    def test_no_read_more_link_when_no_excerpt(self):
+        post = make_post(body_html="<p>Full content shown</p>", excerpt_html=None)
+        xml = render_feed([post], CONFIG)
+        assert "read-more" not in xml
+
+    def test_excerpt_used_instead_of_full_body_when_present(self):
+        post = make_post(
+            body_html="<p>Intro</p><p>Rest of the post, hidden past the marker</p>",
+            excerpt_html="<p>Intro</p>",
+        )
+        xml = render_feed([post], CONFIG)
+        assert "<p>Intro</p>" in xml
+        assert "Rest of the post, hidden past the marker" not in xml
+
+    def test_read_more_link_added_when_excerpt_present(self):
+        post = make_post(post_id=7, body_html="<p>Intro</p><p>More</p>", excerpt_html="<p>Intro</p>")
+        xml = render_feed([post], CONFIG)
+        assert 'class="read-more"' in xml
+        assert 'href="https://example.github.io/7.html?src=atom"' in xml
+
+    def test_read_more_link_text(self):
+        post = make_post(body_html="<p>Intro</p><p>More</p>", excerpt_html="<p>Intro</p>")
+        xml = render_feed([post], CONFIG)
+        assert ">Read more<" in xml
+
+    def test_excerpt_images_still_appear_before_content(self):
+        post = make_post(
+            images=["1-image-01.jpg"],
+            body_html="<p>Intro</p><p>More</p>",
+            excerpt_html="<p>Intro</p>",
+        )
+        xml = render_feed([post], CONFIG)
+        assert xml.index("1-image-01-resized.jpg") < xml.index("Intro")

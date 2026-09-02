@@ -1,7 +1,14 @@
 import html as _html
+import re
 
 from magnetizer.content import resized_filename as _resized_filename
 from magnetizer.render import post_display_text
+
+_SCRIPT_TAG_RE = re.compile(r'<script\b[^>]*>.*?</script>', re.IGNORECASE | re.DOTALL)
+
+
+def _strip_scripts(html_str):
+    return _SCRIPT_TAG_RE.sub('', html_str)
 
 
 def _rfc3339(date_str, post_id):
@@ -31,19 +38,27 @@ def render_feed(posts, config):
 
     for post in dated_posts:
         post_url = f"{site_url}/{post.url}"
+        tracked_url = f"{post_url}?src=atom"
         title = _html.escape(post_display_text(post))
         images_html = ''.join(
             f'<figure><img src="{site_url}/{_resized_filename(img.filename)}"'
             f' alt="{_html.escape(img.alt, quote=True)}"></figure>'
             for img in post.images
         )
+        if post.excerpt_html is not None:
+            body_content = (
+                f'{_strip_scripts(post.excerpt_html)}'
+                f'<p><a href="{tracked_url}" class="read-more">Read more</a></p>'
+            )
+        else:
+            body_content = _strip_scripts(post.body_html)
         lines += [
             '  <entry>',
             f'    <title>{title}</title>',
-            f'    <link href="{post_url}?src=atom" />',
+            f'    <link href="{tracked_url}" />',
             f'    <id>{post_url}</id>',
             f'    <updated>{_rfc3339(post.date, post.id)}</updated>',
-            f'    <content type="html"><![CDATA[{images_html}{post.body_html}]]></content>',
+            f'    <content type="html"><![CDATA[{images_html}{body_content}]]></content>',
             '  </entry>',
         ]
 
