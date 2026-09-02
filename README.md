@@ -253,7 +253,7 @@ Example `templates/index.html`:
 All files live flat in `content/` — no subdirectories.
 
 - Markdown files: `{post-id}.md` (e.g. `42.md`)
-- Image files: `{post-id}-image-{nn}.jpg/jpeg/png/svg` (e.g. `42-image-01.jpg`) — numbering must start at `01` with no gaps; the build errors out otherwise
+- Image files: `{post-id}-image-{nn}.jpg/jpeg/png/svg` (e.g. `42-image-01.jpg`) — numbering must start at `01` with no gaps; the build errors out otherwise. Raster images have all EXIF metadata (camera model, GPS, timestamps) stripped from the resized/thumbnail output for privacy; an EXIF orientation tag, if present, is applied to the pixels first so the photo still displays right-side up.
 - Comment files: `{post-id}-comment-{nn}.md` or `{name}-comment-{nn}.md` (e.g. `42-comment-01.md`, `about-comment-01.md`) — see [Comments](#comments)
 - One `{name}.md` per entry in `special_pages` (e.g. `about.md`, `cookies.md`) — see [Special pages](#special-pages)
 

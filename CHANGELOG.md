@@ -5,6 +5,10 @@
 
 ## Released changes
 
+### 2/9/26
+
+- Strip EXIF metadata from resized images; fix lost orientation
+
 ### 31/8/26
 
 - Added image thumbnails and a paginated gallery page

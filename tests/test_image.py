@@ -20,6 +20,18 @@ def open_image(path):
     return PILImage.open(path)
 
 
+def make_image_with_exif(path, width, height, orientation=None):
+    """A JPEG with camera-style EXIF metadata, and optionally an Orientation tag."""
+    img = PILImage.new("RGB", (width, height), color=(128, 128, 128))
+    exif = img.getexif()
+    exif[0x0110] = "TestCameraModel"  # Model
+    exif[0x927C] = b"MakerNoteData"  # MakerNote
+    if orientation is not None:
+        exif[0x0112] = orientation  # Orientation
+    img.save(path, exif=exif)
+    return path
+
+
 # ---------------------------------------------------------------------------
 # Output file
 # ---------------------------------------------------------------------------
@@ -119,6 +131,49 @@ class TestNoUpscaling:
         dest = tmp_path / "dest.jpg"
         resize_image(src, dest, max_dimension=2000, quality=85)
         assert open_image(dest).size == (2000, 1500)
+
+
+# ---------------------------------------------------------------------------
+# EXIF stripping
+# ---------------------------------------------------------------------------
+
+class TestExifStripped:
+
+    def test_resized_output_has_no_exif(self, tmp_path):
+        src = make_image_with_exif(tmp_path / "src.jpg", 800, 600)
+        dest = tmp_path / "dest.jpg"
+        resize_image(src, dest, max_dimension=400, quality=85)
+        assert dict(open_image(dest).getexif()) == {}
+
+    def test_output_has_no_exif_even_when_not_resized(self, tmp_path):
+        # image already within max_dimension — save() still runs, must still strip
+        src = make_image_with_exif(tmp_path / "src.jpg", 400, 300)
+        dest = tmp_path / "dest.jpg"
+        resize_image(src, dest, max_dimension=2000, quality=85)
+        assert dict(open_image(dest).getexif()) == {}
+
+
+# ---------------------------------------------------------------------------
+# EXIF orientation — must be baked into pixels before being stripped
+# ---------------------------------------------------------------------------
+
+class TestOrientationBakedIn:
+
+    def test_rotated_orientation_tag_is_applied_before_resize(self, tmp_path):
+        # Physical pixel data is landscape (2000x1000), but Orientation=6 means
+        # "rotate 90 CW for display" i.e. the photo is actually portrait.
+        src = make_image_with_exif(tmp_path / "src.jpg", 2000, 1000, orientation=6)
+        dest = tmp_path / "dest.jpg"
+        resize_image(src, dest, max_dimension=1000, quality=85)
+        w, h = open_image(dest).size
+        # Correctly-oriented output must be portrait (taller than wide), not landscape
+        assert h > w
+
+    def test_orientation_tag_not_left_in_output(self, tmp_path):
+        src = make_image_with_exif(tmp_path / "src.jpg", 2000, 1000, orientation=6)
+        dest = tmp_path / "dest.jpg"
+        resize_image(src, dest, max_dimension=1000, quality=85)
+        assert 0x0112 not in dict(open_image(dest).getexif())
 
 
 # ---------------------------------------------------------------------------
