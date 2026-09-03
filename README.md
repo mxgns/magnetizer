@@ -33,6 +33,7 @@ manifest.json  Build state (created automatically)
 | `notes_per_page` | Notes shown per notes page (`notes.html`, `notes-2.html`, …) | `20` |
 | `gallery_per_page` | Photos shown per gallery page (`gallery.html`, `gallery-2.html`, …) | `60` |
 | `images_per_post` | Top-level images shown per post on multi-post pages (index, category, notes) — `0` shows none. The post's own page always shows all top-level images regardless. Inline images (`{{ image N }}`) aren't counted; use `<!-- more -->` to control those | `2` |
+| `feed_max_posts` | Maximum number of most-recent dated posts included in the Atom feed | `30` |
 | `index_meta_description` | `<meta name="description">` content on index pages (via `MAGNETIZER_METADATA` placeholder) | Not set |
 | `index_title` | When set, the title of `index.html` becomes `site_name - index_title` | Not set |
 | `categories` | Map of category slug to display name, e.g. `{photography: Photography}` | `{}` (no categories) |
@@ -219,6 +220,8 @@ Use `--flush` after editing templates. Resource file changes (CSS, JS) are picke
 Every full build also generates `dist/sitemap.xml` (all published posts and special pages that aren't `noindex`, plus index, category, notes, gallery, and archive pages, with `lastmod` dates) and `dist/robots.txt` (pointing to the sitemap). These are not generated on single-file preview builds.
 
 Every full build also generates `dist/posts.json` — an id-keyed lookup of every page's title, category, and date, for an external consumer like the Magnalytics analytics UI to resolve a raw `page_id` (see `MAGNETIZER_PAGE_ID`) into something readable. Unlike the sitemap, it includes `noindex` pages and the 404 page, since it's for identifying traffic, not search indexing. Also not generated on single-file preview builds.
+
+Every full build also generates `dist/feed.xml`, an Atom feed of the `feed_max_posts` most recent dated posts. Each entry's content is cut at its `<!-- more -->` marker, the same as on index pages, with a "Read more" link to the full post; entries with no marker show the full post. `<script>` tags are stripped from feed content either way. Also not generated on single-file preview builds.
 
 ## Templates
 
