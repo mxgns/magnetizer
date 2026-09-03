@@ -779,9 +779,8 @@ Some text after.
 <figure><img src="{post-id}-image-{image-number}-resized.{image-file-extension}" alt="ALT_TEXT"></figure>
 ```
 
-using the same resized filename and frontmatter alt text (see [Alt texts](#alt-texts)) as the top-of-post image strip.
+using the same resized filename and frontmatter alt text (see [Alt texts](#alt-texts)) as the top-of-post image strip. This is the form stored in the post's body/excerpt HTML; when rendered on index and category pages, the `<figure>` is additionally wrapped in an `<a>` pointing to the individual post page — `<figure><a href="POST_URL"><img ...></a></figure>` — same as the top-of-post strip (see [Index pages](#index-pages)). On the post's own page it's rendered exactly as shown above, unwrapped, since it's already on the page it would link to.
 - An image used inline this way is excluded from the top-of-post `<div class="post-images">` strip described under [Read more](#read-more), on both index and individual post pages. On index pages, if it falls after a `<!-- more -->` marker (i.e. it isn't part of the shown excerpt), it's counted in the "Read more (+N photo(s))" text — an inline image shown within the excerpt doesn't count, since it's already visible.
-- On index and category pages, an inline image's `<figure>` is wrapped in an `<a>` pointing to the individual post page, same as the top-of-post strip (see [Index pages](#index-pages)). On the post's own page, it's left unwrapped, since it's already on the page it would link to.
 
 ### Read more
 
