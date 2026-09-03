@@ -512,6 +512,74 @@ class TestRenderArticleInlineImagesExcludedFromTop:
 
 
 # ---------------------------------------------------------------------------
+# render_article — inline images (in body/excerpt) link through to the post
+# on index/category pages, same as top-strip images
+# ---------------------------------------------------------------------------
+
+class TestRenderArticleInlineImagesLinkThrough:
+
+    def test_inline_image_in_body_links_to_post_on_index_page(self):
+        post = make_post(
+            post_id=1,
+            images=["1-image-01.jpg"],
+            body_html='<p>Text</p><figure><img src="1-image-01-resized.jpg" alt="A cat"></figure>',
+            inline_image_filenames={"1-image-01.jpg"},
+        )
+        html = render_article(post, on_index_page=True)
+        assert '<figure><a href="1.html"><img src="1-image-01-resized.jpg" alt="A cat"></a></figure>' in html
+
+    def test_inline_image_in_body_not_linked_on_post_page(self):
+        post = make_post(
+            post_id=1,
+            images=["1-image-01.jpg"],
+            body_html='<p>Text</p><figure><img src="1-image-01-resized.jpg" alt="A cat"></figure>',
+            inline_image_filenames={"1-image-01.jpg"},
+        )
+        html = render_article(post, on_index_page=False)
+        assert '<figure><img src="1-image-01-resized.jpg" alt="A cat"></figure>' in html
+        assert '<a href="1.html"><img' not in html
+
+    def test_inline_image_in_excerpt_links_to_post_on_index_page(self):
+        post = make_post(
+            post_id=1,
+            title="My post",
+            images=["1-image-01.jpg"],
+            excerpt_html='<p>Intro</p><figure><img src="1-image-01-resized.jpg" alt=""></figure>',
+            inline_image_filenames={"1-image-01.jpg"},
+            excerpt_inline_image_filenames={"1-image-01.jpg"},
+        )
+        html = render_article(post, on_index_page=True)
+        assert '<figure><a href="1.html"><img src="1-image-01-resized.jpg" alt=""></a></figure>' in html
+
+    def test_multiple_inline_images_all_linked_on_index_page(self):
+        post = make_post(
+            post_id=1,
+            images=["1-image-01.jpg", "1-image-02.jpg"],
+            body_html=(
+                '<p>Text</p>'
+                '<figure><img src="1-image-01-resized.jpg" alt="First"></figure>'
+                '<figure><img src="1-image-02-resized.jpg" alt="Second"></figure>'
+            ),
+            inline_image_filenames={"1-image-01.jpg", "1-image-02.jpg"},
+        )
+        html = render_article(post, on_index_page=True)
+        assert '<figure><a href="1.html"><img src="1-image-01-resized.jpg" alt="First"></a></figure>' in html
+        assert '<figure><a href="1.html"><img src="1-image-02-resized.jpg" alt="Second"></a></figure>' in html
+
+    def test_inline_image_on_note_links_through_on_index_page(self):
+        post = make_post(
+            post_id=1,
+            title=None,
+            images=["1-image-01.jpg"],
+            body_html='<figure><img src="1-image-01-resized.jpg" alt=""></figure>',
+            inline_image_filenames={"1-image-01.jpg"},
+            post_type="note",
+        )
+        html = render_article(post, on_index_page=True)
+        assert '<figure><a href="1.html"><img src="1-image-01-resized.jpg" alt=""></a></figure>' in html
+
+
+# ---------------------------------------------------------------------------
 # render_article — title HTML escaping
 # ---------------------------------------------------------------------------
 

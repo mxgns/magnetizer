@@ -5,6 +5,10 @@
 
 ## Released changes
 
+### 3/9/26
+
+- Inline post images now link to the post on index/category pages
+
 ### 2/9/26
 
 - Strip EXIF metadata from resized images; fix lost orientation
