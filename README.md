@@ -120,7 +120,7 @@ Some text.
 More text.
 ```
 
-It must be on its own line with a blank line before and after (its own paragraph, not just its own line within one) — used inline with other text, or referencing an image number that doesn't exist for the post, is a build error. The image is rendered as `<figure><img src="..." alt="..."></figure>` using its frontmatter alt text, and is excluded from the top-of-post image strip since it's already shown in the body. On index pages, if it falls after a `<!-- more -->` marker (so isn't part of the shown excerpt), it's counted into the "Read more (+N photo(s))" link text — see below.
+It must be on its own line with a blank line before and after (its own paragraph, not just its own line within one) — used inline with other text, or referencing an image number that doesn't exist for the post, is a build error. The image is rendered as `<figure><img src="..." alt="..."></figure>` using its frontmatter alt text, and is excluded from the top-of-post image strip since it's already shown in the body. On index pages, if it falls after a `<!-- more -->` marker (so isn't part of the shown excerpt), it's counted into the "Read more (+N photo(s))" link text — see below. On index and category pages, its `<figure>` links through to the post, same as the top-of-post strip; on the post's own page it's left unlinked.
 
 Any link in a post body whose host doesn't match `site_url` is treated as external, and automatically gets `target="_blank" rel="noopener"` plus an `external-link` class, so readers leaving the site open it in a new tab. This applies to Markdown links and raw HTML `<a>` tags alike, and merges into any `class`/`target`/`rel` the tag already has rather than duplicating attributes.
 

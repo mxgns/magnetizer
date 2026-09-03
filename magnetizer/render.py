@@ -74,6 +74,21 @@ def _render_comments_section(comments):
     return '\n'.join(parts)
 
 
+def _link_inline_images(html_content, post):
+    """Wrap each inline (in-body) image's <figure> in a link to the post,
+    mirroring how top-strip images link through on index/category pages."""
+    for image in post.images:
+        if image.filename not in post.inline_image_filenames:
+            continue
+        resized = _resized_filename(image.filename)
+        pattern = re.compile(r'<figure><img src="' + re.escape(resized) + r'"([^>]*)></figure>')
+        html_content = pattern.sub(
+            lambda m, resized=resized: f'<figure><a href="{post.url}"><img src="{resized}"{m.group(1)}></a></figure>',
+            html_content,
+        )
+    return html_content
+
+
 def render_article(post, on_index_page, categories=None, ai_disclosure_html=None, images_per_post=2):
     article_class = "multiple-posts" if on_index_page else "single-post"
     if post.post_type in _POST_TYPE_CLASS:
@@ -112,9 +127,11 @@ def render_article(post, on_index_page, categories=None, ai_disclosure_html=None
             read_more_label = f'Read more (+{hidden} photo{"s" if hidden != 1 else ""})'
         else:
             read_more_label = 'Read more'
-        parts.append(f'<div class="post-body">{post.excerpt_html}<a href="{post.url}" class="read-more">{read_more_label}</a></div>')
+        excerpt_html = _link_inline_images(post.excerpt_html, post)
+        parts.append(f'<div class="post-body">{excerpt_html}<a href="{post.url}" class="read-more">{read_more_label}</a></div>')
     else:
-        parts.append(f'<div class="post-body">{post.body_html}</div>')
+        body_html = _link_inline_images(post.body_html, post) if on_index_page else post.body_html
+        parts.append(f'<div class="post-body">{body_html}</div>')
 
     if on_index_page and post.excerpt_html is None and hidden_top > 0:
         label = f'{hidden_top} more photo{"s" if hidden_top != 1 else ""}'

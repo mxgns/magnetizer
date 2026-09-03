@@ -781,6 +781,7 @@ Some text after.
 
 using the same resized filename and frontmatter alt text (see [Alt texts](#alt-texts)) as the top-of-post image strip.
 - An image used inline this way is excluded from the top-of-post `<div class="post-images">` strip described under [Read more](#read-more), on both index and individual post pages. On index pages, if it falls after a `<!-- more -->` marker (i.e. it isn't part of the shown excerpt), it's counted in the "Read more (+N photo(s))" text — an inline image shown within the excerpt doesn't count, since it's already visible.
+- On index and category pages, an inline image's `<figure>` is wrapped in an `<a>` pointing to the individual post page, same as the top-of-post strip (see [Index pages](#index-pages)). On the post's own page, it's left unwrapped, since it's already on the page it would link to.
 
 ### Read more
 
@@ -830,7 +831,7 @@ Note: The following differences apply to `<article>` elements when they appear o
 
 - `POST_LAYOUT_CLASS` is `multiple-posts` instead of `single-post` — the post-type class (`full-post`, `image-post` or `note`) is still appended alongside it, e.g. `class="multiple-posts note"`
 - The title is an `<h2>` instead of `<h1>` — see [Posts](#posts)
-- Each `<img>` is wrapped in an `<a>` pointing to the individual post page
+- Each `<img>` is wrapped in an `<a>` pointing to the individual post page — this applies to the top-of-post strip and to [inline images](#inline-images) alike, so every image in the rendered excerpt/body links through to the post
 - Only the first `images_per_post` images are shown (see [Configuration](#configuration) — default `2`; `0` shows none)
 - If a post has more top-level images than `images_per_post` and **no** `<!-- more -->` marker, a "N more photo(s)" link is rendered between the post body and the date footer:
 
