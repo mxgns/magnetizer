@@ -323,7 +323,7 @@ The archive page (`dist/archive.html`) lists all dated blog posts grouped by mon
 ```html
 <section class="contribution-calendar">
   <h2>Publishing calendar</h2>
-  <p class="calendar-summary">I have posted <span class="calendar-post-count">248 posts</span> and <span class="calendar-note-count">12 notes</span> so far, and have posted every week for the last <span class="calendar-streak-count">6 weeks</span>.</p>
+  <p class="calendar-summary">I have posted <strong><span class="calendar-post-count">248</span> posts</strong> and <strong><span class="calendar-note-count">12</span> notes</strong> so far, and have posted every week for the last <strong>6 weeks</strong>.</p>
   <div class="calendar">
     <div class="calendar-months">
       <span class="calendar-month">Aug</span>

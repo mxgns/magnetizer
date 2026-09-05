@@ -1280,10 +1280,10 @@ class TestRenderContributionCalendar:
         html = render_archive_page_content(posts, build_date=date(2026, 5, 24))
         assert (
             '<p class="calendar-summary">I have posted '
-            '<span class="calendar-post-count">2 posts</span> and '
-            '<span class="calendar-note-count">1 notes</span> so far, '
+            '<strong><span class="calendar-post-count">2</span> posts</strong> and '
+            '<strong><span class="calendar-note-count">1</span> notes</strong> so far, '
             'and have posted every week for the last '
-            '<span class="calendar-streak-count">1 week</span>.</p>'
+            '<strong>1 week</strong>.</p>'
         ) in html
 
     def test_summary_excludes_posts_outside_window(self):
@@ -1291,13 +1291,13 @@ class TestRenderContributionCalendar:
         # back). A post the day before start_date must not be counted.
         posts = [make_dated_post(1, "2024-12-30")]
         html = render_archive_page_content(posts, build_date=date(2026, 1, 4))
-        assert '<span class="calendar-post-count">0 posts</span>' in html
-        assert '<span class="calendar-note-count">0 notes</span>' in html
+        assert '<span class="calendar-post-count">0</span> posts' in html
+        assert '<span class="calendar-note-count">0</span> notes' in html
 
     def test_empty_posts_list_still_renders_grid(self):
         html = render_archive_page_content([], build_date=date(2026, 5, 24))
-        assert '<span class="calendar-post-count">0 posts</span>' in html
-        assert '<span class="calendar-note-count">0 notes</span>' in html
+        assert '<span class="calendar-post-count">0</span> posts' in html
+        assert '<span class="calendar-note-count">0</span> notes' in html
         assert html.count('<div class="calendar-column">') == 37
 
     def test_grid_has_37_columns(self):
@@ -1455,7 +1455,7 @@ class TestRenderContributionCalendar:
             Post(id=1, date=None, date_uk=None, title="No date", url="1.html", body_html="", images=[]),
         ]
         html = render_archive_page_content(posts, build_date=date(2026, 5, 24))
-        assert '<span class="calendar-post-count">1 posts</span>' in html
+        assert '<strong><span class="calendar-post-count">1</span> posts</strong>' in html
 
 
 # ---------------------------------------------------------------------------
@@ -1466,11 +1466,11 @@ class TestPostingStreakSentence:
 
     def test_absent_when_no_posts_at_all(self):
         html = render_archive_page_content([], build_date=date(2026, 5, 24))
-        assert 'calendar-streak-count' not in html
+        assert 'week</strong>' not in html
         assert (
             '<p class="calendar-summary">I have posted '
-            '<span class="calendar-post-count">0 posts</span> and '
-            '<span class="calendar-note-count">0 notes</span> so far.</p>'
+            '<strong><span class="calendar-post-count">0</span> posts</strong> and '
+            '<strong><span class="calendar-note-count">0</span> notes</strong> so far.</p>'
         ) in html
 
     def test_absent_when_streak_is_zero(self):
@@ -1478,7 +1478,7 @@ class TestPostingStreakSentence:
         # and 20 are both fully empty, so there is no current streak.
         posts = [make_dated_post(1, "2026-05-04")]
         html = render_archive_page_content(posts, build_date=date(2026, 5, 24))
-        assert 'calendar-streak-count' not in html
+        assert 'week</strong>' not in html
         assert 'so far.</p>' in html
 
     def test_streak_clause_is_appended_to_the_summary_paragraph(self):
@@ -1490,10 +1490,10 @@ class TestPostingStreakSentence:
         assert '<p class="calendar-streak">' not in html
         assert (
             '<p class="calendar-summary">I have posted '
-            '<span class="calendar-post-count">1 posts</span> and '
-            '<span class="calendar-note-count">0 notes</span> so far, '
+            '<strong><span class="calendar-post-count">1</span> posts</strong> and '
+            '<strong><span class="calendar-note-count">0</span> notes</strong> so far, '
             'and have posted every week for the last '
-            '<span class="calendar-streak-count">1 week</span>.</p>'
+            '<strong>1 week</strong>.</p>'
         ) in html
 
     def test_single_week_streak_uses_singular_wording(self):
@@ -1501,7 +1501,7 @@ class TestPostingStreakSentence:
         html = render_archive_page_content(posts, build_date=date(2026, 5, 24))
         assert (
             'so far, and have posted every week for the last '
-            '<span class="calendar-streak-count">1 week</span>.</p>'
+            '<strong>1 week</strong>.</p>'
         ) in html
 
     def test_monday_week_one_and_sunday_week_two_counts_as_two_weeks(self):
@@ -1514,7 +1514,7 @@ class TestPostingStreakSentence:
         html = render_archive_page_content(posts, build_date=date(2026, 5, 24))
         assert (
             'so far, and have posted every week for the last '
-            '<span class="calendar-streak-count">2 weeks</span>.</p>'
+            '<strong>2 weeks</strong>.</p>'
         ) in html
 
     def test_gap_week_breaks_the_streak(self):
@@ -1525,7 +1525,7 @@ class TestPostingStreakSentence:
             make_dated_post(2, "2026-05-24"),   # week 21 (build_date)
         ]
         html = render_archive_page_content(posts, build_date=date(2026, 5, 24))
-        assert '<span class="calendar-streak-count">1 week</span>' in html
+        assert '<strong>1 week</strong>' in html
 
     def test_streak_not_broken_by_current_week_not_having_posted_yet(self):
         # Posts in weeks 19 and 20, nothing yet in week 21 (build_date's own
@@ -1535,9 +1535,7 @@ class TestPostingStreakSentence:
             make_dated_post(2, "2026-05-17"),   # week 20
         ]
         html = render_archive_page_content(posts, build_date=date(2026, 5, 24))
-        assert (
-            '<span class="calendar-streak-count">2 weeks</span>' in html
-        )
+        assert '<strong>2 weeks</strong>' in html
 
     def test_notes_count_towards_the_streak(self):
         posts = [
@@ -1545,7 +1543,7 @@ class TestPostingStreakSentence:
             make_dated_post(2, "2026-05-24", post_type="note"),
         ]
         html = render_archive_page_content(posts, build_date=date(2026, 5, 24))
-        assert '<span class="calendar-streak-count">2 weeks</span>' in html
+        assert '<strong>2 weeks</strong>' in html
 
 
 # ---------------------------------------------------------------------------
@@ -1886,11 +1884,13 @@ class TestArchiveDescriptions:
         assert "Second." not in html
 
     def test_inline_html_stripped_from_description(self):
+        # The calendar-summary paragraph legitimately uses <strong> elsewhere
+        # on the page, so check the archive-list link text specifically
+        # rather than asserting <strong> is absent from the whole page.
         html = render_archive_page_content([
             make_dated_post(1, "2026-05-24", body_html="<p>Hello <strong>world</strong>.</p>")
         ])
-        assert "Hello world." in html
-        assert "<strong>" not in html
+        assert '<a href="1.html">Hello world.</a>' in html
 
     def test_description_html_escaped(self):
         html = render_archive_page_content([
