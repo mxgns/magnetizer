@@ -7,6 +7,8 @@
 
 ### 5/9/26
 
+- Exclude noindex pages from the Pagefind search index
+- Generate search.html on full builds; Pagefind reindexes every build
 - Archive calendar summary now also states the current weekly streak
 
 ### 3/9/26

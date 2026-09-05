@@ -223,6 +223,8 @@ Every full build also generates `dist/posts.json` — an id-keyed lookup of ever
 
 Every full build also generates `dist/feed.xml`, an Atom feed of the `feed_max_posts` most recent dated posts. Each entry's content is cut at its `<!-- more -->` marker, the same as on index pages, with a "Read more" link to the full post; entries with no marker show the full post. `<script>` tags are stripped from feed content either way. Also not generated on single-file preview builds.
 
+Every build, including single-file preview builds, re-runs Pagefind indexing over the whole of `dist/` afterwards — see [Search page](#search-page).
+
 ## Templates
 
 Magnetizer uses a single template file: `templates/index.html`. It must contain two required placeholders, plus optional ones:
@@ -232,7 +234,8 @@ Magnetizer uses a single template file: `templates/index.html`. It must contain 
 | `MAGNETIZER_METADATA` | Yes | A block of `<head>` metadata tags: `<title>`, an optional `<meta name="description">` (index pages only, from `index_meta_description`), a `<link rel="canonical">`, and — for posts or special pages with `noindex: true` — a `<meta name="robots" content="noindex">`. Each line is present only when applicable. |
 | `MAGNETIZER_CONTENT` | Yes | The generated page content |
 | `MAGNETIZER_BUILD_ID` | No | A Unix timestamp, useful for cache-busting: `style.css?v=MAGNETIZER_BUILD_ID` |
-| `MAGNETIZER_PAGE_ID` | No | The current page's bare id, e.g. `56` for a post, `about` for a special page, `photography` for a category page, `index`/`index-2`/`notes`/`archive` otherwise. Never includes `.html`. Not used by Magnetizer itself — useful for e.g. a per-page tracking pixel. |
+| `MAGNETIZER_PAGE_ID` | No | The current page's bare id, e.g. `56` for a post, `about` for a special page, `photography` for a category page, `index`/`index-2`/`notes`/`archive`/`search` otherwise. Never includes `.html`. Not used by Magnetizer itself — useful for e.g. a per-page tracking pixel. |
+| `MAGNETIZER_PAGE_SCRIPTS` | No | Empty on every page except `search.html`, where it's a `<script>` tag loading `resources/search.js`. Place it just before `</body>` so only the search page pays for that script. |
 
 Example `templates/index.html`:
 
@@ -414,6 +417,14 @@ Magnetizer collects every post's photos, newest post first, into a paginated gal
 ```
 
 `data-full` points at the full-size resized image, for a project to wire up its own lightbox — Magnetizer ships none. Each gallery page except the last carries exactly one `<a class="load-more">` link to the next (older) page; Magnetizer generates no JavaScript itself, but this stable markup contract — `<ul id="gallery">` with `<li>` children, `.load-more` on the older link — lets a project's own `resources/` JS turn the plain pagination into a "load more" button. See [the spec](spec/specification.md#load-more) for the full markup contract and an illustrative implementation.
+
+## Search page
+
+Every full build generates `dist/search.html` — a static shell (heading, accessible `<form role="search">`, empty results container) with no query-reading or result-rendering logic of its own, since the page is generated once and there's no server to consult a `?q=` parameter against at request time. A project's own `resources/search.js` (loaded via `MAGNETIZER_PAGE_SCRIPTS`, see [Templates](#templates)) reads the URL client-side and queries [Pagefind](https://pagefind.app)'s generated index; Magnetizer ships none, the same way it ships no gallery "load more" JS.
+
+Every build — including single-file preview builds, not just full ones — also runs Pagefind indexing over `dist/` (via a pinned `npx pagefind@1.5.2`, so a bare `npx pagefind` can't silently pick up a newer release and change the index between builds) after all pages are written. This requires Node and network access to resolve the `pagefind` package (cached after the first run); a nonzero exit, a timeout, or a missing `npx` binary aborts the build with a red `ERROR`, the same as a failed `--push`.
+
+To avoid indexing the same article twice (once on its own page, once again embedded in an index/category/notes/archive/gallery listing) and to keep chrome out of results, Magnetizer marks listing pages' `<main>` with `data-pagefind-ignore` — only a post's own canonical page is indexed. On that canonical page, the post's `<h1>` carries `data-pagefind-meta="title"` and its `<time>` carries `data-pagefind-meta="date"`, so Pagefind's result metadata doesn't have to be scraped from the `{post_title} - {site_name}` `<title>` tag. `search.html` itself is also `data-pagefind-ignore`d, and so is any post, special page, or the 404 page when it has `noindex: true` — a page excluded from `sitemap.xml` is excluded from the site's own search too. A project's own template is responsible for excluding its own repeated chrome (header, footer, nav) the same way — Magnetizer only controls the content it generates.
 
 ## Publishing
 

@@ -109,6 +109,11 @@ class TestCLIBasicBuild:
         run_build([], cwd=p)
         assert (p / "manifest.json").exists()
 
+    def test_pagefind_index_created(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD})
+        run_build([], cwd=p)
+        assert (p / "dist" / "pagefind" / "pagefind.js").exists()
+
 
 # ---------------------------------------------------------------------------
 # --flush

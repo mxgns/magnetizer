@@ -9,6 +9,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 from magnetizer.builder import build
 from magnetizer.config import load_config
+from magnetizer.pagefind import run_pagefind_index
 from magnetizer.publisher import publish
 
 
@@ -265,6 +266,16 @@ def main():
     _finish_dots()
 
     has_warnings = _print_output(outcome, config, dist_path, verbose=args.verbose)
+
+    print("Indexing search...", end=" ", flush=True)
+    try:
+        run_pagefind_index(dist_path)
+    except RuntimeError as e:
+        print()
+        print(f"  {e}", file=sys.stderr)
+        print(_c(_RED, "ERROR"), file=sys.stderr)
+        sys.exit(1)
+    print("DONE.")
 
     if args.push:
         if args.verbose:
