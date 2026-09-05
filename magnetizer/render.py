@@ -434,14 +434,14 @@ def _render_contribution_calendar(posts, build_date, posts_per_page):
     streak = _posting_streak_weeks(posts, build_date)
     summary = (
         '<p class="calendar-summary">I have posted '
-        f'<span class="calendar-post-count">{post_count}</span> posts and '
-        f'<span class="calendar-note-count">{note_count}</span> notes so far'
+        f'<span class="calendar-post-count">{post_count} posts</span> and '
+        f'<span class="calendar-note-count">{note_count} notes</span> so far'
     )
     if streak:
         week_word = "week" if streak == 1 else "weeks"
         summary += (
             ', and have posted every week for the last '
-            f'<span class="calendar-streak-count">{streak}</span> {week_word}'
+            f'<span class="calendar-streak-count">{streak} {week_word}</span>'
         )
     summary += '.</p>'
 
