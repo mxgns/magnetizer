@@ -1049,6 +1049,8 @@ The calendar covers a rolling 370-day window ending exactly on the build date, s
 
 Below the heading, a summary paragraph (`<p class="calendar-summary">`) states the same window's totals in prose, split by type: `I have posted {X} posts and {Y} notes so far`, where `X` is the count of non-Note published posts and `Y` is the count of Notes falling within the window — again no singular/plural variant. The heading itself is always the literal text `Publishing calendar`, with no post count in it, and comes *before* the summary paragraph.
 
+Below the grid, a second paragraph (`<p class="calendar-streak">`) reports the current posting streak in calendar weeks: `I have posted every week for the last {N} weeks.` (singular `week` when `N` is 1). A week is a Monday-Sunday ISO calendar week, not a rolling 7-day period, so a post on the Monday of one week and a post on the Sunday of the next still count as two consecutive weeks. `N` is not bounded by the 370-day grid above it — it looks back as far as the streak actually extends. The streak is counted backwards from build date's own week; if that week has no post yet, it isn't treated as a break (the week isn't over), and counting instead starts from the most recent week that does have one. When there is no current streak (`N` would be `0`), the paragraph is omitted entirely.
+
 Each day in the window is bucketed by how many posts fall on it: `level-0` (zero), `level-1`, `level-2`, `level-3`, `level-4`, or `level-5` (five or more). A day with one or more posts is a link (`<a>`) to the **newest** post from that day (highest post ID) — not that post's own page, but its anchor on whichever index page it appears on: `{INDEX_PAGE_URL}#post-{post-id}`, using the same pagination as [index pages](#index-pages) (`posts_per_page`, positions in the reverse-chronological post list). A day with no posts is a non-interactive `<span>`. Because the window always ends exactly on the build date, there is no "hasn't happened yet" case any more — every one of the 370 cells is always a real day.
 
 A day with one or more posts carries a `data-tooltip` attribute summarising it, e.g. `25 August: 1 post`, or — when both ordinary posts and Notes fall on the same day — `25 August: 1 post + 2 notes` (each count pluralised independently, joined with ` + `). This is deliberately a `data-` attribute rather than `title` — Magnetizer emits it as data only; rendering it as an actual hover tooltip (positioning, appearance, show/hide) is the responsibility of the project's own `resources/` CSS, the same way every other visual aspect of the calendar is. The `<a>` repeats the same text as `aria-label`, so the count is available to assistive technology independently of the visual tooltip. A day with no posts has no tooltip — there's nothing to report.
@@ -1074,6 +1076,7 @@ The `MAGNETIZER_CONTENT` structure is:
   ... (37 columns total)
 </div>
 </div>
+<p class="calendar-streak">I have posted every week for the last <span class="calendar-streak-count">N</span> weeks.</p>
 </section>
 ```
 
@@ -1081,6 +1084,7 @@ The `MAGNETIZER_CONTENT` structure is:
 - `.calendar-columns` always has exactly 37 `.calendar-column` columns of exactly 10 cells each, for 370 cells total regardless of how many posts exist — every cell is a real day box (`.calendar-day`, either `<span>` or `<a>`).
 - There's no weekday-label column — the calendar has no reserved space for row labels, so it's free to fill the full width of its container.
 - As with every other generated page, Magnetizer emits no inline styles — the grid's actual layout, cell sizing, and `level-0`–`level-5` colour scale are entirely the responsibility of the project's own `resources/` CSS.
+- `.calendar-streak` is omitted entirely (not just left with `N=0`) when there's no current streak.
 
 ### Notes pages
 

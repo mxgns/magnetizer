@@ -1457,6 +1457,85 @@ class TestRenderContributionCalendar:
 
 
 # ---------------------------------------------------------------------------
+# render_archive_page_content — posting streak sentence
+# ---------------------------------------------------------------------------
+
+class TestPostingStreakSentence:
+
+    def test_absent_when_no_posts_at_all(self):
+        html = render_archive_page_content([], build_date=date(2026, 5, 24))
+        assert 'calendar-streak' not in html
+
+    def test_absent_when_streak_is_zero(self):
+        # Last post was three ISO weeks before build_date (week 18); weeks 19
+        # and 20 are both fully empty, so there is no current streak.
+        posts = [make_dated_post(1, "2026-05-04")]
+        html = render_archive_page_content(posts, build_date=date(2026, 5, 24))
+        assert 'calendar-streak' not in html
+
+    def test_present_after_calendar_grid_before_section_end(self):
+        # The calendar's outer <div class="calendar"> closes with two
+        # consecutive </div>s (closing .calendar-columns, then .calendar
+        # itself); the streak paragraph sits directly after that, and the
+        # </section> tag directly after the streak paragraph.
+        posts = [make_dated_post(1, "2026-05-24")]
+        html = render_archive_page_content(posts, build_date=date(2026, 5, 24))
+        assert '</div>\n</div>\n<p class="calendar-streak">' in html
+        assert 'week.</p>\n</section>' in html
+
+    def test_single_week_streak_uses_singular_wording(self):
+        posts = [make_dated_post(1, "2026-05-24")]  # build_date's own week only
+        html = render_archive_page_content(posts, build_date=date(2026, 5, 24))
+        assert (
+            '<p class="calendar-streak">I have posted every week for the last '
+            '<span class="calendar-streak-count">1</span> week.</p>'
+        ) in html
+
+    def test_monday_week_one_and_sunday_week_two_counts_as_two_weeks(self):
+        # 2026-05-11 is a Monday in ISO week 20; 2026-05-24 is a Sunday in ISO
+        # week 21 -- 13 days apart, but consecutive calendar weeks.
+        posts = [
+            make_dated_post(1, "2026-05-11"),
+            make_dated_post(2, "2026-05-24"),
+        ]
+        html = render_archive_page_content(posts, build_date=date(2026, 5, 24))
+        assert (
+            '<p class="calendar-streak">I have posted every week for the last '
+            '<span class="calendar-streak-count">2</span> weeks.</p>'
+        ) in html
+
+    def test_gap_week_breaks_the_streak(self):
+        # Posts in week 19 and week 21 (build_date's week), but nothing in
+        # week 20 -- the streak only reaches back to the current week.
+        posts = [
+            make_dated_post(1, "2026-05-04"),   # week 19
+            make_dated_post(2, "2026-05-24"),   # week 21 (build_date)
+        ]
+        html = render_archive_page_content(posts, build_date=date(2026, 5, 24))
+        assert '<span class="calendar-streak-count">1</span>' in html
+
+    def test_streak_not_broken_by_current_week_not_having_posted_yet(self):
+        # Posts in weeks 19 and 20, nothing yet in week 21 (build_date's own
+        # week) -- the current week isn't over, so it doesn't break the streak.
+        posts = [
+            make_dated_post(1, "2026-05-04"),   # week 19
+            make_dated_post(2, "2026-05-17"),   # week 20
+        ]
+        html = render_archive_page_content(posts, build_date=date(2026, 5, 24))
+        assert (
+            '<span class="calendar-streak-count">2</span>' in html
+        )
+
+    def test_notes_count_towards_the_streak(self):
+        posts = [
+            make_dated_post(1, "2026-05-11", post_type="note"),
+            make_dated_post(2, "2026-05-24", post_type="note"),
+        ]
+        html = render_archive_page_content(posts, build_date=date(2026, 5, 24))
+        assert '<span class="calendar-streak-count">2</span>' in html
+
+
+# ---------------------------------------------------------------------------
 # render_archive_page_content — categories list
 # ---------------------------------------------------------------------------
 

@@ -387,6 +387,27 @@ def _calendar_day_tooltip(d, day_posts):
     return f'{date_str}: {" + ".join(counts)}'
 
 
+def _posting_streak_weeks(posts, build_date):
+    """The number of consecutive ISO calendar weeks, ending with build_date's
+    own week, that have at least one post -- Monday-Sunday weeks, so a post
+    on Monday of one week and Sunday of the next still counts as two
+    consecutive weeks. If build_date's own week has no post yet, it isn't
+    counted as broken (the week isn't over) -- the streak is simply measured
+    from the most recent week that does have one."""
+    weeks_with_posts = {
+        _date.fromisoformat(p.date).isocalendar()[:2]
+        for p in posts if p.date
+    }
+    cursor = build_date
+    if cursor.isocalendar()[:2] not in weeks_with_posts:
+        cursor -= _timedelta(days=7)
+    streak = 0
+    while cursor.isocalendar()[:2] in weeks_with_posts:
+        streak += 1
+        cursor -= _timedelta(days=7)
+    return streak
+
+
 def _render_contribution_calendar(posts, build_date, posts_per_page):
     start_date = _calendar_window(build_date)
 
@@ -441,6 +462,14 @@ def _render_contribution_calendar(posts, build_date, posts_per_page):
         parts.append('</div>')
     parts.append('</div>')
     parts.append('</div>')
+
+    streak = _posting_streak_weeks(posts, build_date)
+    if streak:
+        week_word = "week" if streak == 1 else "weeks"
+        parts.append(
+            '<p class="calendar-streak">I have posted every week for the last '
+            f'<span class="calendar-streak-count">{streak}</span> {week_word}.</p>'
+        )
 
     parts.append('</section>')
     return '\n'.join(parts)

@@ -5,6 +5,10 @@
 
 ## Released changes
 
+### 5/9/26
+
+- Archive calendar now shows a weekly posting streak sentence
+
 ### 3/9/26
 
 - Inline post images now link to the post on index/category pages
