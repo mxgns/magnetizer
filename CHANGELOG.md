@@ -7,7 +7,7 @@
 
 ### 5/9/26
 
-- Archive calendar now shows a weekly posting streak sentence
+- Archive calendar summary now also states the current weekly streak
 
 ### 3/9/26
 

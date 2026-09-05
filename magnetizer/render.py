@@ -431,12 +431,24 @@ def _render_contribution_calendar(posts, build_date, posts_per_page):
 
     month_labels = _calendar_month_labels(start_date)
 
+    streak = _posting_streak_weeks(posts, build_date)
+    summary = (
+        '<p class="calendar-summary">I have posted '
+        f'<span class="calendar-post-count">{post_count}</span> posts and '
+        f'<span class="calendar-note-count">{note_count}</span> notes so far'
+    )
+    if streak:
+        week_word = "week" if streak == 1 else "weeks"
+        summary += (
+            ', and have posted every week for the last '
+            f'<span class="calendar-streak-count">{streak}</span> {week_word}'
+        )
+    summary += '.</p>'
+
     parts = [
         '<section class="contribution-calendar">',
         '<h2>Publishing calendar</h2>',
-        '<p class="calendar-summary">I have posted '
-        f'<span class="calendar-post-count">{post_count}</span> posts and '
-        f'<span class="calendar-note-count">{note_count}</span> notes so far.</p>',
+        summary,
         '<div class="calendar">',
         '<div class="calendar-months">',
     ]
@@ -462,14 +474,6 @@ def _render_contribution_calendar(posts, build_date, posts_per_page):
         parts.append('</div>')
     parts.append('</div>')
     parts.append('</div>')
-
-    streak = _posting_streak_weeks(posts, build_date)
-    if streak:
-        week_word = "week" if streak == 1 else "weeks"
-        parts.append(
-            '<p class="calendar-streak">I have posted every week for the last '
-            f'<span class="calendar-streak-count">{streak}</span> {week_word}.</p>'
-        )
 
     parts.append('</section>')
     return '\n'.join(parts)

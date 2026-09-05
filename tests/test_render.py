@@ -1281,7 +1281,9 @@ class TestRenderContributionCalendar:
         assert (
             '<p class="calendar-summary">I have posted '
             '<span class="calendar-post-count">2</span> posts and '
-            '<span class="calendar-note-count">1</span> notes so far.</p>'
+            '<span class="calendar-note-count">1</span> notes so far, '
+            'and have posted every week for the last '
+            '<span class="calendar-streak-count">1</span> week.</p>'
         ) in html
 
     def test_summary_excludes_posts_outside_window(self):
@@ -1464,30 +1466,41 @@ class TestPostingStreakSentence:
 
     def test_absent_when_no_posts_at_all(self):
         html = render_archive_page_content([], build_date=date(2026, 5, 24))
-        assert 'calendar-streak' not in html
+        assert 'calendar-streak-count' not in html
+        assert (
+            '<p class="calendar-summary">I have posted '
+            '<span class="calendar-post-count">0</span> posts and '
+            '<span class="calendar-note-count">0</span> notes so far.</p>'
+        ) in html
 
     def test_absent_when_streak_is_zero(self):
         # Last post was three ISO weeks before build_date (week 18); weeks 19
         # and 20 are both fully empty, so there is no current streak.
         posts = [make_dated_post(1, "2026-05-04")]
         html = render_archive_page_content(posts, build_date=date(2026, 5, 24))
-        assert 'calendar-streak' not in html
+        assert 'calendar-streak-count' not in html
+        assert 'so far.</p>' in html
 
-    def test_present_after_calendar_grid_before_section_end(self):
-        # The calendar's outer <div class="calendar"> closes with two
-        # consecutive </div>s (closing .calendar-columns, then .calendar
-        # itself); the streak paragraph sits directly after that, and the
-        # </section> tag directly after the streak paragraph.
+    def test_streak_clause_is_appended_to_the_summary_paragraph(self):
+        # No standalone <p> element for the streak -- it's one clause tacked
+        # onto the end of the existing calendar-summary paragraph.
         posts = [make_dated_post(1, "2026-05-24")]
         html = render_archive_page_content(posts, build_date=date(2026, 5, 24))
-        assert '</div>\n</div>\n<p class="calendar-streak">' in html
-        assert 'week.</p>\n</section>' in html
+        assert html.count('<p class="calendar-summary">') == 1
+        assert '<p class="calendar-streak">' not in html
+        assert (
+            '<p class="calendar-summary">I have posted '
+            '<span class="calendar-post-count">1</span> posts and '
+            '<span class="calendar-note-count">0</span> notes so far, '
+            'and have posted every week for the last '
+            '<span class="calendar-streak-count">1</span> week.</p>'
+        ) in html
 
     def test_single_week_streak_uses_singular_wording(self):
         posts = [make_dated_post(1, "2026-05-24")]  # build_date's own week only
         html = render_archive_page_content(posts, build_date=date(2026, 5, 24))
         assert (
-            '<p class="calendar-streak">I have posted every week for the last '
+            'so far, and have posted every week for the last '
             '<span class="calendar-streak-count">1</span> week.</p>'
         ) in html
 
@@ -1500,7 +1513,7 @@ class TestPostingStreakSentence:
         ]
         html = render_archive_page_content(posts, build_date=date(2026, 5, 24))
         assert (
-            '<p class="calendar-streak">I have posted every week for the last '
+            'so far, and have posted every week for the last '
             '<span class="calendar-streak-count">2</span> weeks.</p>'
         ) in html
 
