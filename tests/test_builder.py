@@ -2515,11 +2515,22 @@ class TestNoindexPosts:
         build(p)
         assert "Disallow" not in (p / "dist" / "robots.txt").read_text()
 
+    def test_noindex_post_excluded_from_pagefind(self, tmp_path):
+        p = make_project(tmp_path, posts={1: _NOINDEX_MD})
+        build(p)
+        assert "<main data-pagefind-ignore>" in (p / "dist" / "1.html").read_text()
+
     def test_non_noindex_post_not_excluded_from_sitemap(self, tmp_path):
         md = "---\ndate: 2026-05-24\ntitle: Published\nnoindex: false\n---\n\nPublished content\n"
         p = make_project(tmp_path, posts={1: md})
         build(p)
         assert "1.html" in (p / "dist" / "sitemap.xml").read_text()
+
+    def test_non_noindex_post_not_excluded_from_pagefind(self, tmp_path):
+        md = "---\ndate: 2026-05-24\ntitle: Published\nnoindex: false\n---\n\nPublished content\n"
+        p = make_project(tmp_path, posts={1: md})
+        build(p)
+        assert "data-pagefind-ignore" not in (p / "dist" / "1.html").read_text()
 
     def test_non_noindex_post_has_no_robots_meta_tag(self, tmp_path):
         md = "---\ndate: 2026-05-24\ntitle: Published\nnoindex: false\n---\n\nPublished content\n"
@@ -2547,6 +2558,13 @@ class TestNoindexPosts:
         (p / "content" / "about.md").write_text(md)
         build(p)
         assert '<meta name="robots" content="noindex">' in (p / "dist" / "about.html").read_text()
+
+    def test_noindex_special_page_excluded_from_pagefind(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD}, config=_ABOUT_CONFIG)
+        md = "---\ndate: 2026-05-24\ntitle: About\nnoindex: true\n---\n\nAbout content\n"
+        (p / "content" / "about.md").write_text(md)
+        build(p)
+        assert "<main data-pagefind-ignore>" in (p / "dist" / "about.html").read_text()
 
     def test_non_noindex_special_page_not_excluded_from_sitemap(self, tmp_path):
         p = make_project(tmp_path, posts={1: MINIMAL_MD}, config=_ABOUT_CONFIG)

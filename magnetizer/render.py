@@ -174,7 +174,8 @@ def render_article(post, on_index_page, categories=None, ai_disclosure_html=None
 def render_post_page_content(post, newer_url=None, older_url=None, categories=None, ai_disclosure_html=None):
     article = render_article(post, on_index_page=False, categories=categories, ai_disclosure_html=ai_disclosure_html)
 
-    parts = [f'<main>\n{article}\n</main>']
+    main_attrs = ' data-pagefind-ignore' if post.is_noindex else ''
+    parts = [f'<main{main_attrs}>\n{article}\n</main>']
 
     if newer_url or older_url:
         nav_items = []

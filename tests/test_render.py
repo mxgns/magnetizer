@@ -611,6 +611,14 @@ class TestRenderPostPageContent:
         assert "<main>" in html
         assert "</main>" in html
 
+    def test_main_not_pagefind_ignored_by_default(self):
+        html = render_post_page_content(make_post())
+        assert "data-pagefind-ignore" not in html
+
+    def test_main_pagefind_ignored_when_noindex(self):
+        html = render_post_page_content(make_post(is_noindex=True))
+        assert "<main data-pagefind-ignore>" in html
+
     def test_article_inside_main(self):
         html = render_post_page_content(make_post(post_id=1))
         main_start = html.index("<main>")
