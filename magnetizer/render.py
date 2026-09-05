@@ -387,6 +387,28 @@ def _calendar_day_tooltip(d, day_posts):
     return f'{date_str}: {" + ".join(counts)}'
 
 
+def _posting_streak_weeks(posts, build_date):
+    """The number of consecutive ISO calendar weeks, ending with build_date's
+    own week, that have at least one post -- Monday-Sunday weeks, so a post
+    on Monday of one week and Sunday of the next still counts as two
+    consecutive weeks. If build_date's own week has no post yet, it isn't
+    counted as broken (the week isn't over) -- the streak is simply measured
+    from the most recent week that does have one."""
+    weeks_with_posts = {
+        _date.fromisoformat(p.date).isocalendar()[:2]
+        for p in posts
+        if p.date and _date.fromisoformat(p.date) <= build_date
+    }
+    cursor = build_date
+    if cursor.isocalendar()[:2] not in weeks_with_posts:
+        cursor -= _timedelta(days=7)
+    streak = 0
+    while cursor.isocalendar()[:2] in weeks_with_posts:
+        streak += 1
+        cursor -= _timedelta(days=7)
+    return streak
+
+
 def _render_contribution_calendar(posts, build_date, posts_per_page):
     start_date = _calendar_window(build_date)
 
@@ -410,12 +432,24 @@ def _render_contribution_calendar(posts, build_date, posts_per_page):
 
     month_labels = _calendar_month_labels(start_date)
 
+    streak = _posting_streak_weeks(posts, build_date)
+    summary = (
+        '<p class="calendar-summary">I have posted '
+        f'<strong><span class="calendar-post-count">{post_count}</span> posts</strong> and '
+        f'<strong><span class="calendar-note-count">{note_count}</span> notes</strong> so far'
+    )
+    if streak:
+        week_word = "week" if streak == 1 else "weeks"
+        summary += (
+            ', and have posted every week for the last '
+            f'<strong>{streak} {week_word}</strong>'
+        )
+    summary += '.</p>'
+
     parts = [
         '<section class="contribution-calendar">',
         '<h2>Publishing calendar</h2>',
-        '<p class="calendar-summary">I have posted '
-        f'<span class="calendar-post-count">{post_count}</span> posts and '
-        f'<span class="calendar-note-count">{note_count}</span> notes so far.</p>',
+        summary,
         '<div class="calendar">',
         '<div class="calendar-months">',
     ]

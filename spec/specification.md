@@ -1047,7 +1047,9 @@ A GitHub-style calendar of posting activity, always present at the top of [the a
 
 The calendar covers a rolling 370-day window ending exactly on the build date, split into 37 columns of 10 days each: `start_date = build_date - 369 days`. Unlike a calendar-week-aligned grid, this isn't anchored to any weekday boundary — a column is simply "10 consecutive days," and the very last cell of the very last column is always the build date itself, whatever day of the week that happens to be. There is deliberately no per-row weekday meaning (row 3 might be a Tuesday in one column and a Friday in the next) — this is a considered trade-off in exchange for build_date always sitting in the same (bottom-right) place in the grid.
 
-Below the heading, a summary paragraph (`<p class="calendar-summary">`) states the same window's totals in prose, split by type: `I have posted {X} posts and {Y} notes so far`, where `X` is the count of non-Note published posts and `Y` is the count of Notes falling within the window — again no singular/plural variant. The heading itself is always the literal text `Publishing calendar`, with no post count in it, and comes *before* the summary paragraph.
+Below the heading, a summary paragraph (`<p class="calendar-summary">`) states the same window's totals in prose, split by type: `I have posted {X} posts and {Y} notes so far`, where `X` is the count of non-Note published posts and `Y` is the count of Notes falling within the window — again no singular/plural variant. The heading itself is always the literal text `Publishing calendar`, with no post count in it, and comes *before* the summary paragraph. `{X} posts` and `{Y} notes` are each wrapped whole in a `<strong>` (with the bare count still separately wrapped in its own `.calendar-post-count`/`.calendar-note-count` `<span>` for numeric styling, e.g. `font-variant-numeric: tabular-nums`) — `<strong>{X} posts</strong>`, not just the digits — so the emphasis is semantic HTML, not something a project's CSS has to opt into.
+
+When there is a current posting streak, that same paragraph continues with a second clause reporting it in calendar weeks, rather than a separate paragraph: `I have posted {X} posts and {Y} notes so far, and have posted every week for the last {N} weeks.` (singular `week` when `N` is 1), with `{N} weeks` likewise wrapped whole in a `<strong>`. A week is a Monday-Sunday ISO calendar week, not a rolling 7-day period, so a post on the Monday of one week and a post on the Sunday of the next still count as two consecutive weeks. `N` is not bounded by the 370-day grid above it — it looks back as far as the streak actually extends. The streak is counted backwards from build date's own week; if that week has no post yet, it isn't treated as a break (the week isn't over), and counting instead starts from the most recent week that does have one. Posts dated after the build date don't count towards this — a post scheduled for later in the current week can't retroactively make the week "already posted". When there is no current streak (`N` would be `0`), the clause — and its leading comma — is omitted entirely, leaving the original `...so far.` sentence unchanged.
 
 Each day in the window is bucketed by how many posts fall on it: `level-0` (zero), `level-1`, `level-2`, `level-3`, `level-4`, or `level-5` (five or more). A day with one or more posts is a link (`<a>`) to the **newest** post from that day (highest post ID) — not that post's own page, but its anchor on whichever index page it appears on: `{INDEX_PAGE_URL}#post-{post-id}`, using the same pagination as [index pages](#index-pages) (`posts_per_page`, positions in the reverse-chronological post list). A day with no posts is a non-interactive `<span>`. Because the window always ends exactly on the build date, there is no "hasn't happened yet" case any more — every one of the 370 cells is always a real day.
 
@@ -1058,7 +1060,7 @@ The `MAGNETIZER_CONTENT` structure is:
 ```html
 <section class="contribution-calendar">
 <h2>Publishing calendar</h2>
-<p class="calendar-summary">I have posted <span class="calendar-post-count">X</span> posts and <span class="calendar-note-count">Y</span> notes so far.</p>
+<p class="calendar-summary">I have posted <strong><span class="calendar-post-count">X</span> posts</strong> and <strong><span class="calendar-note-count">Y</span> notes</strong> so far, and have posted every week for the last <strong>N weeks</strong>.</p>
 <div class="calendar">
 <div class="calendar-months">
   <span class="calendar-month">Aug</span>
@@ -1081,6 +1083,7 @@ The `MAGNETIZER_CONTENT` structure is:
 - `.calendar-columns` always has exactly 37 `.calendar-column` columns of exactly 10 cells each, for 370 cells total regardless of how many posts exist — every cell is a real day box (`.calendar-day`, either `<span>` or `<a>`).
 - There's no weekday-label column — the calendar has no reserved space for row labels, so it's free to fill the full width of its container.
 - As with every other generated page, Magnetizer emits no inline styles — the grid's actual layout, cell sizing, and `level-0`–`level-5` colour scale are entirely the responsibility of the project's own `resources/` CSS.
+- The `..., and have posted every week for the last N weeks` clause is omitted entirely — not just left with `N=0` — when there's no current streak.
 
 ### Notes pages
 
