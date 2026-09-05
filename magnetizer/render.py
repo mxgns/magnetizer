@@ -7,6 +7,14 @@ from magnetizer.content import resized_filename as _resized_filename
 
 _DEFAULT_AI_DISCLOSURE_TEXT = 'The contents of this post have been entirely or partially created using AI.'
 
+_SEARCH_ICON_SVG = (
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640">'
+    '<path d="M480 272C480 317.9 465.1 360.3 440 394.7L566.6 521.4C579.1 533.9 579.1 554.2 566.6 566.7'
+    'C554.1 579.2 533.8 579.2 521.3 566.7L394.7 440C360.3 465.1 317.9 480 272 480C157.1 480 64 386.9 64 272'
+    'C64 157.1 157.1 64 272 64C386.9 64 480 157.1 480 272zM272 416C351.5 416 416 351.5 416 272'
+    'C416 192.5 351.5 128 272 128C192.5 128 128 192.5 128 272C128 351.5 192.5 416 272 416z"/></svg>'
+)
+
 
 def _render_ai_disclosure(ai_disclosure_html):
     text = ai_disclosure_html or _DEFAULT_AI_DISCLOSURE_TEXT
@@ -116,7 +124,7 @@ def render_article(post, on_index_page, categories=None, ai_disclosure_html=None
     if on_index_page:
         parts.append(f'<h2><a href="{post.url}">{heading_text}</a></h2>')
     else:
-        parts.append(f'<h1>{heading_text}</h1>')
+        parts.append(f'<h1 data-pagefind-meta="title">{heading_text}</h1>')
 
     hidden_top = max(0, len(top_images) - images_per_post) if on_index_page else 0
 
@@ -140,9 +148,11 @@ def render_article(post, on_index_page, categories=None, ai_disclosure_html=None
     if post.date:
         if on_index_page:
             date_content = f'<a href="{post.url}">{post.date_uk}</a>'
+            time_attrs = ''
         else:
             date_content = post.date_uk
-        footer_parts = [f'<time datetime="{post.date}">{date_content}</time>']
+            time_attrs = ' data-pagefind-meta="date"'
+        footer_parts = [f'<time datetime="{post.date}"{time_attrs}>{date_content}</time>']
         if post.post_type == "note":
             footer_parts.append('<a href="notes.html" class="notes">Short note</a>')
         if post.category and categories and post.category in categories:
@@ -164,7 +174,8 @@ def render_article(post, on_index_page, categories=None, ai_disclosure_html=None
 def render_post_page_content(post, newer_url=None, older_url=None, categories=None, ai_disclosure_html=None):
     article = render_article(post, on_index_page=False, categories=categories, ai_disclosure_html=ai_disclosure_html)
 
-    parts = [f'<main>\n{article}\n</main>']
+    main_attrs = ' data-pagefind-ignore' if post.is_noindex else ''
+    parts = [f'<main{main_attrs}>\n{article}\n</main>']
 
     if newer_url or older_url:
         nav_items = []
@@ -180,7 +191,7 @@ def render_post_page_content(post, newer_url=None, older_url=None, categories=No
 
 def render_index_page_content(posts, page_num, total_pages, categories=None, ai_disclosure_html=None, images_per_post=2):
     articles = '\n'.join(render_article(p, on_index_page=True, categories=categories, ai_disclosure_html=ai_disclosure_html, images_per_post=images_per_post) for p in posts)
-    content = f'<main>\n{articles}\n</main>'
+    content = f'<main data-pagefind-ignore>\n{articles}\n</main>'
 
     if total_pages > 1:
         nav_items = []
@@ -197,7 +208,7 @@ def render_index_page_content(posts, page_num, total_pages, categories=None, ai_
 
 def render_category_page_content(posts, category_name, category_slug, page_num, total_pages, categories=None, ai_disclosure_html=None, images_per_post=2):
     articles = '\n'.join(render_article(p, on_index_page=True, categories=categories, ai_disclosure_html=ai_disclosure_html, images_per_post=images_per_post) for p in posts)
-    content = f'<main>\n<h1>{_escape(category_name)}</h1>\n{articles}\n</main>'
+    content = f'<main data-pagefind-ignore>\n<h1>{_escape(category_name)}</h1>\n{articles}\n</main>'
 
     if total_pages > 1:
         nav_items = []
@@ -215,7 +226,7 @@ def render_category_page_content(posts, category_name, category_slug, page_num, 
 
 def render_notes_page_content(posts, page_num, total_pages, categories=None, ai_disclosure_html=None, images_per_post=2):
     articles = '\n'.join(render_article(p, on_index_page=True, categories=categories, ai_disclosure_html=ai_disclosure_html, images_per_post=images_per_post) for p in posts)
-    content = f'<main>\n<h1>Short notes</h1>\n{articles}\n</main>'
+    content = f'<main data-pagefind-ignore>\n<h1>Short notes</h1>\n{articles}\n</main>'
 
     if total_pages > 1:
         nav_items = []
@@ -242,7 +253,7 @@ def render_gallery_page_content(photos, page_num, total_pages):
             f'</a></li>'
         )
     content = (
-        f'<main>\n<h1>Photo archive</h1>\n'
+        f'<main data-pagefind-ignore>\n<h1>Photo archive</h1>\n'
         f'<p>These are all the photos from my blog posts.</p>\n'
         f'<ul id="gallery">\n{"".join(items)}\n</ul>\n</main>'
     )
@@ -259,6 +270,26 @@ def render_gallery_page_content(photos, page_num, total_pages):
 
     content += '\n<nav><a href="index.html">Blog home</a></nav>'
     return content
+
+
+def render_search_page_content():
+    """The static shell for search.html. All query-reading, result-fetching
+    and result-rendering happens client-side (search.js against Pagefind's
+    index), since this page is generated once and has no server to consult
+    at request time."""
+    return (
+        '<main data-pagefind-ignore>\n'
+        '<h1>Search</h1>\n'
+        '<form role="search" id="search-form">\n'
+        '<label for="search-input" class="visually-hidden">Search</label>\n'
+        '<input id="search-input" name="q" type="search" placeholder="Search…" autocomplete="off">\n'
+        f'<button type="submit" aria-label="Search">{_SEARCH_ICON_SVG}</button>\n'
+        '<button type="button" id="search-clear" class="search-clear" aria-label="Clear search" hidden>×</button>\n'
+        '</form>\n'
+        '<p id="search-status" class="search-status" aria-live="polite"></p>\n'
+        '<div id="search-results"></div>\n'
+        '</main>'
+    )
 
 
 def _nav_item_class(href):
@@ -302,12 +333,13 @@ def render_metadata(title, canonical=None, meta_description=None, is_noindex=Fal
     return '\n'.join(lines)
 
 
-def render_template(template_html, title, content, canonical=None, meta_description=None, navigation='', is_noindex=False, page_id=''):
+def render_template(template_html, title, content, canonical=None, meta_description=None, navigation='', is_noindex=False, page_id='', page_scripts=''):
     metadata = render_metadata(title, canonical=canonical, meta_description=meta_description, is_noindex=is_noindex)
     html = template_html.replace('MAGNETIZER_METADATA', metadata)
     html = html.replace('MAGNETIZER_NAVIGATION', navigation)
     html = html.replace('MAGNETIZER_CONTENT', content)
     html = html.replace('MAGNETIZER_PAGE_ID', page_id)
+    html = html.replace('MAGNETIZER_PAGE_SCRIPTS', page_scripts)
     return html
 
 
@@ -491,7 +523,7 @@ def render_archive_page_content(posts, categories=None, build_date=None, posts_p
 
     notes_count = sum(1 for p in posts if p.post_type == "note")
 
-    parts = ['<main>', '<h1>Archive</h1>']
+    parts = ['<main data-pagefind-ignore>', '<h1>Archive</h1>']
     parts.append(_render_contribution_calendar(posts, build_date or _date.today(), posts_per_page))
 
     category_block = []

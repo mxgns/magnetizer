@@ -2088,6 +2088,60 @@ class TestArchivePage:
 
 
 # ---------------------------------------------------------------------------
+# Search page
+# ---------------------------------------------------------------------------
+
+class TestSearchPage:
+
+    def test_search_html_created_after_build_with_changes(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD})
+        build(p)
+        assert (p / "dist" / "search.html").exists()
+
+    def test_search_html_not_created_on_single_file_build(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD})
+        build(p, filename="1.md")
+        assert not (p / "dist" / "search.html").exists()
+
+    def test_search_html_not_created_when_no_changes(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD})
+        build(p)
+        (p / "dist" / "search.html").unlink()
+        build(p)  # no changes — search.html should not be recreated
+        assert not (p / "dist" / "search.html").exists()
+
+    def test_search_title_includes_site_name(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD})
+        build(p)
+        assert "<title>Search - Test Blog</title>" in (p / "dist" / "search.html").read_text()
+
+    def test_search_page_has_heading(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD})
+        build(p)
+        assert "<h1>Search</h1>" in (p / "dist" / "search.html").read_text()
+
+    def test_search_page_loads_search_js(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD})
+        build(p)
+        assert "resources/search.js" in (p / "dist" / "search.html").read_text()
+
+    def test_search_page_ignored_by_pagefind(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD})
+        build(p)
+        assert "<main data-pagefind-ignore>" in (p / "dist" / "search.html").read_text()
+
+    def test_search_page_in_sitemap(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD})
+        build(p)
+        assert "search.html" in (p / "dist" / "sitemap.xml").read_text()
+
+    def test_search_page_canonical_url(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD})
+        build(p)
+        assert 'href="https://example.github.io/search.html"' in (p / "dist" / "search.html").read_text()
+
+
+# ---------------------------------------------------------------------------
 # Alt text warnings
 # ---------------------------------------------------------------------------
 
@@ -2461,11 +2515,22 @@ class TestNoindexPosts:
         build(p)
         assert "Disallow" not in (p / "dist" / "robots.txt").read_text()
 
+    def test_noindex_post_excluded_from_pagefind(self, tmp_path):
+        p = make_project(tmp_path, posts={1: _NOINDEX_MD})
+        build(p)
+        assert "<main data-pagefind-ignore>" in (p / "dist" / "1.html").read_text()
+
     def test_non_noindex_post_not_excluded_from_sitemap(self, tmp_path):
         md = "---\ndate: 2026-05-24\ntitle: Published\nnoindex: false\n---\n\nPublished content\n"
         p = make_project(tmp_path, posts={1: md})
         build(p)
         assert "1.html" in (p / "dist" / "sitemap.xml").read_text()
+
+    def test_non_noindex_post_not_excluded_from_pagefind(self, tmp_path):
+        md = "---\ndate: 2026-05-24\ntitle: Published\nnoindex: false\n---\n\nPublished content\n"
+        p = make_project(tmp_path, posts={1: md})
+        build(p)
+        assert "data-pagefind-ignore" not in (p / "dist" / "1.html").read_text()
 
     def test_non_noindex_post_has_no_robots_meta_tag(self, tmp_path):
         md = "---\ndate: 2026-05-24\ntitle: Published\nnoindex: false\n---\n\nPublished content\n"
@@ -2493,6 +2558,13 @@ class TestNoindexPosts:
         (p / "content" / "about.md").write_text(md)
         build(p)
         assert '<meta name="robots" content="noindex">' in (p / "dist" / "about.html").read_text()
+
+    def test_noindex_special_page_excluded_from_pagefind(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD}, config=_ABOUT_CONFIG)
+        md = "---\ndate: 2026-05-24\ntitle: About\nnoindex: true\n---\n\nAbout content\n"
+        (p / "content" / "about.md").write_text(md)
+        build(p)
+        assert "<main data-pagefind-ignore>" in (p / "dist" / "about.html").read_text()
 
     def test_non_noindex_special_page_not_excluded_from_sitemap(self, tmp_path):
         p = make_project(tmp_path, posts={1: MINIMAL_MD}, config=_ABOUT_CONFIG)

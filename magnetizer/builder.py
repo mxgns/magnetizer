@@ -41,6 +41,7 @@ from magnetizer.render import (
     render_navigation,
     render_page_title,
     render_post_page_content,
+    render_search_page_content,
     render_template,
 )
 from magnetizer.feed import render_feed
@@ -724,6 +725,18 @@ def _write_generated_pages(published_posts_sorted_desc, dist_dir, config, templa
     (dist_dir / "archive.html").write_text(archive_html)
     log(("UPDATED", "archive.html"))
 
+    search_html = render_template(
+        template,
+        title=render_page_title(config["site_name"], "Search", page_num=None),
+        content=render_search_page_content(),
+        canonical=canonical_url(config["site_url"], "search.html"),
+        navigation=render_navigation(config["navigation"], "search.html"),
+        page_id="search",
+        page_scripts='<script type="module" src="resources/search.js"></script>',
+    )
+    (dist_dir / "search.html").write_text(search_html)
+    log(("UPDATED", "search.html"))
+
 
 def _write_sitemap_and_robots(published_post_ids_sorted_desc, published_posts_sorted_desc, posts_cache, content_dir, dist_dir, config, special_page_posts_by_name, log, photos):
     per_page = config["posts_per_page"]
@@ -779,6 +792,7 @@ def _write_sitemap_and_robots(published_post_ids_sorted_desc, published_posts_so
         ]
         sitemap_pages.append((f"{name}.html", _lastmod(page_files)))
     sitemap_pages.append(("archive.html", index_lastmod))
+    sitemap_pages.append(("search.html", None))
     (dist_dir / "sitemap.xml").write_text(render_sitemap(sitemap_pages, config))
     log(("UPDATED", "sitemap.xml"))
     (dist_dir / "robots.txt").write_text(render_robots_txt(config))

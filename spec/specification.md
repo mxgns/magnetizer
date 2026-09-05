@@ -310,7 +310,8 @@ The following placeholders are available:
 | `MAGNETIZER_CONTENT` | Yes | The generated page content — one post for an individual post page or multiple posts for an index page. |
 | `MAGNETIZER_BUILD_ID` | No | A Unix timestamp generated at build time, e.g. `1748123456`. Useful for cache-busting static assets: `<link rel="stylesheet" href="resources/style.css?v=MAGNETIZER_BUILD_ID">`. The same value is used across all pages in a single build. |
 | `MAGNETIZER_NAVIGATION` | No | A `<ul>` of nav links built from `navigation` in config. See [Navigation](#navigation). Replaced with an empty string when `navigation` is not configured. |
-| `MAGNETIZER_PAGE_ID` | No | The current page's identifier: a post's id (e.g. `56`), a special/404 page's name (e.g. `about`), a category slug (e.g. `photography`), or the page's own filename stem otherwise (e.g. `index`, `index-2`, `notes`, `archive`). Always the bare id — never includes `.html`. Magnetizer has no built-in use for this itself; it exists so a template can key off which page is being rendered, e.g. for a per-page analytics beacon. |
+| `MAGNETIZER_PAGE_ID` | No | The current page's identifier: a post's id (e.g. `56`), a special/404 page's name (e.g. `about`), a category slug (e.g. `photography`), or the page's own filename stem otherwise (e.g. `index`, `index-2`, `notes`, `archive`, `search`). Always the bare id — never includes `.html`. Magnetizer has no built-in use for this itself; it exists so a template can key off which page is being rendered, e.g. for a per-page analytics beacon. |
+| `MAGNETIZER_PAGE_SCRIPTS` | No | Empty string on every page except `search.html`, where it's a `<script>` tag loading the project's own `resources/search.js` — see [Search page](#search-page). Place it just before `</body>` so no other page pays for that script. |
 
 The following template is required in `templates/`:
 
@@ -1442,6 +1443,51 @@ This deliberately diverges from `sitemap.xml`, which excludes `noindex` pages an
 - A post's `title` follows the same fallback chain as the archive listing (see [Archive page](#archive-page)): its `title` frontmatter, then `name`, then the first paragraph of its body (truncated to 40 characters at a word boundary), then a generated label (e.g. "Photo posted 24 May 2026").
 - A special page's `title` follows the simpler title/name/generated-label chain used for its own page title (no excerpt fallback) — special pages are assumed to always have an explicit `title` set.
 - Index pages use `index_title` from config (falling back to `site_name` if unset); category pages use the category's display name; the notes page uses "Short notes"; the gallery uses "Photos"; the archive uses "Archive". Pages 2 and beyond of a paginated set append `" (page N)"`.
+
+<a id="search-page"></a>
+## Search page
+
+Every full build generates `dist/search.html`, plus a [Pagefind](https://pagefind.app) index over `dist/` (see below). Magnetizer generates no search JavaScript itself — the same posture as [Load more](#load-more): a stable contract that a project's own `resources/search.js` builds on.
+
+`search.html`'s `MAGNETIZER_CONTENT` is a static shell, since the page is generated once at build time and there is no server to consult a `?q=` query parameter against at request time — all query-reading and result-rendering is necessarily client-side:
+
+```html
+<main data-pagefind-ignore>
+<h1>Search</h1>
+<form role="search" id="search-form">
+<label for="search-input" class="visually-hidden">Search</label>
+<input id="search-input" name="q" type="search" placeholder="Search…" autocomplete="off">
+<button type="submit" aria-label="Search">SEARCH_ICON_SVG</button>
+<button type="button" id="search-clear" class="search-clear" aria-label="Clear search" hidden>×</button>
+</form>
+<p id="search-status" class="search-status" aria-live="polite"></p>
+<div id="search-results"></div>
+</main>
+```
+
+Notes:
+
+- `search.html` is generated under the same conditions as `archive.html` — on full builds, not on single-file preview builds.
+- The page title is `Search - {site_name}`.
+- `SEARCH_ICON_SVG` is a fixed magnifying-glass icon Magnetizer embeds directly (not project-configurable), reused so the submit control inside the form matches whatever icon a project's own template uses for the search link in its header nav.
+- The clear button (`#search-clear`) is always present but `hidden` in the generated markup — a project's `search.js` is responsible for un-hiding it once the input has text, and for wiring its click to clear the query and return to the initial state.
+- `#search-results` and `#search-status` start empty; `search.js` populates them after reading `location.search` and querying Pagefind's index at `/pagefind/pagefind.js`.
+- `search.html` is not part of `MAGNETIZER_NAVIGATION` — it isn't a `navigation` config entry, since a search icon in the header (as opposed to a text nav link) is a project template concern, not something Magnetizer generates.
+
+### Pagefind indexing
+
+After every build — full or single-file preview — Magnetizer runs `npx --yes pagefind@1.5.2 --site dist/` (a pinned version, so a bare `npx pagefind` can't silently pick up a newer release and change the generated index's format/behaviour between builds), writing `dist/pagefind/`. This requires Node and, on first run on a machine, network access to resolve the `pagefind` npm package. A nonzero exit, a timeout, or a missing `npx` binary aborts the build with a red `ERROR`, the same as a failed `--push`; there is no flag to skip or downgrade this to a warning.
+
+To avoid indexing the same article twice — once on its own canonical page, once again embedded in an index/category/notes/archive/gallery listing — Magnetizer marks the `<main>` of every multi-post listing page (`render_index_page_content`, `render_category_page_content`, `render_notes_page_content`, `render_archive_page_content`, `render_gallery_page_content`) with `data-pagefind-ignore`. `render_post_page_content`'s `<main>` (an individual post's, special page's, or the 404 page's own page — all three share this render path) is left unmarked, so Pagefind indexes each one exactly once, at its canonical URL — unless the post is `noindex: true`, in which case `render_post_page_content` marks its own `<main>` too, consistent with that page already being excluded from `sitemap.xml`: a page search engines shouldn't index shouldn't turn up in the site's own search either.
+
+On that canonical page, `render_article`'s heading and date carry structured metadata so Pagefind's result title/date don't have to be scraped from the `<title>` tag (formatted as `{post_title} - {site_name}`, see [Metadata](#metadata)) or guessed from body text:
+
+- `<h1 data-pagefind-meta="title">` — only in the single-post (`on_index_page=False`) rendering path.
+- `<time datetime="..." data-pagefind-meta="date">` — likewise only on the single-post path.
+
+Category is deliberately not given `data-pagefind-meta` treatment — Pagefind's excerpt/highlighting already covers the "give enough context" requirement, and turning category into a structured filter would edge toward faceted search, which is a project-level UX decision, not something Magnetizer should bake in.
+
+`search.html` itself is `data-pagefind-ignore`d, so it never appears as a search result. A project's own template is responsible for excluding its own repeated chrome (header, footer, nav) from indexing the same way — Magnetizer only controls attributes on the content it generates, not a project's hand-written template markup.
 
 ## GitHub integration
 
