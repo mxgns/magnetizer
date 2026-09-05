@@ -1470,17 +1470,17 @@ Notes:
 - `search.html` is generated under the same conditions as `archive.html` — on full builds, not on single-file preview builds.
 - The page title is `Search - {site_name}`.
 - `SEARCH_ICON_SVG` is a fixed magnifying-glass icon Magnetizer embeds directly (not project-configurable), reused so the submit control inside the form matches whatever icon a project's own template uses for the search link in its header nav.
-- The clear button (`#search-clear`) is always present but `hidden` in the generated markup — a project's `search.js` is responsible for un-hiding it once the input has text, and for wiring its click to clear the query and return to the initial state (see [Clearing a search](#clearing-a-search) in the site-level UX spec, if one exists for the project).
+- The clear button (`#search-clear`) is always present but `hidden` in the generated markup — a project's `search.js` is responsible for un-hiding it once the input has text, and for wiring its click to clear the query and return to the initial state.
 - `#search-results` and `#search-status` start empty; `search.js` populates them after reading `location.search` and querying Pagefind's index at `/pagefind/pagefind.js`.
 - `search.html` is not part of `MAGNETIZER_NAVIGATION` — it isn't a `navigation` config entry, since a search icon in the header (as opposed to a text nav link) is a project template concern, not something Magnetizer generates.
 
 ### Pagefind indexing
 
-After every build — full or single-file preview — Magnetizer runs `npx --yes pagefind --site dist/`, writing `dist/pagefind/`. This requires Node and, on first run on a machine, network access to resolve the `pagefind` npm package. A nonzero exit or a missing `npx` binary aborts the build with a red `ERROR`, the same as a failed `--push`; there is no flag to skip or downgrade this to a warning.
+After every build — full or single-file preview — Magnetizer runs `npx --yes pagefind@1.5.2 --site dist/` (a pinned version, so a bare `npx pagefind` can't silently pick up a newer release and change the generated index's format/behaviour between builds), writing `dist/pagefind/`. This requires Node and, on first run on a machine, network access to resolve the `pagefind` npm package. A nonzero exit, a timeout, or a missing `npx` binary aborts the build with a red `ERROR`, the same as a failed `--push`; there is no flag to skip or downgrade this to a warning.
 
 To avoid indexing the same article twice — once on its own canonical page, once again embedded in an index/category/notes/archive/gallery listing — Magnetizer marks the `<main>` of every multi-post listing page (`render_index_page_content`, `render_category_page_content`, `render_notes_page_content`, `render_archive_page_content`, `render_gallery_page_content`) with `data-pagefind-ignore`. `render_post_page_content`'s `<main>` (an individual post's, special page's, or the 404 page's own page — all three share this render path) is left unmarked, so Pagefind indexes each one exactly once, at its canonical URL — unless the post is `noindex: true`, in which case `render_post_page_content` marks its own `<main>` too, consistent with that page already being excluded from `sitemap.xml`: a page search engines shouldn't index shouldn't turn up in the site's own search either.
 
-On that canonical page, `render_article`'s heading and date carry structured metadata so Pagefind's result title/date don't have to be scraped from the `<title>` tag (which includes the ` - {site_name}` suffix) or guessed from body text:
+On that canonical page, `render_article`'s heading and date carry structured metadata so Pagefind's result title/date don't have to be scraped from the `<title>` tag (formatted as `{post_title} - {site_name}`, see [Metadata](#metadata)) or guessed from body text:
 
 - `<h1 data-pagefind-meta="title">` — only in the single-post (`on_index_page=False`) rendering path.
 - `<time datetime="..." data-pagefind-meta="date">` — likewise only on the single-post path.
