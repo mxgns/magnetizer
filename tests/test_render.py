@@ -1545,6 +1545,14 @@ class TestPostingStreakSentence:
         html = render_archive_page_content(posts, build_date=date(2026, 5, 24))
         assert '<strong>2 weeks</strong>' in html
 
+    def test_future_dated_post_this_week_does_not_start_the_streak_early(self):
+        # build_date is a Monday; the only post is dated the Sunday later in
+        # that same ISO week -- i.e. in the future relative to build_date.
+        # The week isn't "posted" yet just because a later post exists.
+        posts = [make_dated_post(1, "2026-05-24")]  # Sunday, ISO week 21
+        html = render_archive_page_content(posts, build_date=date(2026, 5, 18))  # Monday, ISO week 21
+        assert 'and have posted every week for the last' not in html
+
 
 # ---------------------------------------------------------------------------
 # render_archive_page_content — categories list

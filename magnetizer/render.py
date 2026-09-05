@@ -396,7 +396,8 @@ def _posting_streak_weeks(posts, build_date):
     from the most recent week that does have one."""
     weeks_with_posts = {
         _date.fromisoformat(p.date).isocalendar()[:2]
-        for p in posts if p.date
+        for p in posts
+        if p.date and _date.fromisoformat(p.date) <= build_date
     }
     cursor = build_date
     if cursor.isocalendar()[:2] not in weeks_with_posts:
