@@ -2088,6 +2088,60 @@ class TestArchivePage:
 
 
 # ---------------------------------------------------------------------------
+# Search page
+# ---------------------------------------------------------------------------
+
+class TestSearchPage:
+
+    def test_search_html_created_after_build_with_changes(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD})
+        build(p)
+        assert (p / "dist" / "search.html").exists()
+
+    def test_search_html_not_created_on_single_file_build(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD})
+        build(p, filename="1.md")
+        assert not (p / "dist" / "search.html").exists()
+
+    def test_search_html_not_created_when_no_changes(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD})
+        build(p)
+        (p / "dist" / "search.html").unlink()
+        build(p)  # no changes — search.html should not be recreated
+        assert not (p / "dist" / "search.html").exists()
+
+    def test_search_title_includes_site_name(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD})
+        build(p)
+        assert "<title>Search - Test Blog</title>" in (p / "dist" / "search.html").read_text()
+
+    def test_search_page_has_heading(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD})
+        build(p)
+        assert "<h1>Search</h1>" in (p / "dist" / "search.html").read_text()
+
+    def test_search_page_loads_search_js(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD})
+        build(p)
+        assert "resources/search.js" in (p / "dist" / "search.html").read_text()
+
+    def test_search_page_ignored_by_pagefind(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD})
+        build(p)
+        assert "<main data-pagefind-ignore>" in (p / "dist" / "search.html").read_text()
+
+    def test_search_page_in_sitemap(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD})
+        build(p)
+        assert "search.html" in (p / "dist" / "sitemap.xml").read_text()
+
+    def test_search_page_canonical_url(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD})
+        build(p)
+        assert 'href="https://example.github.io/search.html"' in (p / "dist" / "search.html").read_text()
+
+
+# ---------------------------------------------------------------------------
 # Alt text warnings
 # ---------------------------------------------------------------------------
 

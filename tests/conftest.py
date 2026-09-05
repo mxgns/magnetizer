@@ -2,7 +2,8 @@ from magnetizer.content import Comment, Image, Post
 
 TEMPLATE = (
     "<!DOCTYPE html><html><head>MAGNETIZER_METADATA</head>"
-    "<body><nav>MAGNETIZER_NAVIGATION</nav>MAGNETIZER_CONTENT</body></html>"
+    "<body><nav>MAGNETIZER_NAVIGATION</nav>MAGNETIZER_CONTENT"
+    "MAGNETIZER_PAGE_SCRIPTS</body></html>"
 )
 MINIMAL_MD = "---\ndate: 2026-05-24\n---\n\nHello world\n"
 _DEFAULT_CONFIG = "site_name: Test Blog\nsite_url: https://example.github.io\nposts_per_page: 2\n"

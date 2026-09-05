@@ -21,6 +21,7 @@ from magnetizer.render import (
     render_navigation,
     render_page_title,
     render_post_page_content,
+    render_search_page_content,
     render_template,
 )
 from conftest import make_comment, make_post
@@ -94,7 +95,7 @@ class TestRenderArticleStructure:
 
     def test_time_element_with_datetime_attribute(self):
         html = render_article(make_post(date="2026-05-24"), on_index_page=False)
-        assert '<time datetime="2026-05-24">' in html
+        assert '<time datetime="2026-05-24" data-pagefind-meta="date">' in html
 
     def test_time_element_contains_uk_date(self):
         html = render_article(make_post(date_uk="24 May 2026"), on_index_page=False)
@@ -121,28 +122,28 @@ class TestRenderArticleTitle:
 
     def test_h1_fallback_text_uses_name_when_set(self):
         html = render_article(make_post(title=None, name="A quiet morning"), on_index_page=False)
-        assert "<h1>A quiet morning</h1>" in html
+        assert '<h1 data-pagefind-meta="title">A quiet morning</h1>' in html
 
     def test_h1_fallback_text_uses_generated_note_label_when_no_images(self):
         html = render_article(make_post(title=None, date_uk="24 May 2026", images=[]), on_index_page=False)
-        assert "<h1>Note posted 24 May 2026</h1>" in html
+        assert '<h1 data-pagefind-meta="title">Note posted 24 May 2026</h1>' in html
 
     def test_h1_fallback_text_uses_generated_photo_label_singular(self):
         html = render_article(
             make_post(title=None, date_uk="24 May 2026", images=["1-image-01.jpg"]), on_index_page=False
         )
-        assert "<h1>Photo posted 24 May 2026</h1>" in html
+        assert '<h1 data-pagefind-meta="title">Photo posted 24 May 2026</h1>' in html
 
     def test_h1_fallback_text_uses_generated_photos_label_plural(self):
         html = render_article(
             make_post(title=None, date_uk="24 May 2026", images=["1-image-01.jpg", "1-image-02.jpg"]),
             on_index_page=False,
         )
-        assert "<h1>Photos posted 24 May 2026</h1>" in html
+        assert '<h1 data-pagefind-meta="title">Photos posted 24 May 2026</h1>' in html
 
     def test_h1_fallback_text_omits_date_when_post_has_no_date(self):
         html = render_article(make_post(title=None, date_uk=None, images=[]), on_index_page=False)
-        assert "<h1>Note</h1>" in html
+        assert '<h1 data-pagefind-meta="title">Note</h1>' in html
 
     def test_h1_fallback_text_ignores_inline_only_images(self):
         html = render_article(
@@ -152,7 +153,7 @@ class TestRenderArticleTitle:
             ),
             on_index_page=False,
         )
-        assert "<h1>Note posted 24 May 2026</h1>" in html
+        assert '<h1 data-pagefind-meta="title">Note posted 24 May 2026</h1>' in html
 
     def test_h2_fallback_text_on_index_page_wrapped_in_link(self):
         html = render_article(make_post(post_id=5, title=None, name="A quiet morning"), on_index_page=True)
@@ -183,7 +184,7 @@ class TestRenderArticleLinks:
 
     def test_h1_has_no_link_on_post_page(self):
         html = render_article(make_post(post_id=3, title="My Title"), on_index_page=False)
-        assert '<h1>My Title</h1>' in html
+        assert '<h1 data-pagefind-meta="title">My Title</h1>' in html
 
     def test_time_contains_link_on_index_page(self):
         html = render_article(make_post(post_id=3, date="2026-05-24", date_uk="24 May 2026"), on_index_page=True)
@@ -240,7 +241,7 @@ class TestRenderArticleImages:
             on_index_page=False,
         )
         images_pos = html.index("post-images")
-        h1_pos = html.index("<h1>")
+        h1_pos = html.index("<h1 ")
         body_pos = html.index("post-body")
         assert images_pos < h1_pos < body_pos
 
@@ -631,7 +632,7 @@ class TestRenderPostPageContent:
 
     def test_article_rendered_without_links(self):
         html = render_post_page_content(make_post(post_id=1, title="T"))
-        assert '<h1>T</h1>' in html
+        assert '<h1 data-pagefind-meta="title">T</h1>' in html
 
     def test_ai_disclosure_html_threaded_through(self):
         custom = 'Custom disclosure with a <a href="48.html">link</a>.'
@@ -697,7 +698,7 @@ class TestRenderIndexPageContent:
     def test_articles_wrapped_in_main(self):
         posts = [make_post(post_id=1), make_post(post_id=2)]
         html = render_index_page_content(posts, page_num=1, total_pages=1)
-        assert "<main>" in html
+        assert "<main data-pagefind-ignore>" in html
         assert html.count("<article") == 2
 
     def test_all_posts_rendered(self):
@@ -937,6 +938,7 @@ class TestRenderTemplate:
     TEMPLATE = "<head>MAGNETIZER_METADATA</head><body>MAGNETIZER_CONTENT</body>"
     NAVIGATION_TEMPLATE = "<body><nav>MAGNETIZER_NAVIGATION</nav>MAGNETIZER_CONTENT</body>"
     PAGE_ID_TEMPLATE = "<body>MAGNETIZER_CONTENT<span>MAGNETIZER_PAGE_ID</span></body>"
+    PAGE_SCRIPTS_TEMPLATE = "<body>MAGNETIZER_CONTENT MAGNETIZER_PAGE_SCRIPTS</body>"
 
     def test_metadata_placeholder_replaced(self):
         html = render_template(self.TEMPLATE, title="My Page", content="<p>hi</p>")
@@ -969,6 +971,18 @@ class TestRenderTemplate:
     def test_page_id_defaults_to_empty_string(self):
         html = render_template(self.PAGE_ID_TEMPLATE, title="T", content="C")
         assert "<span></span>" in html
+
+    def test_page_scripts_placeholder_replaced(self):
+        html = render_template(
+            self.PAGE_SCRIPTS_TEMPLATE, title="T", content="C",
+            page_scripts='<script src="resources/search.js"></script>',
+        )
+        assert "MAGNETIZER_PAGE_SCRIPTS" not in html
+        assert '<script src="resources/search.js"></script>' in html
+
+    def test_page_scripts_defaults_to_empty_string(self):
+        html = render_template(self.PAGE_SCRIPTS_TEMPLATE, title="T", content="C")
+        assert "<body>C </body>" in html
 
     def test_metadata_omits_canonical_when_not_provided(self):
         html = render_template(self.TEMPLATE, title="T", content="C")
@@ -1119,7 +1133,7 @@ class TestRenderArchivePageContent:
 
     def test_has_main_element(self):
         html = render_archive_page_content([make_dated_post(1, "2026-05-24")])
-        assert "<main>" in html and "</main>" in html
+        assert "<main data-pagefind-ignore>" in html and "</main>" in html
 
     def test_has_back_link_to_homepage(self):
         html = render_archive_page_content([make_dated_post(1, "2026-05-24")])
@@ -1171,7 +1185,7 @@ class TestRenderArchivePageContent:
 
     def test_empty_posts_list(self):
         html = render_archive_page_content([])
-        assert "<main>" in html
+        assert "<main data-pagefind-ignore>" in html
 
     def test_day_has_no_leading_zero_in_span(self):
         html = render_archive_page_content([make_dated_post(1, "2026-05-03", title="Post")])
@@ -1185,7 +1199,7 @@ class TestRenderArchivePageContent:
 
     def test_h1_inside_main(self):
         html = render_archive_page_content([make_dated_post(1, "2026-05-24")])
-        assert html.index("<main>") < html.index("<h1>Archive</h1>")
+        assert html.index("<main data-pagefind-ignore>") < html.index("<h1>Archive</h1>")
 
     def test_no_archive_stats_block(self):
         html = render_archive_page_content([make_dated_post(1, "2026-05-24")])
@@ -2099,7 +2113,7 @@ class TestRenderArticleAiDisclosure:
 
     def test_banner_appears_before_heading_on_single_post(self):
         html = render_article(make_post(is_ai_assisted=True, title="My Post"), on_index_page=False)
-        assert html.index('ai-disclosure') < html.index('<h1>')
+        assert html.index('ai-disclosure') < html.index('<h1 ')
 
     def test_banner_appears_before_heading_on_index_page(self):
         html = render_article(self._post_with_excerpt(is_ai_assisted=True), on_index_page=True)
@@ -2326,7 +2340,7 @@ class TestRenderCategoryPage:
 
     def test_category_page_h1_inside_main(self):
         html = render_category_page_content([make_post()], "Photography", "photography", 1, 1)
-        main_start = html.index('<main>')
+        main_start = html.index('<main data-pagefind-ignore>')
         h1_pos = html.index('<h1>Photography</h1>')
         main_end = html.index('</main>')
         assert main_start < h1_pos < main_end
@@ -2414,7 +2428,7 @@ class TestRenderNotesPage:
 
     def test_notes_h1_inside_main(self):
         html = render_notes_page_content([_NOTE_POST], 1, 1)
-        assert html.index('<main>') < html.index('<h1>Short notes</h1>') < html.index('</main>')
+        assert html.index('<main data-pagefind-ignore>') < html.index('<h1>Short notes</h1>') < html.index('</main>')
 
     def test_notes_h1_before_articles(self):
         html = render_notes_page_content([_NOTE_POST], 1, 1)
@@ -2510,7 +2524,7 @@ class TestRenderGalleryPage:
 
     def test_h1_inside_main(self):
         html = render_gallery_page_content([make_photo()], 1, 1)
-        assert html.index('<main>') < html.index('<h1>Photo archive</h1>') < html.index('</main>')
+        assert html.index('<main data-pagefind-ignore>') < html.index('<h1>Photo archive</h1>') < html.index('</main>')
 
     def test_h1_before_gallery_list(self):
         html = render_gallery_page_content([make_photo()], 1, 1)
@@ -2595,3 +2609,78 @@ class TestRenderGalleryPage:
     def test_no_older_link_on_last_page(self):
         html = render_gallery_page_content([make_photo()], 2, 2)
         assert 'class="older"' not in html
+
+
+# ---------------------------------------------------------------------------
+# render_search_page_content
+# ---------------------------------------------------------------------------
+
+class TestRenderSearchPageContent:
+
+    def test_has_h1_heading(self):
+        html = render_search_page_content()
+        assert "<h1>Search</h1>" in html
+
+    def test_wrapped_in_main_ignored_by_pagefind(self):
+        html = render_search_page_content()
+        assert "<main data-pagefind-ignore>" in html
+        assert "</main>" in html
+
+    def test_h1_inside_main(self):
+        html = render_search_page_content()
+        assert html.index("<main data-pagefind-ignore>") < html.index("<h1>Search</h1>") < html.index("</main>")
+
+    def test_form_has_search_role(self):
+        html = render_search_page_content()
+        assert '<form role="search"' in html
+
+    def test_label_for_matches_input_id(self):
+        html = render_search_page_content()
+        assert '<label for="search-input"' in html
+        assert 'id="search-input"' in html
+
+    def test_label_is_visually_hidden(self):
+        html = render_search_page_content()
+        label_start = html.index("<label")
+        label_end = html.index("</label>")
+        label_tag = html[label_start:label_end]
+        assert "visually-hidden" in label_tag
+
+    def test_input_is_type_search(self):
+        html = render_search_page_content()
+        assert 'type="search"' in html
+
+    def test_input_name_is_q(self):
+        html = render_search_page_content()
+        assert 'name="q"' in html
+
+    def test_input_placeholder(self):
+        html = render_search_page_content()
+        assert 'placeholder="Search…"' in html
+
+    def test_submit_button_present(self):
+        html = render_search_page_content()
+        assert '<button type="submit" aria-label="Search"' in html
+
+    def test_clear_button_present_and_hidden_by_default(self):
+        html = render_search_page_content()
+        assert 'id="search-clear"' in html
+        assert 'aria-label="Clear search"' in html
+        clear_id_pos = html.index('id="search-clear"')
+        tag_start = html.rindex('<button', 0, clear_id_pos)
+        tag_end = html.index('>', clear_id_pos)
+        assert 'hidden' in html[tag_start:tag_end]
+
+    def test_results_container_present_and_empty(self):
+        html = render_search_page_content()
+        assert '<div id="search-results"></div>' in html
+
+    def test_status_container_present_and_polite(self):
+        html = render_search_page_content()
+        assert 'id="search-status"' in html
+        assert 'aria-live="polite"' in html
+
+    def test_no_helper_copy_about_topics_or_projects(self):
+        html = render_search_page_content()
+        assert "topic" not in html.lower()
+        assert "project" not in html.lower()

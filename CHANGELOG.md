@@ -7,6 +7,7 @@
 
 ### 5/9/26
 
+- Generate search.html and a Pagefind index on every build
 - Archive calendar summary now also states the current weekly streak
 
 ### 3/9/26
