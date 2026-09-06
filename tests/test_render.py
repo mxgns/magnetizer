@@ -1495,14 +1495,17 @@ class TestArchiveLastUpdated:
             '<p class="last-updated">The last updated was at 2.43 pm on 24 September 2026.</p>'
         ) in html
 
-    def test_last_updated_paragraph_after_calendar_section(self):
+    def test_last_updated_paragraph_nested_inside_calendar_section(self):
+        # Nested (rather than a sibling after </section>) so a project's CSS
+        # can size it from the section alone -- see Contribution calendar spec.
         html = render_archive_page_content(
             [make_dated_post(1, "2026-09-24")],
             build_date=date(2026, 9, 24), build_datetime=datetime(2026, 9, 24, 14, 43),
         )
-        calendar_end = html.index('</section>')
+        section_start = html.index('<section class="contribution-calendar">')
+        section_end = html.index('</section>')
         last_updated_start = html.index('<p class="last-updated">')
-        assert calendar_end < last_updated_start
+        assert section_start < last_updated_start < section_end
 
     def test_last_updated_paragraph_before_categories(self):
         post = make_dated_post(1, "2026-09-24", category="photography")
