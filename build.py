@@ -209,12 +209,17 @@ def main():
     parser.add_argument("filename", nargs="?", metavar="FILENAME")
     parser.add_argument("--flush", action="store_true")
     parser.add_argument("--resources", action="store_true")
+    parser.add_argument("--refresh", action="store_true")
     parser.add_argument("--push", action="store_true")
     parser.add_argument("--verbose", action="store_true")
     args = parser.parse_args()
 
-    if args.filename and any([args.flush, args.resources, args.push]):
+    if args.filename and any([args.flush, args.resources, args.refresh, args.push]):
         print("Error: FILENAME cannot be used together with other options.", file=sys.stderr)
+        sys.exit(1)
+
+    if args.refresh and args.push:
+        print("Error: --refresh cannot be used together with --push.", file=sys.stderr)
         sys.exit(1)
 
     config = load_config(Path.cwd() / "config.yaml")
@@ -255,6 +260,7 @@ def main():
             filename=args.filename,
             flush=args.flush,
             resources=args.resources,
+            refresh=args.refresh,
             on_progress=_on_progress,
         )
     except Exception as e:

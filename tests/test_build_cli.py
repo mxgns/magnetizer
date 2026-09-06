@@ -78,6 +78,16 @@ class TestCLIValidation:
         result = run_build(["1.md", "--push"], cwd=tmp_path)
         assert result.returncode != 0
 
+    def test_filename_with_refresh_is_rejected(self, tmp_path):
+        make_project(tmp_path, posts={1: MINIMAL_MD})
+        result = run_build(["1.md", "--refresh"], cwd=tmp_path)
+        assert result.returncode != 0
+
+    def test_refresh_with_push_is_rejected(self, tmp_path):
+        make_project(tmp_path, posts={1: MINIMAL_MD})
+        result = run_build(["--refresh", "--push"], cwd=tmp_path)
+        assert result.returncode != 0
+
 
 # ---------------------------------------------------------------------------
 # Basic build
@@ -148,6 +158,36 @@ class TestCLIResources:
         run_build(["--resources"], cwd=p)
         assert not old.exists()
         assert (p / "dist" / "resources" / "style.css").exists()
+
+
+# ---------------------------------------------------------------------------
+# --refresh
+# ---------------------------------------------------------------------------
+
+class TestCLIRefresh:
+
+    def test_refresh_recreates_archive_page_with_no_content_changes(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD})
+        run_build([], cwd=p)
+        (p / "dist" / "archive.html").unlink()
+        run_build([], cwd=p)  # ordinary build: no content changed, stays gone
+        assert not (p / "dist" / "archive.html").exists()
+        run_build(["--refresh"], cwd=p)
+        assert (p / "dist" / "archive.html").exists()
+
+    def test_refresh_exits_zero(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD})
+        run_build([], cwd=p)
+        result = run_build(["--refresh"], cwd=p)
+        assert result.returncode == 0
+
+    def test_refresh_shown_as_zero_created_updated_deleted(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD})
+        run_build([], cwd=p)
+        result = run_build(["--refresh"], cwd=p)
+        assert "0 created" in result.stdout
+        assert "0 updated" in result.stdout
+        assert "0 deleted" in result.stdout
 
 
 # ---------------------------------------------------------------------------

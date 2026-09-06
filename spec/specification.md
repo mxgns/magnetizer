@@ -165,6 +165,12 @@ Options:
                 Use whenever templates have been updated.
   --resources   Replace all files in ./dist/resources with those in ./resources.
                 Use to force a full resync of resource files.  
+  --refresh     Re-render every post, special/404 page, and generated page 
+                using the current templates/generator code, reusing whichever
+                images are already in ./dist -- no image reprocessing, no 
+                content-change detection. Use while iterating on generator or
+                template code, instead of --flush's much slower full rebuild.
+                Cannot be used together with FILENAME or --push.
   --push        Push the contents of ./dist to GitHub Pages after a successful 
                 build.
   --verbose     Print a detailed log of every file created, updated, or removed
@@ -179,6 +185,9 @@ Examples:
                        into ./dist
   build.py --resources Replace all files in ./dist/resources with those from 
                        ./resources
+  build.py --refresh   Re-render every page from the current templates/code
+                       without reprocessing any images or touching content
+                       change detection
   build.py 1.md        Build a single page (e.g. generate 1.html from 1.md).
                        Index pages are not updated.
 ```
@@ -213,18 +222,19 @@ Examples:
 6. For each post to process:
     - Delete any files related to the post (Markdown or images) from `dist/`
     - If  `{post-id}.md` exists in  `content/`, then generate the post HTML and resize and copy any associated images to `dist/` — writing both the resized image and its thumbnail for each raster image
-7. If there were any changes made in the previous step (unless a `FILENAME` was specified):
+7. If `--refresh` (and no `FILENAME` was specified): for every post *not* already processed in step 6 this run, re-render its HTML from its already-built images in `dist/` — no deleting, no resizing, no thumbnailing — and force every special page and the 404 page (if configured) to rebuild the same way, regardless of whether either would otherwise be considered stale (see [Dynamic values](#dynamic-values) for what "stale" normally means here). This is the one step unique to `--refresh`; everything else it does is simply "don't skip the following steps just because nothing changed."
+8. If there were any changes made in steps 6 or 7 (unless a `FILENAME` was specified):
     1. Regenerate all the index, category, notes, gallery and archive pages
     2. Update the build manifest
     
-    Note: when `FILENAME` is specified, the index pages are deliberately not updated, and the manifest is not rescanned/rewritten wholesale — single-file builds are for preview only. The one exception is the built page's `dynamic` flag (see [Dynamic values](#dynamic-values)), which is still updated in the manifest so incremental rebuilds keep working correctly.
+    Note: when `FILENAME` is specified, the index pages are deliberately not updated, and the manifest is not rescanned/rewritten wholesale — single-file builds are for preview only. The one exception is the built page's `dynamic` flag (see [Dynamic values](#dynamic-values)), which is still updated in the manifest so incremental rebuilds keep working correctly. `--refresh` cannot be combined with `FILENAME` in the first place, so this note and step 7 never interact.
     
-8. Sync `resources/` to `dist/resources/`:
+9. Sync `resources/` to `dist/resources/`:
     - If `--flush` or `--resources`: delete `dist/resources/` and copy all files from `resources/`
     - Otherwise: copy any files from `resources/` that are new or changed since the last build (detected via the manifest), and delete any files from `dist/resources/` that no longer exist in `resources/`
-9. If `--push` and no errors, push to GitHub Pages
-10. During the build, print a `.` for each file generated or updated (flushed immediately, all on one line). When the build completes, erase the dots line in normal mode; keep it in verbose mode (followed by a newline).
-11. Print console output and exit. The output format depends on whether `--verbose` is passed:
+10. If `--push` and no errors, push to GitHub Pages
+11. During the build, print a `.` for each file generated or updated (flushed immediately, all on one line). When the build completes, erase the dots line in normal mode; keep it in verbose mode (followed by a newline).
+12. Print console output and exit. The output format depends on whether `--verbose` is passed:
 
     **Normal output** (only posts with warnings are listed):
 
@@ -1506,3 +1516,5 @@ When `--push` is specified and the build completes without errors, `build.py` wi
 3. Push to `origin main`
 
 If there are no changes to commit, skip the commit and push and output: `Nothing to publish — no changes since last build.`
+
+`--push` cannot be combined with `--refresh`. `--push` stages and commits whatever is currently in `dist/` regardless of how it got there, so this isn't a staleness check — `--flush` wouldn't make a `--refresh`'d `dist/` any more "real," since both would use the exact same (possibly still-being-edited) generator code. The actual risk is publishing output from generator code that was only ever meant for local iteration; blocking the combination forces a separate, deliberate build once that code is finished, rather than relying on a warning that's easy to miss in a fast test loop.
