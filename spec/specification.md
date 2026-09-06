@@ -939,6 +939,7 @@ An unknown shortcode name (matching the `{{ ... }}` pattern but not one of the n
 | `{{ word_count }}` | integer | Total word count across all published posts' bodies |
 | `{{ image_count }}` | integer | Total number of images across all published posts |
 | `{{ today }}` | date string | The build date, formatted `D/M/YY` (no leading zeros on day/month, two-digit year), e.g. `17/7/26` |
+| `{{ now }}` | date/time string | The build date and time, formatted `H.MM am/pm on D Month YYYY` (no leading zeros on hour/day, two-digit minute, lowercase am/pm), e.g. `2.43 pm on 24 September 2026` |
 | `{{ ai_post_list }}` | HTML block | `<ul>` of posts with `ai_assisted: true`, newest first |
 
 `post_count`, `word_count` and `image_count` draw only from **published posts**: markdown files that render to an individual post page. Special pages and generated pages (index, category, notes, archive) are never counted by these three.
@@ -1017,7 +1018,7 @@ The `MAGNETIZER_CONTENT` has the following structure:
 
 Where:
 
-- The contribution calendar (`<section class="contribution-calendar">`) is always present, immediately after the `<h1>` — see [Contribution calendar](#contribution-calendar).
+- The contribution calendar (`<section class="contribution-calendar">`) is always present, immediately after the `<h1>` — see [Contribution calendar](#contribution-calendar), which also covers the `<p class="last-updated">` nested at the end of it.
 - `<div class="archive-columns">` wraps whichever of `<div class="archive-categories">` / `<div class="archive-notes">` are present, as a stable pair of blocks a project's CSS can lay out side by side on wide viewports (see [Archive column layout](#archive-column-layout)). It's included whenever either is shown, and omitted entirely when neither is.
 - The `<h2>Categories</h2>` heading and its `<ul>`, together in `<div class="archive-categories">`, are only included if `categories` is configured and at least one configured category has a matching post. Each `<li>` links to the corresponding category page (see [Categories](#categories)) and includes the number of posts `(N)` in that category. Categories are listed in descending order of post count; categories with no matching posts are omitted.
 - The `<h2>Short notes</h2>` heading and its `<ul>`, together in `<div class="archive-notes">`, are only included when at least one Note exists.
@@ -1056,6 +1057,8 @@ Each day in the window is bucketed by how many posts fall on it: `level-0` (zero
 
 A day with one or more posts carries a `data-tooltip` attribute summarising it, e.g. `25 August: 1 post`, or — when both ordinary posts and Notes fall on the same day — `25 August: 1 post + 2 notes` (each count pluralised independently, joined with ` + `). This is deliberately a `data-` attribute rather than `title` — Magnetizer emits it as data only; rendering it as an actual hover tooltip (positioning, appearance, show/hide) is the responsibility of the project's own `resources/` CSS, the same way every other visual aspect of the calendar is. The `<a>` repeats the same text as `aria-label`, so the count is available to assistive technology independently of the visual tooltip. A day with no posts has no tooltip — there's nothing to report.
 
+After the grid, a `<p class="last-updated">` states when the page was built: `The last update was at TIME on DATE.`, where `TIME on DATE` is formatted exactly like the `{{ now }}` shortcode (see [Dynamic values](#dynamic-values)), e.g. `The last update was at 2.43 pm on 24 September 2026.` It's nested inside `.contribution-calendar` (rather than placed after the section) specifically so a project's CSS can size every text element in the section — heading, summary, and this line alike — from one selector on the container, rather than re-declaring the size per element.
+
 The `MAGNETIZER_CONTENT` structure is:
 
 ```html
@@ -1077,6 +1080,7 @@ The `MAGNETIZER_CONTENT` structure is:
   ... (37 columns total)
 </div>
 </div>
+<p class="last-updated">The last update was at 2.43 pm on 24 September 2026.</p>
 </section>
 ```
 

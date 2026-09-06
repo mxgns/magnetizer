@@ -2,7 +2,6 @@ import re
 import shutil
 import sys
 import time
-from datetime import date as _date
 from datetime import datetime as _datetime
 from pathlib import Path
 
@@ -516,9 +515,9 @@ def _load_content(content_dir, config):
     )
 
 
-def _compute_dynamic_values(published_posts_sorted_desc, special_page_posts, build_date, warnings):
+def _compute_dynamic_values(published_posts_sorted_desc, special_page_posts, build_date, build_datetime, warnings):
     base_values = compute_base_values(
-        published_posts_sorted_desc, build_date,
+        published_posts_sorted_desc, build_date, build_datetime,
         warn=lambda msg: warnings.append(("build", msg)),
         ai_post_list_candidates=published_posts_sorted_desc + special_page_posts,
     )
@@ -688,7 +687,7 @@ def _rebuild_stale_not_found_page(config, content_dir, dist_dir, template, value
     return True
 
 
-def _write_generated_pages(published_posts_sorted_desc, dist_dir, config, template, log, build_date, photos):
+def _write_generated_pages(published_posts_sorted_desc, dist_dir, config, template, log, build_date, build_datetime, photos):
     _write_index_pages(published_posts_sorted_desc, dist_dir, config, template, categories=config["categories"])
     per_page = config["posts_per_page"]
     total_pages = max(1, (len(published_posts_sorted_desc) + per_page - 1) // per_page)
@@ -715,7 +714,7 @@ def _write_generated_pages(published_posts_sorted_desc, dist_dir, config, templa
         title=render_page_title(config["site_name"], "Archive", page_num=None),
         content=render_archive_page_content(
             published_posts_sorted_desc, categories=config["categories"],
-            build_date=build_date, posts_per_page=config["posts_per_page"],
+            build_date=build_date, build_datetime=build_datetime, posts_per_page=config["posts_per_page"],
             has_photos=bool(photos),
         ),
         canonical=canonical_url(config["site_url"], "archive.html"),
@@ -882,11 +881,12 @@ def build(cwd, filename=None, flush=False, resources=False, on_progress=None):
     _check_no_invalid_posts(published_posts_sorted_desc, special_page_posts, not_found_post)
     warnings.extend(_orphan_comment_warnings(content_dir, set(published_post_ids_sorted_desc)))
 
-    build_date = _date.today()
+    build_datetime = _datetime.now()
+    build_date = build_datetime.date()
 
     # Sitewide dynamic-value computation runs unconditionally (even for a single-page
     # preview build) so that any shortcodes on the page(s) being built expand correctly.
-    values = _compute_dynamic_values(published_posts_sorted_desc, special_page_posts, build_date, warnings)
+    values = _compute_dynamic_values(published_posts_sorted_desc, special_page_posts, build_date, build_datetime, warnings)
 
     pages_dynamic_updates = {}
     deleted_page_filenames = set()
@@ -958,7 +958,7 @@ def build(cwd, filename=None, flush=False, resources=False, on_progress=None):
     photos = None
     if not filename and post_ids_to_build:
         photos = _gallery_photos(published_posts_sorted_desc, dist_dir)
-        _write_generated_pages(published_posts_sorted_desc, dist_dir, config, template, _log, build_date, photos)
+        _write_generated_pages(published_posts_sorted_desc, dist_dir, config, template, _log, build_date, build_datetime, photos)
 
     if not filename and log:
         # post_ids_to_build can be empty while log is still non-empty (e.g. a

@@ -6,7 +6,7 @@ from html import escape as _escape
 
 from magnetizer.content import _plain_text
 
-SCALAR_NAMES = {"post_count", "word_count", "image_count", "today"}
+SCALAR_NAMES = {"post_count", "word_count", "image_count", "today", "now"}
 BLOCK_NAMES = {"ai_post_list"}
 KNOWN_NAMES = SCALAR_NAMES | BLOCK_NAMES
 
@@ -38,6 +38,13 @@ def format_today(build_date) -> str:
     return f"{build_date.day}/{build_date.month}/{build_date:%y}"
 
 
+def format_now(build_datetime) -> str:
+    hour12 = build_datetime.hour % 12 or 12
+    period = "am" if build_datetime.hour < 12 else "pm"
+    time_str = f"{hour12}.{build_datetime.minute:02d} {period}"
+    return f"{time_str} on {build_datetime.day} {build_datetime:%B} {build_datetime.year}"
+
+
 def render_ai_post_list(published_posts) -> str:
     matching = [p for p in published_posts if p.is_ai_assisted]
     if not matching:
@@ -56,7 +63,7 @@ def render_ai_post_list(published_posts) -> str:
     return f'<ul class="ai-post-list">{items}</ul>'
 
 
-def compute_base_values(published_posts, build_date, warn, ai_post_list_candidates=None) -> dict:
+def compute_base_values(published_posts, build_date, build_datetime, warn, ai_post_list_candidates=None) -> dict:
     # ai_post_list is the one dynamic value that also draws on special pages (an
     # about/now/etc. page can be ai_assisted too) — every other value stays scoped
     # to published posts only, per the post-inclusion rules.
@@ -68,6 +75,7 @@ def compute_base_values(published_posts, build_date, warn, ai_post_list_candidat
         "post_count": wrap_scalar("post_count", format_int(post_count)),
         "image_count": wrap_scalar("image_count", format_int(image_count)),
         "today": wrap_scalar("today", format_today(build_date)),
+        "now": wrap_scalar("now", format_now(build_datetime)),
         "ai_post_list": render_ai_post_list(ai_post_list_candidates),
     }
 

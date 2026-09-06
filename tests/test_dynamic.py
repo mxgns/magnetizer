@@ -1,6 +1,6 @@
 """Tests for magnetizer/dynamic.py — shortcode value computation and expansion"""
 
-from datetime import date
+from datetime import date, datetime
 
 from tests.conftest import make_post
 from magnetizer.dynamic import (
@@ -8,6 +8,7 @@ from magnetizer.dynamic import (
     compute_word_count,
     expand_shortcodes,
     format_int,
+    format_now,
     format_today,
     render_ai_post_list,
     wrap_scalar,
@@ -66,6 +67,31 @@ class TestFormatToday:
 
     def test_double_digit_day_and_month(self):
         assert format_today(date(2030, 12, 25)) == "25/12/30"
+
+
+# ---------------------------------------------------------------------------
+# format_now
+# ---------------------------------------------------------------------------
+
+class TestFormatNow:
+
+    def test_afternoon_time(self):
+        assert format_now(datetime(2026, 9, 24, 14, 43)) == "2.43 pm on 24 September 2026"
+
+    def test_morning_time_no_leading_zero_on_hour(self):
+        assert format_now(datetime(2026, 9, 24, 9, 5)) == "9.05 am on 24 September 2026"
+
+    def test_midnight_is_12_am(self):
+        assert format_now(datetime(2026, 9, 24, 0, 0)) == "12.00 am on 24 September 2026"
+
+    def test_noon_is_12_pm(self):
+        assert format_now(datetime(2026, 9, 24, 12, 0)) == "12.00 pm on 24 September 2026"
+
+    def test_one_pm(self):
+        assert format_now(datetime(2026, 9, 24, 13, 0)) == "1.00 pm on 24 September 2026"
+
+    def test_no_leading_zero_on_day(self):
+        assert format_now(datetime(2026, 9, 4, 14, 43)) == "2.43 pm on 4 September 2026"
 
 
 # ---------------------------------------------------------------------------
@@ -143,7 +169,7 @@ class TestComputeBaseValues:
 
     def test_post_count(self):
         posts = [make_post(post_id=1), make_post(post_id=2)]
-        values = compute_base_values(posts, date(2026, 7, 17), lambda msg: None)
+        values = compute_base_values(posts, date(2026, 7, 17), datetime(2026, 7, 17, 14, 43), lambda msg: None)
         assert values["post_count"] == '<span class="post-count">2</span>'
 
     def test_image_count_sums_images_across_posts(self):
@@ -151,39 +177,43 @@ class TestComputeBaseValues:
             make_post(post_id=1, images=["1-image-01.jpg", "1-image-02.jpg"]),
             make_post(post_id=2, images=["2-image-01.jpg"]),
         ]
-        values = compute_base_values(posts, date(2026, 7, 17), lambda msg: None)
+        values = compute_base_values(posts, date(2026, 7, 17), datetime(2026, 7, 17, 14, 43), lambda msg: None)
         assert values["image_count"] == '<span class="image-count">3</span>'
 
     def test_image_count_zero_when_no_images_field(self):
         posts = [make_post(post_id=1, images=None)]
-        values = compute_base_values(posts, date(2026, 7, 17), lambda msg: None)
+        values = compute_base_values(posts, date(2026, 7, 17), datetime(2026, 7, 17, 14, 43), lambda msg: None)
         assert values["image_count"] == '<span class="image-count">0</span>'
 
     def test_today_present(self):
-        values = compute_base_values([], date(2026, 7, 17), lambda msg: None)
+        values = compute_base_values([], date(2026, 7, 17), datetime(2026, 7, 17, 14, 43), lambda msg: None)
         assert values["today"] == '<span class="today">17/7/26</span>'
+
+    def test_now_present(self):
+        values = compute_base_values([], date(2026, 7, 17), datetime(2026, 7, 17, 14, 43), lambda msg: None)
+        assert values["now"] == '<span class="now">2.43 pm on 17 July 2026</span>'
 
     def test_ai_post_list_present(self):
         posts = [make_post(post_id=1, title="Post", is_ai_assisted=True)]
-        values = compute_base_values(posts, date(2026, 7, 17), lambda msg: None)
+        values = compute_base_values(posts, date(2026, 7, 17), datetime(2026, 7, 17, 14, 43), lambda msg: None)
         assert values["ai_post_list"] == '<ul class="ai-post-list"><li><a href="1.html">Post</a></li></ul>'
 
     def test_no_posts_defaults(self):
-        values = compute_base_values([], date(2026, 7, 17), lambda msg: None)
+        values = compute_base_values([], date(2026, 7, 17), datetime(2026, 7, 17, 14, 43), lambda msg: None)
         assert values["post_count"] == '<span class="post-count">0</span>'
         assert values["image_count"] == '<span class="image-count">0</span>'
         assert values["ai_post_list"] == '<ul class="ai-post-list"><li>(none)</li></ul>'
 
     def test_ai_post_list_candidates_defaults_to_published_posts(self):
         posts = [make_post(post_id=1, title="Post", is_ai_assisted=True)]
-        values = compute_base_values(posts, date(2026, 7, 17), lambda msg: None)
+        values = compute_base_values(posts, date(2026, 7, 17), datetime(2026, 7, 17, 14, 43), lambda msg: None)
         assert "Post" in values["ai_post_list"]
 
     def test_ai_post_list_candidates_used_when_given(self):
         posts = [make_post(post_id=1, is_ai_assisted=False)]
         special_page = make_post(post_id="syntax", title="Syntax Guide", is_ai_assisted=True)
         values = compute_base_values(
-            posts, date(2026, 7, 17), lambda msg: None,
+            posts, date(2026, 7, 17), datetime(2026, 7, 17, 14, 43), lambda msg: None,
             ai_post_list_candidates=posts + [special_page],
         )
         assert "Syntax Guide" in values["ai_post_list"]
@@ -192,7 +222,7 @@ class TestComputeBaseValues:
         posts = [make_post(post_id=1)]
         special_page = make_post(post_id="syntax", is_ai_assisted=True, images=["syntax-image-01.jpg"])
         values = compute_base_values(
-            posts, date(2026, 7, 17), lambda msg: None,
+            posts, date(2026, 7, 17), datetime(2026, 7, 17, 14, 43), lambda msg: None,
             ai_post_list_candidates=posts + [special_page],
         )
         assert values["post_count"] == '<span class="post-count">1</span>'
@@ -208,6 +238,7 @@ _VALUES = {
     "word_count": '<span class="word-count">1,234</span>',
     "image_count": '<span class="image-count">65</span>',
     "today": '<span class="today">17/7/26</span>',
+    "now": '<span class="now">2.43 pm on 17 July 2026</span>',
     "ai_post_list": '<ul class="ai-post-list"><li><a href="1.html">Post</a></li></ul>',
 }
 

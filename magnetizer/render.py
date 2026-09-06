@@ -1,9 +1,10 @@
 import re
 from collections import Counter
-from datetime import date as _date, timedelta as _timedelta
+from datetime import date as _date, datetime as _datetime, timedelta as _timedelta
 from html import escape as _escape, unescape as _unescape
 
 from magnetizer.content import resized_filename as _resized_filename
+from magnetizer.dynamic import format_now
 
 _DEFAULT_AI_DISCLOSURE_TEXT = 'The contents of this post have been entirely or partially created using AI.'
 
@@ -441,7 +442,7 @@ def _posting_streak_weeks(posts, build_date):
     return streak
 
 
-def _render_contribution_calendar(posts, build_date, posts_per_page):
+def _render_contribution_calendar(posts, build_date, posts_per_page, last_updated_html):
     start_date = _calendar_window(build_date)
 
     page_num_by_id = {}
@@ -508,11 +509,12 @@ def _render_contribution_calendar(posts, build_date, posts_per_page):
     parts.append('</div>')
     parts.append('</div>')
 
+    parts.append(last_updated_html)
     parts.append('</section>')
     return '\n'.join(parts)
 
 
-def render_archive_page_content(posts, categories=None, build_date=None, posts_per_page=12, has_photos=False):
+def render_archive_page_content(posts, categories=None, build_date=None, build_datetime=None, posts_per_page=12, has_photos=False):
     blog_posts = [p for p in posts if p.date and p.post_type != "note"]
 
     months = {}
@@ -523,8 +525,10 @@ def render_archive_page_content(posts, categories=None, build_date=None, posts_p
 
     notes_count = sum(1 for p in posts if p.post_type == "note")
 
+    last_updated_html = f'<p class="last-updated">The last update was at {format_now(build_datetime or _datetime.now())}.</p>'
+
     parts = ['<main data-pagefind-ignore>', '<h1>Archive</h1>']
-    parts.append(_render_contribution_calendar(posts, build_date or _date.today(), posts_per_page))
+    parts.append(_render_contribution_calendar(posts, build_date or _date.today(), posts_per_page, last_updated_html))
 
     category_block = []
     if categories:

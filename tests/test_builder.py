@@ -2086,6 +2086,15 @@ class TestArchivePage:
         build(p)
         assert '<section class="contribution-calendar">' in (p / "dist" / "archive.html").read_text()
 
+    def test_archive_contains_last_updated_line(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD})
+        build(p)
+        html = (p / "dist" / "archive.html").read_text()
+        assert re.search(
+            r'<p class="last-updated">The last update was at \d{1,2}\.\d{2} (am|pm) on \d{1,2} \w+ \d{4}\.</p>',
+            html,
+        )
+
 
 # ---------------------------------------------------------------------------
 # Search page
@@ -2779,6 +2788,14 @@ class TestDynamicShortcodeExpansion:
         build(p)
         html = (p / "dist" / "1.html").read_text()
         assert re.search(r'<span class="today">\d{1,2}/\d{1,2}/\d{2}</span>', html)
+
+    def test_now_shortcode_expands_to_time_format(self, tmp_path):
+        p = make_project(tmp_path, posts={1: "---\ndate: 2026-05-24\n---\n\nIt is now {{ now }}.\n"})
+        build(p)
+        html = (p / "dist" / "1.html").read_text()
+        assert re.search(
+            r'<span class="now">\d{1,2}\.\d{2} (am|pm) on \d{1,2} \w+ \d{4}</span>', html,
+        )
 
     def test_ai_post_list_end_to_end(self, tmp_path):
         p = make_project(tmp_path, posts={

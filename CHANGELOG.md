@@ -5,6 +5,11 @@
 
 ## Released changes
 
+### 6/9/26
+
+- Added a {{ now }} shortcode with the build time
+- Archive page now shows when it was last updated
+
 ### 5/9/26
 
 - Exclude noindex pages from the Pagefind search index
