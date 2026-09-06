@@ -939,6 +939,7 @@ An unknown shortcode name (matching the `{{ ... }}` pattern but not one of the n
 | `{{ word_count }}` | integer | Total word count across all published posts' bodies |
 | `{{ image_count }}` | integer | Total number of images across all published posts |
 | `{{ today }}` | date string | The build date, formatted `D/M/YY` (no leading zeros on day/month, two-digit year), e.g. `17/7/26` |
+| `{{ now }}` | date/time string | The build date and time, formatted `H.MM am/pm on D Month YYYY` (no leading zeros on hour/day, two-digit minute, lowercase am/pm), e.g. `2.43 pm on 24 September 2026` |
 | `{{ ai_post_list }}` | HTML block | `<ul>` of posts with `ai_assisted: true`, newest first |
 
 `post_count`, `word_count` and `image_count` draw only from **published posts**: markdown files that render to an individual post page. Special pages and generated pages (index, category, notes, archive) are never counted by these three.
@@ -981,6 +982,7 @@ The `MAGNETIZER_CONTENT` has the following structure:
 <main>
 <h1>Archive</h1>
 <section class="contribution-calendar">...</section>
+<p class="last-updated">The last updated was at TIME on DATE.</p>
 <div class="archive-columns">
 <div class="archive-categories">
 <h2>Categories</h2>
@@ -1018,6 +1020,7 @@ The `MAGNETIZER_CONTENT` has the following structure:
 Where:
 
 - The contribution calendar (`<section class="contribution-calendar">`) is always present, immediately after the `<h1>` — see [Contribution calendar](#contribution-calendar).
+- `<p class="last-updated">` is always present directly after the contribution calendar: `The last updated was at TIME on DATE.`, where `TIME on DATE` is formatted exactly like the `{{ now }}` shortcode (see [Dynamic values](#dynamic-values)), e.g. `The last updated was at 2.43 pm on 24 September 2026.`
 - `<div class="archive-columns">` wraps whichever of `<div class="archive-categories">` / `<div class="archive-notes">` are present, as a stable pair of blocks a project's CSS can lay out side by side on wide viewports (see [Archive column layout](#archive-column-layout)). It's included whenever either is shown, and omitted entirely when neither is.
 - The `<h2>Categories</h2>` heading and its `<ul>`, together in `<div class="archive-categories">`, are only included if `categories` is configured and at least one configured category has a matching post. Each `<li>` links to the corresponding category page (see [Categories](#categories)) and includes the number of posts `(N)` in that category. Categories are listed in descending order of post count; categories with no matching posts are omitted.
 - The `<h2>Short notes</h2>` heading and its `<ul>`, together in `<div class="archive-notes">`, are only included when at least one Note exists.

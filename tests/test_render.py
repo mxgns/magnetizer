@@ -1,6 +1,6 @@
 """Tests for magnetizer/render.py — all HTML generation functions"""
 
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from html.parser import HTMLParser
 
 import pytest
@@ -1478,6 +1478,39 @@ class TestRenderContributionCalendar:
         ]
         html = render_archive_page_content(posts, build_date=date(2026, 5, 24))
         assert '<strong><span class="calendar-post-count">1</span> posts</strong>' in html
+
+
+# ---------------------------------------------------------------------------
+# render_archive_page_content — last updated line
+# ---------------------------------------------------------------------------
+
+class TestArchiveLastUpdated:
+
+    def test_last_updated_paragraph_present(self):
+        html = render_archive_page_content(
+            [make_dated_post(1, "2026-09-24")],
+            build_date=date(2026, 9, 24), build_datetime=datetime(2026, 9, 24, 14, 43),
+        )
+        assert (
+            '<p class="last-updated">The last updated was at 2.43 pm on 24 September 2026.</p>'
+        ) in html
+
+    def test_last_updated_paragraph_after_calendar_section(self):
+        html = render_archive_page_content(
+            [make_dated_post(1, "2026-09-24")],
+            build_date=date(2026, 9, 24), build_datetime=datetime(2026, 9, 24, 14, 43),
+        )
+        calendar_end = html.index('</section>')
+        last_updated_start = html.index('<p class="last-updated">')
+        assert calendar_end < last_updated_start
+
+    def test_last_updated_paragraph_before_categories(self):
+        post = make_dated_post(1, "2026-09-24", category="photography")
+        html = render_archive_page_content(
+            [post], categories=_CATEGORIES,
+            build_date=date(2026, 9, 24), build_datetime=datetime(2026, 9, 24, 14, 43),
+        )
+        assert html.index('<p class="last-updated">') < html.index("<h2>Categories</h2>")
 
 
 # ---------------------------------------------------------------------------
