@@ -385,7 +385,7 @@ def _load_special_page_post(content_dir, name, site_url=""):
     return parse_post(md_text, name, images, site_url, comments=comments)
 
 
-def _build_special_page(name, content_dir, dist_dir, config, template, values, warn, output_filename=None):
+def _build_special_page(name, content_dir, dist_dir, config, template, values, warn, output_filename=None, skip_images=False):
     post = _load_special_page_post(content_dir, name, config["site_url"])
     w = _warn_if_heading_too_high(post)
 
@@ -393,24 +393,25 @@ def _build_special_page(name, content_dir, dist_dir, config, template, values, w
     post.body_html = expanded_body
     dynamic_flag = bool(used_names)
 
-    _delete_special_page_image_files(dist_dir, name)
-    for image in post.images:
-        if image.filename.lower().endswith('.svg'):
-            shutil.copy2(content_dir / image.filename, dist_dir / image.filename)
-        else:
-            stem, _, ext = image.filename.rpartition('.')
-            resize_image(
-                content_dir / image.filename,
-                dist_dir / f"{stem}-resized.{ext}",
-                max_dimension=config["image_max_dimension"],
-                quality=config["image_quality"],
-            )
-            resize_image(
-                content_dir / image.filename,
-                dist_dir / f"{stem}-thumb.{ext}",
-                max_dimension=config["thumbnail_max_dimension"],
-                quality=config["thumbnail_quality"],
-            )
+    if not skip_images:
+        _delete_special_page_image_files(dist_dir, name)
+        for image in post.images:
+            if image.filename.lower().endswith('.svg'):
+                shutil.copy2(content_dir / image.filename, dist_dir / image.filename)
+            else:
+                stem, _, ext = image.filename.rpartition('.')
+                resize_image(
+                    content_dir / image.filename,
+                    dist_dir / f"{stem}-resized.{ext}",
+                    max_dimension=config["image_max_dimension"],
+                    quality=config["image_quality"],
+                )
+                resize_image(
+                    content_dir / image.filename,
+                    dist_dir / f"{stem}-thumb.{ext}",
+                    max_dimension=config["thumbnail_max_dimension"],
+                    quality=config["thumbnail_quality"],
+                )
 
     content_html = render_post_page_content(post, ai_disclosure_html=config["ai_disclosure_html"])
     title = render_page_title(config["site_name"], post_display_text(post), page_num=None)
@@ -667,14 +668,19 @@ def _rebuild_stale_special_pages(config, content_dir, dist_dir, template, values
     specials_rebuilt = False
     for name in config["special_pages"]:
         page_filename = f"{name}.html"
-        should_build = force or _special_page_changed(content_dir, manifest, f"{name}.md", [special_page_image_pattern(name), special_page_comment_pattern(name)])
+        really_changed = _special_page_changed(content_dir, manifest, f"{name}.md", [special_page_image_pattern(name), special_page_comment_pattern(name)])
+        should_build = force or really_changed
         if not should_build and any_relevant_change:
             should_build = bool(prev_pages.get(page_filename, {}).get("dynamic"))
         if should_build:
             def _warn_special(msg, _page_filename=page_filename):
                 warnings.append((_page_filename, msg))
 
-            w, dynamic_flag = _build_special_page(name, content_dir, dist_dir, config, template, values, _warn_special)
+            # skip_images is safe whenever this page's own files didn't actually
+            # change -- it's only being rebuilt because of something else (a forced
+            # refresh, or a dynamic-value change elsewhere), so its images are
+            # already sitting in dist/ from the build that did last touch it.
+            w, dynamic_flag = _build_special_page(name, content_dir, dist_dir, config, template, values, _warn_special, skip_images=not really_changed)
             if w:
                 warnings.append((page_filename, w))
             log(("UPDATED", page_filename))
@@ -688,7 +694,8 @@ def _rebuild_stale_not_found_page(config, content_dir, dist_dir, template, value
     if not name:
         return False
     output_filename = config["404-page-output-filename"]
-    should_build = force or _special_page_changed(content_dir, manifest, config["404-page-input-filename"], [special_page_image_pattern(name), special_page_comment_pattern(name)])
+    really_changed = _special_page_changed(content_dir, manifest, config["404-page-input-filename"], [special_page_image_pattern(name), special_page_comment_pattern(name)])
+    should_build = force or really_changed
     if not should_build and any_relevant_change:
         should_build = bool(prev_pages.get(output_filename, {}).get("dynamic"))
     if not should_build:
@@ -697,7 +704,7 @@ def _rebuild_stale_not_found_page(config, content_dir, dist_dir, template, value
     def _warn_special(msg, _page_filename=output_filename):
         warnings.append((_page_filename, msg))
 
-    w, dynamic_flag = _build_special_page(name, content_dir, dist_dir, config, template, values, _warn_special, output_filename=output_filename)
+    w, dynamic_flag = _build_special_page(name, content_dir, dist_dir, config, template, values, _warn_special, output_filename=output_filename, skip_images=not really_changed)
     if w:
         warnings.append((output_filename, w))
     log(("UPDATED", output_filename))
@@ -948,8 +955,11 @@ def build(cwd, filename=None, flush=False, resources=False, refresh=False, on_pr
     if refresh and not filename:
         # Anything already in post_ids_to_build is getting a real (image-processing)
         # rebuild this run regardless -- refresh only needs to cover the rest, reusing
-        # whatever's already resized in dist/ from an earlier build.
-        refresh_ids = [pid for pid in all_post_ids_sorted_desc if pid not in post_ids_to_build]
+        # whatever's already resized in dist/ from an earlier build. Iterate
+        # published_post_ids_sorted_desc, not all_post_ids_sorted_desc -- the latter
+        # also contains ids that only exist because of an orphan comment file (no
+        # matching {id}.md, so no posts_cache entry to render).
+        refresh_ids = [pid for pid in published_post_ids_sorted_desc if pid not in post_ids_to_build]
         _refresh_posts(
             refresh_ids, posts_cache, published_post_ids_sorted_desc,
             dist_dir, config, template, values, pages_dynamic_updates, warnings, _log,

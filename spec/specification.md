@@ -166,9 +166,12 @@ Options:
   --resources   Replace all files in ./dist/resources with those in ./resources.
                 Use to force a full resync of resource files.  
   --refresh     Re-render every post, special/404 page, and generated page 
-                using the current templates/generator code, reusing whichever
-                images are already in ./dist -- no image reprocessing, no 
-                content-change detection. Use while iterating on generator or
+                using the current templates/generator code. Content-change 
+                detection still runs as normal, and any post it finds 
+                genuinely changed is fully reprocessed (images included) -- 
+                --refresh's savings apply to everything else, which reuses 
+                whichever images are already in ./dist instead of 
+                reprocessing them. Use while iterating on generator or
                 template code, instead of --flush's much slower full rebuild.
                 Cannot be used together with FILENAME or --push.
   --push        Push the contents of ./dist to GitHub Pages after a successful 
@@ -185,9 +188,9 @@ Examples:
                        into ./dist
   build.py --resources Replace all files in ./dist/resources with those from 
                        ./resources
-  build.py --refresh   Re-render every page from the current templates/code
-                       without reprocessing any images or touching content
-                       change detection
+  build.py --refresh   Re-render every page from the current templates/code,
+                       reusing existing images except for any post that
+                       content-change detection finds genuinely changed
   build.py 1.md        Build a single page (e.g. generate 1.html from 1.md).
                        Index pages are not updated.
 ```
@@ -222,7 +225,7 @@ Examples:
 6. For each post to process:
     - Delete any files related to the post (Markdown or images) from `dist/`
     - If  `{post-id}.md` exists in  `content/`, then generate the post HTML and resize and copy any associated images to `dist/` — writing both the resized image and its thumbnail for each raster image
-7. If `--refresh` (and no `FILENAME` was specified): for every post *not* already processed in step 6 this run, re-render its HTML from its already-built images in `dist/` — no deleting, no resizing, no thumbnailing — and force every special page and the 404 page (if configured) to rebuild the same way, regardless of whether either would otherwise be considered stale (see [Dynamic values](#dynamic-values) for what "stale" normally means here). This is the one step unique to `--refresh`; everything else it does is simply "don't skip the following steps just because nothing changed."
+7. If `--refresh` (and no `FILENAME` was specified): for every post *not* already processed in step 6 this run (i.e. not genuinely changed), re-render its HTML from its already-built images in `dist/` — no deleting, no resizing, no thumbnailing — and force every special page and the 404 page (if configured) to rebuild, regardless of whether either would otherwise be considered stale (see [Dynamic values](#dynamic-values) for what "stale" normally means here). A forced special/404 page rebuild skips its own image processing the same way, unless that page's own files did genuinely change, in which case its images are still deleted and reprocessed as normal. This is the one step unique to `--refresh`; everything else it does is simply "don't skip the following steps just because nothing changed."
 8. If there were any changes made in steps 6 or 7 (unless a `FILENAME` was specified):
     1. Regenerate all the index, category, notes, gallery and archive pages
     2. Update the build manifest
