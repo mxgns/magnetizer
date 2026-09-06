@@ -9,6 +9,7 @@
 
 - Added a {{ now }} shortcode with the build time
 - Archive page now shows when it was last updated
+- Added --refresh: re-render everything, reusing unchanged images
 
 ### 5/9/26
 

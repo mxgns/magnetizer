@@ -610,6 +610,127 @@ class TestFlush:
 
 
 # ---------------------------------------------------------------------------
+# Refresh
+# ---------------------------------------------------------------------------
+
+_REFRESH_SPECIAL_CONFIG = (
+    "site_name: Test Blog\nsite_url: https://example.github.io\n"
+    "posts_per_page: 2\nspecial_pages:\n  - about\n"
+)
+
+
+class TestRefresh:
+
+    def test_refresh_does_not_reprocess_images(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD})
+        make_jpg(p / "content" / "1-image-01.jpg")
+        build(p)
+        outcome = build(p, refresh=True)
+        kinds = {entry[0] for entry in outcome["log"]}
+        assert "RESIZED" not in kinds
+        assert "THUMBNAIL" not in kinds
+
+    def test_refresh_rewrites_every_post_page_with_no_content_change(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD, 2: MINIMAL_MD})
+        build(p)
+        outcome = build(p, refresh=True)
+        touched = {entry[1] for entry in outcome["log"]}
+        assert "1.html" in touched
+        assert "2.html" in touched
+
+    def test_refresh_does_not_count_as_created_updated_or_deleted(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD})
+        build(p)
+        outcome = build(p, refresh=True)
+        assert (outcome["created"], outcome["updated"], outcome["deleted"]) == (0, 0, 0)
+
+    def test_refresh_rewrites_generated_pages_with_no_content_change(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD})
+        build(p)
+        outcome = build(p, refresh=True)
+        touched = {entry[1] for entry in outcome["log"] if entry[0] == "UPDATED"}
+        assert "archive.html" in touched or any(n.startswith("index") for n in touched)
+
+    def test_refresh_recreates_deleted_archive_page(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD})
+        build(p)
+        (p / "dist" / "archive.html").unlink()
+        build(p)  # ordinary build: no content changed, archive.html stays gone
+        assert not (p / "dist" / "archive.html").exists()
+        build(p, refresh=True)
+        assert (p / "dist" / "archive.html").exists()
+
+    def test_refresh_rebuilds_special_page_with_no_content_change(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD}, config=_REFRESH_SPECIAL_CONFIG)
+        (p / "content" / "about.md").write_text("---\ntitle: About\n---\n\nHello.\n")
+        build(p)
+        outcome = build(p, refresh=True)
+        touched = {entry[1] for entry in outcome["log"] if entry[0] == "UPDATED"}
+        assert "about.html" in touched
+
+    def test_refresh_does_not_touch_manifest_content_mtimes(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD})
+        build(p)
+        manifest_before = json.loads((p / "manifest.json").read_text())
+        build(p, refresh=True)
+        manifest_after = json.loads((p / "manifest.json").read_text())
+        assert manifest_after["1.md"] == manifest_before["1.md"]
+
+    def test_refresh_does_not_wipe_dist(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD})
+        build(p)
+        stale = p / "dist" / "stale.html"
+        stale.write_text("<html>old</html>")
+        build(p, refresh=True)
+        assert stale.exists()
+
+    def test_refresh_alongside_a_real_content_change_still_resizes_that_post(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD, 2: MINIMAL_MD})
+        make_jpg(p / "content" / "1-image-01.jpg")
+        build(p)
+        make_jpg(p / "content" / "1-image-01.jpg", width=400, height=300)
+        outcome = build(p, refresh=True)
+        kinds_by_file = {(entry[0], entry[1]) for entry in outcome["log"] if entry[0] == "RESIZED"}
+        assert any(name.startswith("1-image-01") for _, name in kinds_by_file)
+
+    def test_refresh_does_not_reprocess_unchanged_special_page_images(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD}, config=_REFRESH_SPECIAL_CONFIG)
+        (p / "content" / "about.md").write_text("---\ntitle: About\n---\n\nHello.\n")
+        make_jpg(p / "content" / "about-image-01.jpg")
+        build(p)
+        outcome = build(p, refresh=True)
+        kinds = {entry[0] for entry in outcome["log"]}
+        assert "RESIZED" not in kinds
+        assert "THUMBNAIL" not in kinds
+        assert (p / "dist" / "about.html").exists()
+
+    def test_refresh_does_not_reprocess_unchanged_404_page_images(self, tmp_path):
+        config = (
+            "site_name: Test Blog\nsite_url: https://example.github.io\nposts_per_page: 2\n"
+            "404-page-input-filename: error-404.md\n404-page-output-filename: 404.html\n"
+        )
+        p = make_project(tmp_path, posts={1: MINIMAL_MD}, config=config)
+        (p / "content" / "error-404.md").write_text("---\ntitle: Not Found\n---\n\nGone.\n")
+        make_jpg(p / "content" / "error-404-image-01.jpg")
+        build(p)
+        outcome = build(p, refresh=True)
+        kinds = {entry[0] for entry in outcome["log"]}
+        assert "RESIZED" not in kinds
+        assert "THUMBNAIL" not in kinds
+        assert (p / "dist" / "404.html").exists()
+
+    def test_refresh_does_not_crash_on_orphan_comment(self, tmp_path):
+        # An orphan comment file (no matching post) still gives its numeric prefix
+        # an entry in all_post_ids_sorted_desc, but never a posts_cache entry --
+        # refresh must not try to render it as if it were a real post.
+        p = make_project(tmp_path, posts={1: MINIMAL_MD})
+        (p / "content" / "2-comment-01.md").write_text("---\ndate: 2026-08-05\nauthor: Magnus\n---\n\nGreat post!\n")
+        build(p)
+        outcome = build(p, refresh=True)
+        assert "2.html" not in {entry[1] for entry in outcome["log"]}
+
+
+# ---------------------------------------------------------------------------
 # Incremental build
 # ---------------------------------------------------------------------------
 

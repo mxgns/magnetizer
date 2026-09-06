@@ -385,7 +385,7 @@ def _load_special_page_post(content_dir, name, site_url=""):
     return parse_post(md_text, name, images, site_url, comments=comments)
 
 
-def _build_special_page(name, content_dir, dist_dir, config, template, values, warn, output_filename=None):
+def _build_special_page(name, content_dir, dist_dir, config, template, values, warn, output_filename=None, skip_images=False):
     post = _load_special_page_post(content_dir, name, config["site_url"])
     w = _warn_if_heading_too_high(post)
 
@@ -393,24 +393,25 @@ def _build_special_page(name, content_dir, dist_dir, config, template, values, w
     post.body_html = expanded_body
     dynamic_flag = bool(used_names)
 
-    _delete_special_page_image_files(dist_dir, name)
-    for image in post.images:
-        if image.filename.lower().endswith('.svg'):
-            shutil.copy2(content_dir / image.filename, dist_dir / image.filename)
-        else:
-            stem, _, ext = image.filename.rpartition('.')
-            resize_image(
-                content_dir / image.filename,
-                dist_dir / f"{stem}-resized.{ext}",
-                max_dimension=config["image_max_dimension"],
-                quality=config["image_quality"],
-            )
-            resize_image(
-                content_dir / image.filename,
-                dist_dir / f"{stem}-thumb.{ext}",
-                max_dimension=config["thumbnail_max_dimension"],
-                quality=config["thumbnail_quality"],
-            )
+    if not skip_images:
+        _delete_special_page_image_files(dist_dir, name)
+        for image in post.images:
+            if image.filename.lower().endswith('.svg'):
+                shutil.copy2(content_dir / image.filename, dist_dir / image.filename)
+            else:
+                stem, _, ext = image.filename.rpartition('.')
+                resize_image(
+                    content_dir / image.filename,
+                    dist_dir / f"{stem}-resized.{ext}",
+                    max_dimension=config["image_max_dimension"],
+                    quality=config["image_quality"],
+                )
+                resize_image(
+                    content_dir / image.filename,
+                    dist_dir / f"{stem}-thumb.{ext}",
+                    max_dimension=config["thumbnail_max_dimension"],
+                    quality=config["thumbnail_quality"],
+                )
 
     content_html = render_post_page_content(post, ai_disclosure_html=config["ai_disclosure_html"])
     title = render_page_title(config["site_name"], post_display_text(post), page_num=None)
@@ -579,6 +580,34 @@ def _determine_full_build_scope(changed_post_ids, content_dir, manifest, prev_pa
     return post_ids_to_build, any_relevant_change
 
 
+def _prepare_post_for_render(post, page_filename, config, values, pages_dynamic_updates, warnings):
+    def _warn_post(msg, _page_filename=page_filename):
+        warnings.append((_page_filename, msg))
+
+    expanded_body, used_names = expand_shortcodes(post.body_html, values, f"{post.id}.md", _warn_post)
+    post.body_html = expanded_body
+    if post.excerpt_html is not None:
+        # excerpt_html is always rendered from a prefix of the same source text as
+        # body_html, so any shortcode issue in it already warned once above — don't
+        # warn a second time for the same occurrence.
+        expanded_excerpt, _ = expand_shortcodes(post.excerpt_html, values, f"{post.id}.md", None)
+        post.excerpt_html = expanded_excerpt
+    pages_dynamic_updates[page_filename] = {"dynamic": bool(used_names)}
+
+    post_warnings = [
+        w for w in [
+            _warn_if_missing_alt_texts(post),
+            _warn_if_title_and_name_set(post),
+            _warn_if_title_without_image_or_content(post),
+            _warn_if_missing_category(post, config["categories"]),
+            _warn_if_invalid_category(post, config["categories"]),
+            _warn_if_heading_too_high(post),
+        ] if w
+    ]
+    for msg in post_warnings:
+        warnings.append((page_filename, msg))
+
+
 def _build_changed_posts(post_ids_to_build, changed_post_ids, posts_cache, manifest, published_post_ids_sorted_desc, content_dir, dist_dir, config, template, values, pages_dynamic_updates, deleted_page_filenames, warnings, log):
     created = updated = deleted = 0
 
@@ -601,32 +630,8 @@ def _build_changed_posts(post_ids_to_build, changed_post_ids, posts_cache, manif
 
         post = posts_cache[post_id]
         page_filename = f"{post_id}.html"
+        _prepare_post_for_render(post, page_filename, config, values, pages_dynamic_updates, warnings)
 
-        def _warn_post(msg, _page_filename=page_filename):
-            warnings.append((_page_filename, msg))
-
-        expanded_body, used_names = expand_shortcodes(post.body_html, values, f"{post_id}.md", _warn_post)
-        post.body_html = expanded_body
-        if post.excerpt_html is not None:
-            # excerpt_html is always rendered from a prefix of the same source text as
-            # body_html, so any shortcode issue in it already warned once above — don't
-            # warn a second time for the same occurrence.
-            expanded_excerpt, _ = expand_shortcodes(post.excerpt_html, values, f"{post_id}.md", None)
-            post.excerpt_html = expanded_excerpt
-        pages_dynamic_updates[page_filename] = {"dynamic": bool(used_names)}
-
-        post_warnings = [
-            w for w in [
-                _warn_if_missing_alt_texts(post),
-                _warn_if_title_and_name_set(post),
-                _warn_if_title_without_image_or_content(post),
-                _warn_if_missing_category(post, config["categories"]),
-                _warn_if_invalid_category(post, config["categories"]),
-                _warn_if_heading_too_high(post),
-            ] if w
-        ]
-        for msg in post_warnings:
-            warnings.append((f"{post_id}.html", msg))
         src_sizes = {img.filename: (content_dir / img.filename).stat().st_size for img in post.images}
         _build_post(post, dist_dir, content_dir, config)
         for image in post.images:
@@ -645,18 +650,37 @@ def _build_changed_posts(post_ids_to_build, changed_post_ids, posts_cache, manif
     return created, updated, deleted
 
 
-def _rebuild_stale_special_pages(config, content_dir, dist_dir, template, values, manifest, prev_pages, any_relevant_change, pages_dynamic_updates, warnings, log):
+def _refresh_posts(post_ids_to_refresh, posts_cache, published_post_ids_sorted_desc, dist_dir, config, template, values, pages_dynamic_updates, warnings, log):
+    """Re-renders each post's HTML from its already-built images -- no resizing,
+    no manifest/content-change bookkeeping. For --refresh: iterating on generator
+    or template code without paying the image-processing cost of a real rebuild."""
+    for post_id in post_ids_to_refresh:
+        post = posts_cache[post_id]
+        page_filename = f"{post_id}.html"
+        _prepare_post_for_render(post, page_filename, config, values, pages_dynamic_updates, warnings)
+
+        newer_url, older_url = _adjacent_post_urls(post_id, published_post_ids_sorted_desc)
+        _write_post_html(post, dist_dir, config, template, newer_url=newer_url, older_url=older_url, categories=config["categories"])
+        log(("UPDATED", f"{post_id}.html", post.char_count, post.post_type == "note", len(post.images)))
+
+
+def _rebuild_stale_special_pages(config, content_dir, dist_dir, template, values, manifest, prev_pages, any_relevant_change, pages_dynamic_updates, warnings, log, force=False):
     specials_rebuilt = False
     for name in config["special_pages"]:
         page_filename = f"{name}.html"
-        should_build = _special_page_changed(content_dir, manifest, f"{name}.md", [special_page_image_pattern(name), special_page_comment_pattern(name)])
+        really_changed = _special_page_changed(content_dir, manifest, f"{name}.md", [special_page_image_pattern(name), special_page_comment_pattern(name)])
+        should_build = force or really_changed
         if not should_build and any_relevant_change:
             should_build = bool(prev_pages.get(page_filename, {}).get("dynamic"))
         if should_build:
             def _warn_special(msg, _page_filename=page_filename):
                 warnings.append((_page_filename, msg))
 
-            w, dynamic_flag = _build_special_page(name, content_dir, dist_dir, config, template, values, _warn_special)
+            # skip_images is safe whenever this page's own files didn't actually
+            # change -- it's only being rebuilt because of something else (a forced
+            # refresh, or a dynamic-value change elsewhere), so its images are
+            # already sitting in dist/ from the build that did last touch it.
+            w, dynamic_flag = _build_special_page(name, content_dir, dist_dir, config, template, values, _warn_special, skip_images=not really_changed)
             if w:
                 warnings.append((page_filename, w))
             log(("UPDATED", page_filename))
@@ -665,12 +689,13 @@ def _rebuild_stale_special_pages(config, content_dir, dist_dir, template, values
     return specials_rebuilt
 
 
-def _rebuild_stale_not_found_page(config, content_dir, dist_dir, template, values, manifest, prev_pages, any_relevant_change, pages_dynamic_updates, warnings, log):
+def _rebuild_stale_not_found_page(config, content_dir, dist_dir, template, values, manifest, prev_pages, any_relevant_change, pages_dynamic_updates, warnings, log, force=False):
     name = _not_found_page_name(config)
     if not name:
         return False
     output_filename = config["404-page-output-filename"]
-    should_build = _special_page_changed(content_dir, manifest, config["404-page-input-filename"], [special_page_image_pattern(name), special_page_comment_pattern(name)])
+    really_changed = _special_page_changed(content_dir, manifest, config["404-page-input-filename"], [special_page_image_pattern(name), special_page_comment_pattern(name)])
+    should_build = force or really_changed
     if not should_build and any_relevant_change:
         should_build = bool(prev_pages.get(output_filename, {}).get("dynamic"))
     if not should_build:
@@ -679,7 +704,7 @@ def _rebuild_stale_not_found_page(config, content_dir, dist_dir, template, value
     def _warn_special(msg, _page_filename=output_filename):
         warnings.append((_page_filename, msg))
 
-    w, dynamic_flag = _build_special_page(name, content_dir, dist_dir, config, template, values, _warn_special, output_filename=output_filename)
+    w, dynamic_flag = _build_special_page(name, content_dir, dist_dir, config, template, values, _warn_special, output_filename=output_filename, skip_images=not really_changed)
     if w:
         warnings.append((output_filename, w))
     log(("UPDATED", output_filename))
@@ -844,7 +869,7 @@ def _write_posts_index(published_posts_sorted_desc, config, special_page_posts_b
     log(("UPDATED", "posts.json"))
 
 
-def build(cwd, filename=None, flush=False, resources=False, on_progress=None):
+def build(cwd, filename=None, flush=False, resources=False, refresh=False, on_progress=None):
     cwd = Path(cwd)
     content_dir = cwd / "content"
     dist_dir = cwd / "dist"
@@ -927,6 +952,19 @@ def build(cwd, filename=None, flush=False, resources=False, on_progress=None):
         values, pages_dynamic_updates, deleted_page_filenames, warnings, _log,
     )
 
+    if refresh and not filename:
+        # Anything already in post_ids_to_build is getting a real (image-processing)
+        # rebuild this run regardless -- refresh only needs to cover the rest, reusing
+        # whatever's already resized in dist/ from an earlier build. Iterate
+        # published_post_ids_sorted_desc, not all_post_ids_sorted_desc -- the latter
+        # also contains ids that only exist because of an orphan comment file (no
+        # matching {id}.md, so no posts_cache entry to render).
+        refresh_ids = [pid for pid in published_post_ids_sorted_desc if pid not in post_ids_to_build]
+        _refresh_posts(
+            refresh_ids, posts_cache, published_post_ids_sorted_desc,
+            dist_dir, config, template, values, pages_dynamic_updates, warnings, _log,
+        )
+
     if filename:
         # Single-file preview build (post or special page): patch just this one page's
         # dynamic flag into the manifest, leaving every other entry untouched.
@@ -947,20 +985,20 @@ def build(cwd, filename=None, flush=False, resources=False, on_progress=None):
         # even one whose own file also changed, is left untouched.
         specials_rebuilt = _rebuild_stale_special_pages(
             config, content_dir, dist_dir, template, values, manifest, prev_pages,
-            any_relevant_change, pages_dynamic_updates, warnings, _log,
+            any_relevant_change, pages_dynamic_updates, warnings, _log, force=refresh,
         )
         not_found_rebuilt = _rebuild_stale_not_found_page(
             config, content_dir, dist_dir, template, values, manifest, prev_pages,
-            any_relevant_change, pages_dynamic_updates, warnings, _log,
+            any_relevant_change, pages_dynamic_updates, warnings, _log, force=refresh,
         )
         specials_rebuilt = specials_rebuilt or not_found_rebuilt
 
     photos = None
-    if not filename and post_ids_to_build:
+    if not filename and (post_ids_to_build or refresh):
         photos = _gallery_photos(published_posts_sorted_desc, dist_dir)
         _write_generated_pages(published_posts_sorted_desc, dist_dir, config, template, _log, build_date, build_datetime, photos)
 
-    if not filename and log:
+    if not filename and (log or refresh):
         # post_ids_to_build can be empty while log is still non-empty (e.g. a
         # stale special page rebuilt on its own) — in that case photos wasn't
         # computed above yet.
@@ -985,7 +1023,7 @@ def build(cwd, filename=None, flush=False, resources=False, on_progress=None):
         _log(("REMOVED", f"resources/{name}"))
 
     if not filename:
-        any_change = bool(post_ids_to_build) or specials_rebuilt or bool(copied) or bool(deleted_resources)
+        any_change = bool(post_ids_to_build) or specials_rebuilt or bool(copied) or bool(deleted_resources) or refresh
         if any_change:
             final_pages = {**prev_pages, **pages_dynamic_updates}
             for page_filename in deleted_page_filenames:
