@@ -2091,7 +2091,7 @@ class TestArchivePage:
         build(p)
         html = (p / "dist" / "archive.html").read_text()
         assert re.search(
-            r'<p class="last-updated">The last updated was at \d{1,2}\.\d{2} (am|pm) on \d{1,2} \w+ \d{4}\.</p>',
+            r'<p class="last-updated">The last update was at \d{1,2}\.\d{2} (am|pm) on \d{1,2} \w+ \d{4}\.</p>',
             html,
         )
 

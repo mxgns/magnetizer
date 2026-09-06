@@ -1492,7 +1492,7 @@ class TestArchiveLastUpdated:
             build_date=date(2026, 9, 24), build_datetime=datetime(2026, 9, 24, 14, 43),
         )
         assert (
-            '<p class="last-updated">The last updated was at 2.43 pm on 24 September 2026.</p>'
+            '<p class="last-updated">The last update was at 2.43 pm on 24 September 2026.</p>'
         ) in html
 
     def test_last_updated_paragraph_nested_inside_calendar_section(self):

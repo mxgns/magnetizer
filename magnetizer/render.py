@@ -525,7 +525,7 @@ def render_archive_page_content(posts, categories=None, build_date=None, build_d
 
     notes_count = sum(1 for p in posts if p.post_type == "note")
 
-    last_updated_html = f'<p class="last-updated">The last updated was at {format_now(build_datetime or _datetime.now())}.</p>'
+    last_updated_html = f'<p class="last-updated">The last update was at {format_now(build_datetime or _datetime.now())}.</p>'
 
     parts = ['<main data-pagefind-ignore>', '<h1>Archive</h1>']
     parts.append(_render_contribution_calendar(posts, build_date or _date.today(), posts_per_page, last_updated_html))
