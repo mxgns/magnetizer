@@ -10,6 +10,7 @@
 - Special pages now warn about missing alt texts, same as posts
 - Special pages now warn about title+name both set, or title with no content
 - Added a `description` frontmatter key for post meta descriptions
+- Paginated index pages append " (Page N)" to index_meta_description
 
 ### 6/9/26
 

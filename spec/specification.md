@@ -287,7 +287,7 @@ Examples:
 | `gallery_per_page` | Number of photos per page when generating the gallery pages | `60` |
 | `images_per_post` | Number of top-level images shown per post on multi-post pages (index, category, notes) — 0 is valid and shows none. Never limits an individual post's own page, where all top-level images are always shown. Inline images (via `{{ image N }}`) aren't counted; those are governed by `<!-- more -->` instead. | `2` |
 | `feed_max_posts` | Maximum number of most-recent dated posts included in the Atom feed | `30` |
-| `index_meta_description` | Content for the `<meta name="description">` tag on index pages, via the `MAGNETIZER_METADATA` template placeholder | Not set — line is omitted |
+| `index_meta_description` | Content for the `<meta name="description">` tag on index pages, via the `MAGNETIZER_METADATA` template placeholder — see [Metadata](#metadata) for the page-2-and-beyond ` (Page N)` suffix | Not set — line is omitted |
 | `index_title` | When set, the title of `index.html` becomes `site_name - index_title` instead of just `site_name` | Not set — `index.html` title is just `site_name` |
 | `categories` | A map of category slug to display name, e.g. `{photography: Photography}`. See [Categories](#categories). | `{}` (no categories) |
 | `navigation` | A map of page filename to nav label, e.g. `{index.html: Home}`. See [Navigation](#navigation). | `{}` (no navigation) |
@@ -365,7 +365,7 @@ Magnetizer does not enforce any structure beyond the presence of the placeholder
   - `site_name - index_title` (index.html, with `index_title`)
   - `site_name - Page 2` (index-2.html and beyond)
   - `post_heading - site_name` (individual post page — `post_heading` follows the title/name/date-fallback priority order described in [Post types](#post-types))
-- `<meta name="description">` appears on index pages, using `index_meta_description` from config, if set. On an individual post or special page it appears whenever a description is available — see [Meta descriptions](#meta-descriptions) — independently of `index_meta_description`, which only ever applies to index pages.
+- `<meta name="description">` appears on index pages, using `index_meta_description` from config, if set. `index.html` (page 1) uses it verbatim; `index-2.html` and beyond append ` (Page N)`, so paginated index pages don't all carry an identical description. On an individual post or special page it appears whenever a description is available — see [Meta descriptions](#meta-descriptions) — independently of `index_meta_description`, which only ever applies to index pages.
 - `<link rel="canonical">` appears on every generated page, derived from `site_url` in config. For `index.html` this is the root URL (e.g. `https://example.github.io/`); for all other pages it is `site_url` + `/` + filename (e.g. `https://example.github.io/1.html`).
 - `<meta name="robots" content="noindex">` appears only for posts or special pages with `noindex: true` in frontmatter — see [Noindex posts](#noindex-posts).
 

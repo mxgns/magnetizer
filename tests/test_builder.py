@@ -2106,13 +2106,32 @@ class TestIndexMetaDescription:
         build(p)
         assert '<meta name="description" content="A great blog.">' in (p / "dist" / "index.html").read_text()
 
-    def test_second_index_page_also_has_meta_description(self, tmp_path):
+    def test_first_index_page_meta_description_has_no_page_suffix(self, tmp_path):
         config = "site_name: Test Blog\nsite_url: https://example.github.io\nposts_per_page: 2\nindex_meta_description: A great blog.\n"
         posts = {i: MINIMAL_MD for i in range(1, 4)}
         p = make_project(tmp_path, posts=posts, config=config)
         (p / "templates" / "index.html").write_text(META_DESCRIPTION_TEMPLATE)
         build(p)
-        assert '<meta name="description" content="A great blog.">' in (p / "dist" / "index-2.html").read_text()
+        assert '<meta name="description" content="A great blog.">' in (p / "dist" / "index.html").read_text()
+
+    def test_second_index_page_meta_description_has_page_suffix(self, tmp_path):
+        config = "site_name: Test Blog\nsite_url: https://example.github.io\nposts_per_page: 2\nindex_meta_description: A great blog.\n"
+        posts = {i: MINIMAL_MD for i in range(1, 4)}
+        p = make_project(tmp_path, posts=posts, config=config)
+        (p / "templates" / "index.html").write_text(META_DESCRIPTION_TEMPLATE)
+        build(p)
+        html = (p / "dist" / "index-2.html").read_text()
+        assert '<meta name="description" content="A great blog. - Page 2">' in html
+        assert '<meta name="description" content="A great blog.">' not in html
+
+    def test_third_index_page_meta_description_has_page_suffix(self, tmp_path):
+        config = "site_name: Test Blog\nsite_url: https://example.github.io\nposts_per_page: 2\nindex_meta_description: A great blog.\n"
+        posts = {i: MINIMAL_MD for i in range(1, 6)}
+        p = make_project(tmp_path, posts=posts, config=config)
+        (p / "templates" / "index.html").write_text(META_DESCRIPTION_TEMPLATE)
+        build(p)
+        html = (p / "dist" / "index-3.html").read_text()
+        assert '<meta name="description" content="A great blog. - Page 3">' in html
 
     def test_post_page_meta_description_is_independent_of_index_meta_description(self, tmp_path):
         config = "site_name: Test Blog\nsite_url: https://example.github.io\nposts_per_page: 2\nindex_meta_description: A great blog.\n"

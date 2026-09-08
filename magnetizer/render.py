@@ -323,6 +323,14 @@ def render_page_title(site_name, post_title, page_num, index_title=None):
     return site_name
 
 
+def render_page_meta_description(base_description, page_num):
+    if not base_description:
+        return None
+    if page_num and page_num > 1:
+        return f"{base_description} - Page {page_num}"
+    return base_description
+
+
 def render_metadata(title, canonical=None, meta_description=None, is_noindex=False):
     lines = [f'<title>{_escape(title)}</title>']
     if meta_description:

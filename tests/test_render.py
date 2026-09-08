@@ -19,6 +19,7 @@ from magnetizer.render import (
     render_index_page_content,
     render_notes_page_content,
     render_navigation,
+    render_page_meta_description,
     render_page_title,
     render_post_page_content,
     render_search_page_content,
@@ -805,6 +806,31 @@ class TestRenderPageTitle:
 
     def test_index_page_2_not_affected_by_index_title(self):
         assert render_page_title("My Blog", None, page_num=2, index_title="Photos") == "My Blog - Page 2"
+
+
+# ---------------------------------------------------------------------------
+# render_page_meta_description
+# ---------------------------------------------------------------------------
+
+class TestRenderPageMetaDescription:
+
+    def test_page_1_returned_verbatim(self):
+        assert render_page_meta_description("A great blog.", page_num=1) == "A great blog."
+
+    def test_page_2_appends_page_number(self):
+        assert render_page_meta_description("A great blog.", page_num=2) == "A great blog. - Page 2"
+
+    def test_page_3_appends_page_number(self):
+        assert render_page_meta_description("A great blog.", page_num=3) == "A great blog. - Page 3"
+
+    def test_none_base_stays_none_on_page_1(self):
+        assert render_page_meta_description(None, page_num=1) is None
+
+    def test_none_base_stays_none_on_page_2(self):
+        assert render_page_meta_description(None, page_num=2) is None
+
+    def test_empty_string_base_stays_falsy_on_page_2(self):
+        assert render_page_meta_description("", page_num=2) is None
 
 
 # ---------------------------------------------------------------------------
