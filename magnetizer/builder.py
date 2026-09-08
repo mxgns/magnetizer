@@ -391,6 +391,8 @@ def _build_special_page(name, content_dir, dist_dir, config, template, values, w
         w for w in [
             _warn_if_heading_too_high(post),
             _warn_if_missing_alt_texts(post),
+            _warn_if_title_and_name_set(post),
+            _warn_if_title_without_image_or_content(post),
         ] if w
     ]
 
