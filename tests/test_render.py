@@ -818,10 +818,10 @@ class TestRenderPageMetaDescription:
         assert render_page_meta_description("A great blog.", page_num=1) == "A great blog."
 
     def test_page_2_appends_page_number(self):
-        assert render_page_meta_description("A great blog.", page_num=2) == "A great blog. - Page 2"
+        assert render_page_meta_description("A great blog.", page_num=2) == "A great blog. (Page 2)"
 
     def test_page_3_appends_page_number(self):
-        assert render_page_meta_description("A great blog.", page_num=3) == "A great blog. - Page 3"
+        assert render_page_meta_description("A great blog.", page_num=3) == "A great blog. (Page 3)"
 
     def test_none_base_stays_none_on_page_1(self):
         assert render_page_meta_description(None, page_num=1) is None

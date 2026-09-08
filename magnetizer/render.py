@@ -327,7 +327,7 @@ def render_page_meta_description(base_description, page_num):
     if not base_description:
         return None
     if page_num and page_num > 1:
-        return f"{base_description} - Page {page_num}"
+        return f"{base_description} (Page {page_num})"
     return base_description
 
 
