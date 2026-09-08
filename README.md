@@ -34,7 +34,7 @@ manifest.json  Build state (created automatically)
 | `gallery_per_page` | Photos shown per gallery page (`gallery.html`, `gallery-2.html`, …) | `60` |
 | `images_per_post` | Top-level images shown per post on multi-post pages (index, category, notes) — `0` shows none. The post's own page always shows all top-level images regardless. Inline images (`{{ image N }}`) aren't counted; use `<!-- more -->` to control those | `2` |
 | `feed_max_posts` | Maximum number of most-recent dated posts included in the Atom feed | `30` |
-| `index_meta_description` | `<meta name="description">` content on index pages (via `MAGNETIZER_METADATA` placeholder) | Not set |
+| `index_meta_description` | `<meta name="description">` content on index pages (via `MAGNETIZER_METADATA` placeholder) — `index.html` uses it verbatim, `index-2.html` and beyond append ` - Page N`, same as the title | Not set |
 | `index_title` | When set, the title of `index.html` becomes `site_name - index_title` | Not set |
 | `categories` | Map of category slug to display name, e.g. `{photography: Photography}` | `{}` (no categories) |
 | `navigation` | Map of page filename to nav label, e.g. `{index.html: Home}`, in display order | `{}` (no navigation) |

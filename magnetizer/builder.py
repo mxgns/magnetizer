@@ -38,6 +38,7 @@ from magnetizer.render import (
     render_index_page_content,
     render_notes_page_content,
     render_navigation,
+    render_page_meta_description,
     render_page_title,
     render_post_page_content,
     render_search_page_content,
@@ -258,7 +259,7 @@ def _write_index_pages(posts_sorted_desc, dist_dir, config, template, categories
         filename = index_page_url(page_num)
         html = render_template(template, title=title, content=content_html,
                                canonical=canonical_url(config["site_url"], filename),
-                               meta_description=config["index_meta_description"],
+                               meta_description=render_page_meta_description(config["index_meta_description"], page_num),
                                navigation=render_navigation(config["navigation"], filename),
                                page_id=_page_id(filename))
         (dist_dir / filename).write_text(html)
