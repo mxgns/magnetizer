@@ -2114,18 +2114,58 @@ class TestIndexMetaDescription:
         build(p)
         assert '<meta name="description" content="A great blog.">' in (p / "dist" / "index-2.html").read_text()
 
-    def test_post_page_does_not_include_meta_description(self, tmp_path):
+    def test_post_page_meta_description_is_independent_of_index_meta_description(self, tmp_path):
         config = "site_name: Test Blog\nsite_url: https://example.github.io\nposts_per_page: 2\nindex_meta_description: A great blog.\n"
         p = make_project(tmp_path, posts={1: MINIMAL_MD}, config=config)
         (p / "templates" / "index.html").write_text(META_DESCRIPTION_TEMPLATE)
         build(p)
-        assert '<meta name="description"' not in (p / "dist" / "1.html").read_text()
+        html = (p / "dist" / "1.html").read_text()
+        assert '<meta name="description" content="A great blog.">' not in html
+        assert '<meta name="description" content="Hello world">' in html
 
     def test_placeholder_removed_when_meta_description_not_configured(self, tmp_path):
         p = make_project(tmp_path, posts={1: MINIMAL_MD})
         (p / "templates" / "index.html").write_text(META_DESCRIPTION_TEMPLATE)
         build(p)
         assert 'MAGNETIZER_METADATA' not in (p / "dist" / "index.html").read_text()
+
+
+# ---------------------------------------------------------------------------
+# Post meta description
+# ---------------------------------------------------------------------------
+
+class TestPostMetaDescription:
+
+    def test_post_meta_description_generated_from_body_when_no_description_set(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD})
+        (p / "templates" / "index.html").write_text(META_DESCRIPTION_TEMPLATE)
+        build(p)
+        html = (p / "dist" / "1.html").read_text()
+        assert '<meta name="description" content="Hello world">' in html
+
+    def test_post_meta_description_uses_frontmatter_description_when_set(self, tmp_path):
+        md = "---\ndate: 2026-05-24\ndescription: A hand-written meta description.\n---\n\nHello world\n"
+        p = make_project(tmp_path, posts={1: md})
+        (p / "templates" / "index.html").write_text(META_DESCRIPTION_TEMPLATE)
+        build(p)
+        html = (p / "dist" / "1.html").read_text()
+        assert '<meta name="description" content="A hand-written meta description.">' in html
+
+    def test_post_meta_description_omitted_when_post_has_no_body_or_description(self, tmp_path):
+        md = "---\ndate: 2026-05-24\ntitle: Just a title\n---\n"
+        p = make_project(tmp_path, posts={1: md})
+        (p / "templates" / "index.html").write_text(META_DESCRIPTION_TEMPLATE)
+        build(p)
+        html = (p / "dist" / "1.html").read_text()
+        assert '<meta name="description"' not in html
+
+    def test_post_meta_description_special_chars_are_escaped(self, tmp_path):
+        md = '---\ndate: 2026-05-24\ndescription: A "great" post & more\n---\n\nHello world\n'
+        p = make_project(tmp_path, posts={1: md})
+        (p / "templates" / "index.html").write_text(META_DESCRIPTION_TEMPLATE)
+        build(p)
+        html = (p / "dist" / "1.html").read_text()
+        assert 'content="A &quot;great&quot; post &amp; more"' in html
 
 
 # ---------------------------------------------------------------------------

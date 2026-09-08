@@ -19,7 +19,7 @@ def special_page_image_pattern(name):
 def special_page_comment_pattern(name):
     return re.compile(rf'^{re.escape(name)}-comment-(\d{{2}})\.md$')
 
-_ALLOWED_FRONTMATTER_KEYS = frozenset({'date', 'title', 'name', 'images', 'favourite', 'category', 'ai_assisted', 'noindex'})
+_ALLOWED_FRONTMATTER_KEYS = frozenset({'date', 'title', 'name', 'images', 'favourite', 'category', 'ai_assisted', 'noindex', 'description'})
 _MARKDOWN_EXTENSIONS = ['pymdownx.mark', 'smarty', 'tables', 'magnetizer.containers']
 _COMMENT_ALLOWED_FRONTMATTER_KEYS = frozenset({'date', 'author'})
 _COMMENT_MARKDOWN_EXTENSIONS = ['pymdownx.mark', 'smarty']
@@ -73,6 +73,7 @@ class Post:
     is_ai_assisted: bool = False
     is_noindex: bool = False
     category: str | None = None
+    meta_description: str | None = None
     char_count: int = 0
     inline_image_filenames: frozenset = frozenset()
     excerpt_inline_image_filenames: frozenset = frozenset()
@@ -97,6 +98,38 @@ def _plain_text(rendered_html):
     text = re.sub(r'<[^>]+>', '', rendered_html)
     text = html.unescape(text)
     return re.sub(r'\s+', ' ', text).strip()
+
+
+_META_DESCRIPTION_LIMIT = 160
+_META_DESCRIPTION_MIN_SENTENCE = 100
+_SENTENCE_END_RE = re.compile(r'[.!?]+(?=\s|$)')
+
+
+def _build_meta_description(description, body_html):
+    """A post's meta description: its `description` frontmatter verbatim if
+    set, otherwise the first 160 characters of its plain-text body. Prefers
+    cutting at a sentence boundary if that leaves a reasonably full
+    description (at least 100 of the 160 characters); otherwise falls back
+    to the last complete word before the limit, marked with an ellipsis.
+    Never cuts a word or sentence mid-way."""
+    if description:
+        return description
+    text = _plain_text(body_html) if body_html else ''
+    if not text:
+        return None
+    if len(text) <= _META_DESCRIPTION_LIMIT:
+        return text
+
+    sentence_end = None
+    for m in _SENTENCE_END_RE.finditer(text):
+        if m.end() > _META_DESCRIPTION_LIMIT:
+            break
+        sentence_end = m.end()
+    if sentence_end is not None and sentence_end >= _META_DESCRIPTION_MIN_SENTENCE:
+        return text[:sentence_end]
+
+    truncated = text[:_META_DESCRIPTION_LIMIT].rsplit(' ', 1)[0]
+    return truncated + '…'
 
 
 def _parse_frontmatter(text):
@@ -260,6 +293,7 @@ def parse_post(md_text, post_id, image_filenames, site_url="", comments=None):
     is_noindex = isinstance(noindex_raw, str) and noindex_raw.lower() == 'true'
     category_raw = fm.get('category', '')
     category = (category_raw.lower().strip() if isinstance(category_raw, str) else '') or None
+    description = fm.get('description') or None
 
     sorted_filenames = sorted(
         image_filenames,
@@ -285,6 +319,7 @@ def parse_post(md_text, post_id, image_filenames, site_url="", comments=None):
         excerpt_html = None
 
     char_count = len(_plain_text(body_html))
+    meta_description = _build_meta_description(description, body_html)
 
     top_level_image_count = len(images) - len(inline_image_filenames)
     has_content = char_count > 0
@@ -320,6 +355,7 @@ def parse_post(md_text, post_id, image_filenames, site_url="", comments=None):
         is_ai_assisted=is_ai_assisted,
         is_noindex=is_noindex,
         category=category,
+        meta_description=meta_description,
         char_count=char_count,
         inline_image_filenames=frozenset(inline_image_filenames),
         excerpt_inline_image_filenames=frozenset(excerpt_inline_image_filenames),

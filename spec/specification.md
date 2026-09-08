@@ -365,7 +365,7 @@ Magnetizer does not enforce any structure beyond the presence of the placeholder
   - `site_name - index_title` (index.html, with `index_title`)
   - `site_name - Page 2` (index-2.html and beyond)
   - `post_heading - site_name` (individual post page — `post_heading` follows the title/name/date-fallback priority order described in [Post types](#post-types))
-- `<meta name="description">` appears only on index pages, using `index_meta_description` from config, if set.
+- `<meta name="description">` appears on index pages, using `index_meta_description` from config, if set. On an individual post or special page it appears whenever a description is available — see [Meta descriptions](#meta-descriptions) — independently of `index_meta_description`, which only ever applies to index pages.
 - `<link rel="canonical">` appears on every generated page, derived from `site_url` in config. For `index.html` this is the root URL (e.g. `https://example.github.io/`); for all other pages it is `site_url` + `/` + filename (e.g. `https://example.github.io/1.html`).
 - `<meta name="robots" content="noindex">` appears only for posts or special pages with `noindex: true` in frontmatter — see [Noindex posts](#noindex-posts).
 
@@ -562,6 +562,7 @@ This is the single overview of every frontmatter key a post or special page can 
 | `favourite` | Posts | `true` / `false` | `false` | [Favourite posts](#favourite-posts) |
 | `ai_assisted` | Posts, special pages | `true` / `false` | `false` | [AI-assisted disclosure](#ai-assisted-disclosure) |
 | `noindex` | Posts, special pages | `true` / `false` | `false` | [Noindex posts](#noindex-posts) |
+| `description` | Posts, special pages | Plain text | Not set | [Meta descriptions](#meta-descriptions) |
 
 ### Favourite posts
 
@@ -636,6 +637,25 @@ A noindex post is excluded from `sitemap.xml`, and its own page gets a `<meta na
 `noindex` works the same way on special pages (see [Special pages](#special-pages)) as on regular posts.
 
 If `noindex` is absent or set to `false`, the post is indexed normally.
+
+### Meta descriptions
+
+A post or special page can set its own `<meta name="description">` content by setting `description` in its frontmatter:
+
+```yaml
+---
+date: 2026-05-21
+description: A short summer trip to the coast, with far too many photos of the sea.
+---
+```
+
+If set, `description` is used verbatim (escaped, not truncated) as the page's meta description.
+
+If `description` is absent, one is generated automatically from the post's plain-text body (tags stripped, entities unescaped, whitespace normalised): the first 160 characters, preferring to cut at the end of a complete sentence if that leaves a reasonably full description (the sentence covers at least 100 of the 160 characters); otherwise cutting at the last complete word before the 160-character limit, with a trailing `…`. A word or sentence is never cut mid-way. If the body is 160 characters or fewer, it's used in full with no `…`. A post with no body text and no `description` gets no meta description at all — the `<meta name="description">` line is omitted, same as when `index_meta_description` is unset (see [Metadata](#metadata)).
+
+This is entirely independent of `index_meta_description` in `config.yaml`, which only applies to index pages (see [Metadata](#metadata)).
+
+`description` works the same way on special pages as on regular posts.
 
 ### Categories
 
