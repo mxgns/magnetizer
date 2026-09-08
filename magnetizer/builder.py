@@ -387,7 +387,14 @@ def _load_special_page_post(content_dir, name, site_url=""):
 
 def _build_special_page(name, content_dir, dist_dir, config, template, values, warn, output_filename=None, skip_images=False):
     post = _load_special_page_post(content_dir, name, config["site_url"])
-    w = _warn_if_heading_too_high(post)
+    ws = [
+        w for w in [
+            _warn_if_heading_too_high(post),
+            _warn_if_missing_alt_texts(post),
+            _warn_if_title_and_name_set(post),
+            _warn_if_title_without_image_or_content(post),
+        ] if w
+    ]
 
     expanded_body, used_names = expand_shortcodes(post.body_html, values, f"{name}.md", warn)
     post.body_html = expanded_body
@@ -421,7 +428,7 @@ def _build_special_page(name, content_dir, dist_dir, config, template, values, w
                            navigation=render_navigation(config["navigation"], filename),
                            is_noindex=post.is_noindex, page_id=_page_id(filename))
     (dist_dir / filename).write_text(html)
-    return w, dynamic_flag
+    return ws, dynamic_flag
 
 
 def _special_page_changed(content_dir, manifest, md_name, patterns=()):
@@ -532,8 +539,8 @@ def _build_requested_special_page(stem, content_dir, dist_dir, config, template,
     def _warn_special(msg):
         warnings.append((filename_html, msg))
 
-    w, dynamic_flag = _build_special_page(stem, content_dir, dist_dir, config, template, values, _warn_special)
-    if w:
+    ws, dynamic_flag = _build_special_page(stem, content_dir, dist_dir, config, template, values, _warn_special)
+    for w in ws:
         warnings.append((filename_html, w))
     log(("UPDATED", filename_html))
     pages_dynamic_updates[filename_html] = {"dynamic": dynamic_flag}
@@ -543,8 +550,8 @@ def _build_requested_not_found_page(name, output_filename, content_dir, dist_dir
     def _warn_special(msg):
         warnings.append((output_filename, msg))
 
-    w, dynamic_flag = _build_special_page(name, content_dir, dist_dir, config, template, values, _warn_special, output_filename=output_filename)
-    if w:
+    ws, dynamic_flag = _build_special_page(name, content_dir, dist_dir, config, template, values, _warn_special, output_filename=output_filename)
+    for w in ws:
         warnings.append((output_filename, w))
     log(("UPDATED", output_filename))
     pages_dynamic_updates[output_filename] = {"dynamic": dynamic_flag}
@@ -680,8 +687,8 @@ def _rebuild_stale_special_pages(config, content_dir, dist_dir, template, values
             # change -- it's only being rebuilt because of something else (a forced
             # refresh, or a dynamic-value change elsewhere), so its images are
             # already sitting in dist/ from the build that did last touch it.
-            w, dynamic_flag = _build_special_page(name, content_dir, dist_dir, config, template, values, _warn_special, skip_images=not really_changed)
-            if w:
+            ws, dynamic_flag = _build_special_page(name, content_dir, dist_dir, config, template, values, _warn_special, skip_images=not really_changed)
+            for w in ws:
                 warnings.append((page_filename, w))
             log(("UPDATED", page_filename))
             pages_dynamic_updates[page_filename] = {"dynamic": dynamic_flag}
@@ -704,8 +711,8 @@ def _rebuild_stale_not_found_page(config, content_dir, dist_dir, template, value
     def _warn_special(msg, _page_filename=output_filename):
         warnings.append((_page_filename, msg))
 
-    w, dynamic_flag = _build_special_page(name, content_dir, dist_dir, config, template, values, _warn_special, output_filename=output_filename, skip_images=not really_changed)
-    if w:
+    ws, dynamic_flag = _build_special_page(name, content_dir, dist_dir, config, template, values, _warn_special, output_filename=output_filename, skip_images=not really_changed)
+    for w in ws:
         warnings.append((output_filename, w))
     log(("UPDATED", output_filename))
     pages_dynamic_updates[output_filename] = {"dynamic": dynamic_flag}

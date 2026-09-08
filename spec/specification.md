@@ -456,6 +456,7 @@ Every post is classified into exactly one of three types, based on its `title`, 
 - A post with both `title` and `name` set uses the `title` and ignores `name`. A build warning is printed naming the post.
 - A post with a `title` but no images and no body content doesn't make good use of its own page. A build warning is printed naming the post.
 - These two checks count any image, including one used only inline via `{{ image N }}` — unlike the Full/Image/Note classification above, they don't distinguish top-level from inline. A post with only an inline image and no other text is a Note (see the previous bullet), not invalid.
+- Both warnings are also printed for a [special page](#special-pages), using its configured name in place of the post, since a special page is classified into a post type the same way.
 - Notes replace what was previously called microblog posts. Compared to the old microblog behaviour, there is no longer a maximum length — any untitled, image-less post with body content is a Note, however long — and the paginated listing page is `notes.html` instead of `microblog.html` (see [Notes pages](#notes-pages)).
 
 Notes get a link to `notes.html` in their `<footer>`, before the category link (if any):
@@ -772,7 +773,7 @@ If a post has images but the `images:` list is absent or incomplete, a warning i
 Warning: Post {post-id} is missing one or more alt texts
 ```
 
-The build continues normally — this is a warning, not an error.
+The same warning is printed for each [special page](#special-pages), using its configured name in place of `{post-id}`. The build continues normally — this is a warning, not an error.
 
 ### Inline images
 

@@ -5,6 +5,11 @@
 
 ## Released changes
 
+### 8/9/26
+
+- Special pages now warn about missing alt texts, same as posts
+- Special pages now warn about title+name both set, or title with no content
+
 ### 6/9/26
 
 - Added a {{ now }} shortcode with the build time
