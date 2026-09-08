@@ -157,7 +157,7 @@ def render_article(post, on_index_page, categories=None, ai_disclosure_html=None
         if post.post_type == "note":
             footer_parts.append('<a href="notes.html" class="notes">Short note</a>')
         if post.category and categories and post.category in categories:
-            display_name = _escape(categories[post.category])
+            display_name = _escape(categories[post.category]["name"])
             footer_parts.append(f'<a href="{post.category}.html" class="category">{display_name}</a>')
         if on_index_page and post.comments:
             count = len(post.comments)
@@ -541,7 +541,7 @@ def render_archive_page_content(posts, categories=None, build_date=None, build_d
     category_block = []
     if categories:
         used_slugs = {p.category for p in posts if p.category}
-        category_items = [(slug, name) for slug, name in categories.items() if slug in used_slugs]
+        category_items = [(slug, category["name"]) for slug, category in categories.items() if slug in used_slugs]
         if category_items:
             category_counts = Counter(p.category for p in posts if p.category)
             category_items.sort(key=lambda item: category_counts.get(item[0], 0), reverse=True)

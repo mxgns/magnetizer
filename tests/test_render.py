@@ -1739,7 +1739,7 @@ class TestArchiveCategoriesList:
 
     def test_category_display_name_escaped(self):
         post = make_dated_post(1, "2026-05-24", category="a-and-b")
-        html = render_archive_page_content([post], categories={"a-and-b": "A & B"})
+        html = render_archive_page_content([post], categories={"a-and-b": {"name": "A & B", "description": None}})
         assert "&amp;" in html
         assert ">A & B<" not in html
 
@@ -2035,7 +2035,10 @@ class TestArchiveDisplayText:
 # render_article — category link
 # ---------------------------------------------------------------------------
 
-_CATEGORIES = {"photography": "Photography", "travel": "Travel"}
+_CATEGORIES = {
+    "photography": {"name": "Photography", "description": None},
+    "travel": {"name": "Travel", "description": None},
+}
 
 
 class TestRenderArticleCategory:
@@ -2080,7 +2083,7 @@ class TestRenderArticleCategory:
         assert 'class="category"' not in html
 
     def test_category_display_name_is_html_escaped(self):
-        cats = {"fun": "Fun & Games"}
+        cats = {"fun": {"name": "Fun & Games", "description": None}}
         html = render_article(make_post(category="fun"), on_index_page=False, categories=cats)
         assert "Fun &amp; Games" in html
         assert "Fun & Games<" not in html

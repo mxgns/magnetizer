@@ -1585,7 +1585,7 @@ class TestSpecialPagesGeneric:
     def test_category_slug_matching_configured_special_page_name_errors(self, tmp_path):
         config = (
             "site_name: Test Blog\nsite_url: https://example.github.io\n"
-            "posts_per_page: 2\nspecial_pages:\n  - now\ncategories:\n  now: Now\n"
+            "posts_per_page: 2\nspecial_pages:\n  - now\ncategories:\n  now:\n    name: Now\n"
         )
         p = make_project(tmp_path, posts={1: MINIMAL_MD}, config=config)
         (p / "content" / "now.md").write_text(NOW_MD)
@@ -2561,7 +2561,7 @@ class TestTitleWithoutImageOrContentWarning:
 
 _CATEGORIES_CONFIG = (
     "site_name: Test Blog\nsite_url: https://example.github.io\n"
-    "posts_per_page: 2\ncategories:\n  photography: Photography\n  travel: Travel\n"
+    "posts_per_page: 2\ncategories:\n  photography:\n    name: Photography\n  travel:\n    name: Travel\n"
 )
 _CATEGORY_MD = "---\ndate: 2026-05-24\ntitle: My Post\ncategory: photography\n---\n\nHello world\n"
 _NO_CATEGORY_MD = "---\ndate: 2026-05-24\ntitle: My Post\n---\n\nHello world\n"
@@ -2693,6 +2693,58 @@ class TestCategoryPages:
         posts = {i: _CATEGORY_MD for i in range(1, 4)}  # 3 posts, per_page=2
         p = make_project(tmp_path, posts=posts, config=_CATEGORIES_CONFIG)
         assert ("UPDATED", "photography-2.html") in build(p)["log"]
+
+
+# ---------------------------------------------------------------------------
+# Category meta descriptions
+# ---------------------------------------------------------------------------
+
+_CATEGORY_WITH_DESCRIPTION_CONFIG = (
+    "site_name: Test Blog\nsite_url: https://example.github.io\n"
+    "posts_per_page: 2\ncategories:\n  photography:\n"
+    "    name: Photography\n    description: Places I've been and things I've done.\n"
+)
+
+
+class TestCategoryMetaDescription:
+
+    def test_category_page_uses_configured_description(self, tmp_path):
+        p = make_project(tmp_path, posts={1: _CATEGORY_MD}, config=_CATEGORY_WITH_DESCRIPTION_CONFIG)
+        build(p)
+        html = (p / "dist" / "photography.html").read_text()
+        assert '<meta name="description" content="Places I&#x27;ve been and things I&#x27;ve done.">' in html
+
+    def test_category_page_has_no_meta_description_when_none_configured(self, tmp_path):
+        p = make_project(tmp_path, posts={1: _CATEGORY_MD}, config=_CATEGORIES_CONFIG)
+        build(p)
+        assert '<meta name="description"' not in (p / "dist" / "photography.html").read_text()
+
+    def test_second_category_page_appends_page_suffix(self, tmp_path):
+        posts = {i: _CATEGORY_MD for i in range(1, 4)}  # 3 posts, per_page=2
+        p = make_project(tmp_path, posts=posts, config=_CATEGORY_WITH_DESCRIPTION_CONFIG)
+        build(p)
+        html = (p / "dist" / "photography-2.html").read_text()
+        assert '<meta name="description" content="Places I&#x27;ve been and things I&#x27;ve done. (Page 2)">' in html
+
+    def test_first_category_page_has_no_page_suffix(self, tmp_path):
+        posts = {i: _CATEGORY_MD for i in range(1, 4)}  # 3 posts, per_page=2
+        p = make_project(tmp_path, posts=posts, config=_CATEGORY_WITH_DESCRIPTION_CONFIG)
+        build(p)
+        html = (p / "dist" / "photography.html").read_text()
+        assert '<meta name="description" content="Places I&#x27;ve been and things I&#x27;ve done.">' in html
+
+    def test_category_meta_description_is_independent_of_other_categories(self, tmp_path):
+        config = (
+            "site_name: Test Blog\nsite_url: https://example.github.io\n"
+            "posts_per_page: 2\ncategories:\n  photography:\n"
+            "    name: Photography\n    description: About photography.\n"
+            "  travel:\n    name: Travel\n"
+        )
+        travel_md = "---\ndate: 2026-05-24\ntitle: Travel Post\ncategory: travel\n---\n\nContent\n"
+        p = make_project(tmp_path, posts={1: _CATEGORY_MD, 2: travel_md}, config=config)
+        build(p)
+        assert '<meta name="description"' not in (p / "dist" / "travel.html").read_text()
+        assert '<meta name="description" content="About photography.">' in (p / "dist" / "photography.html").read_text()
 
 
 # ---------------------------------------------------------------------------
@@ -2855,7 +2907,7 @@ class TestWarnings:
     def test_missing_category_produces_warning(self, tmp_path):
         config = (
             "site_name: Test Blog\nsite_url: https://example.github.io\n"
-            "posts_per_page: 2\ncategories:\n  photo: Photography\n"
+            "posts_per_page: 2\ncategories:\n  photo:\n    name: Photography\n"
         )
         p = make_project(tmp_path, posts={1: MINIMAL_MD}, config=config)
         warnings = build(p)["warnings"]
@@ -2864,7 +2916,7 @@ class TestWarnings:
     def test_invalid_category_produces_warning(self, tmp_path):
         config = (
             "site_name: Test Blog\nsite_url: https://example.github.io\n"
-            "posts_per_page: 2\ncategories:\n  photo: Photography\n"
+            "posts_per_page: 2\ncategories:\n  photo:\n    name: Photography\n"
         )
         cat_md = "---\ndate: 2026-05-24\ncategory: unknown\n---\n\nContent\n"
         p = make_project(tmp_path, posts={1: cat_md}, config=config)
@@ -2971,7 +3023,7 @@ class TestNavigation:
         assert 'current' not in html
 
     def test_navigation_rendered_on_category_page(self, tmp_path):
-        config = _NAVIGATION_CONFIG + "categories:\n  photography: Photography\n"
+        config = _NAVIGATION_CONFIG + "categories:\n  photography:\n    name: Photography\n"
         md = "---\ndate: 2026-05-24\ntitle: My Post\ncategory: photography\n---\n\nHello\n"
         p = make_project(tmp_path, posts={1: md}, config=config)
         build(p)

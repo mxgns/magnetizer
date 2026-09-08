@@ -36,7 +36,7 @@ manifest.json  Build state (created automatically)
 | `feed_max_posts` | Maximum number of most-recent dated posts included in the Atom feed | `30` |
 | `index_meta_description` | `<meta name="description">` content on index pages (via `MAGNETIZER_METADATA` placeholder) — `index.html` uses it verbatim, `index-2.html` and beyond append ` (Page N)` | Not set |
 | `index_title` | When set, the title of `index.html` becomes `site_name - index_title` | Not set |
-| `categories` | Map of category slug to display name, e.g. `{photography: Photography}` | `{}` (no categories) |
+| `categories` | Map of category slug to a `{name, description}` mapping — see [Categories](#categories) | `{}` (no categories) |
 | `navigation` | Map of page filename to nav label, e.g. `{index.html: Home}`, in display order | `{}` (no navigation) |
 | `special_pages` | List of standalone page names, each backed by a `content/{name}.md` file — see [Special pages](#special-pages) | `[]` (no special pages) |
 | `ai_disclosure_html` | Raw HTML (not escaped, so it may include a link) shown in the disclosure banner when a post or special page sets `ai_assisted: true` — see the `ai_assisted` entry in [Frontmatter reference](#frontmatter-reference) | Not set — falls back to a generic disclosure sentence |
@@ -52,8 +52,11 @@ posts_per_page: 12
 image_max_dimension: 1600
 image_quality: 75
 categories:
-  photography: Photography
-  travel: Travel
+  photography:
+    name: Photography
+  travel:
+    name: Travel
+    description: Trips near and far.
 navigation:
   index.html: Home
   archive.html: Archive

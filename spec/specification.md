@@ -289,7 +289,7 @@ Examples:
 | `feed_max_posts` | Maximum number of most-recent dated posts included in the Atom feed | `30` |
 | `index_meta_description` | Content for the `<meta name="description">` tag on index pages, via the `MAGNETIZER_METADATA` template placeholder — see [Metadata](#metadata) for the page-2-and-beyond ` (Page N)` suffix | Not set — line is omitted |
 | `index_title` | When set, the title of `index.html` becomes `site_name - index_title` instead of just `site_name` | Not set — `index.html` title is just `site_name` |
-| `categories` | A map of category slug to display name, e.g. `{photography: Photography}`. See [Categories](#categories). | `{}` (no categories) |
+| `categories` | A map of category slug to a `{name, description}` mapping, e.g. `{photography: {name: Photography}}`. See [Categories](#categories). | `{}` (no categories) |
 | `navigation` | A map of page filename to nav label, e.g. `{index.html: Home}`. See [Navigation](#navigation). | `{}` (no navigation) |
 | `special_pages` | A list of page names, each backed by a `{name}.md` file in `content/`, e.g. `[about, cookies]`. See [Special pages](#special-pages). | `[]` (no special pages) |
 | `ai_disclosure_html` | Raw HTML shown in the AI-assisted disclosure banner (see [AI-assisted disclosure](#ai-assisted-disclosure)). Not escaped, so it may include markup such as a link. | Not set — falls back to a generic built-in disclosure sentence |
@@ -365,7 +365,7 @@ Magnetizer does not enforce any structure beyond the presence of the placeholder
   - `site_name - index_title` (index.html, with `index_title`)
   - `site_name - Page 2` (index-2.html and beyond)
   - `post_heading - site_name` (individual post page — `post_heading` follows the title/name/date-fallback priority order described in [Post types](#post-types))
-- `<meta name="description">` appears on index pages, using `index_meta_description` from config, if set. `index.html` (page 1) uses it verbatim; `index-2.html` and beyond append ` (Page N)`, so paginated index pages don't all carry an identical description. On an individual post or special page it appears whenever a description is available — see [Meta descriptions](#meta-descriptions) — independently of `index_meta_description`, which only ever applies to index pages.
+- `<meta name="description">` appears on index pages, using `index_meta_description` from config, if set, and on category pages, using that category's `description` from config, if set (see [Categories](#categories)) — in both cases page 1 uses it verbatim and page 2 and beyond append ` (Page N)`, so paginated pages don't all carry an identical description. On an individual post or special page it appears whenever a description is available — see [Meta descriptions](#meta-descriptions) — independently of `index_meta_description` and category `description`, which only ever apply to their own page family.
 - `<link rel="canonical">` appears on every generated page, derived from `site_url` in config. For `index.html` this is the root URL (e.g. `https://example.github.io/`); for all other pages it is `site_url` + `/` + filename (e.g. `https://example.github.io/1.html`).
 - `<meta name="robots" content="noindex">` appears only for posts or special pages with `noindex: true` in frontmatter — see [Noindex posts](#noindex-posts).
 
@@ -659,13 +659,20 @@ This is entirely independent of `index_meta_description` in `config.yaml`, which
 
 ### Categories
 
-Categories are configured in `config.yaml` as a map of slug to display name:
+Categories are configured in `config.yaml` as a map of slug to a mapping with a required `name` and an optional `description`:
 
 ```yaml
 categories:
-  photography: Photography
-  travel: Travel
+  out-and-about:
+    name: Out & About
+    description: Places I've been, things I've done, and stuff worth getting out of the house for.
+  travel:
+    name: Travel
 ```
+
+`name` is the category's display name — used for its page `<h1>`, its link text wherever it's shown (post footers, the archive categories list), and as the fallback for its page `<title>`. A category with no `name` (or a value that isn't a mapping at all — e.g. the old flat `slug: Display Name` shorthand) is a build error, since there's nothing to display for it.
+
+If `description` is set, it's used verbatim as the category page's `<meta name="description">` content, the same way `index_meta_description` works for index pages (see [Metadata](#metadata)) — including the ` (Page N)` suffix on `{slug}-2.html` and beyond. If `description` is absent, the category page gets no meta description at all. Unlike a post's `description` (see [Meta descriptions](#meta-descriptions)), there's no auto-generated fallback — a category page has no single body of text to summarise.
 
 A post is assigned to a category by setting `category` in its frontmatter to the category's slug. Matching is case-insensitive and the value is normalised to lowercase:
 
