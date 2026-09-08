@@ -5,6 +5,10 @@
 
 ## Released changes
 
+### 8/9/26
+
+- Added a `description` frontmatter key for post meta descriptions
+
 ### 6/9/26
 
 - Added a {{ now }} shortcode with the build time

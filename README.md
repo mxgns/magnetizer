@@ -169,6 +169,7 @@ This is the single reference for every frontmatter key a post or special page ca
 | `favourite` | Posts | `true` / `false` | `false` |
 | `ai_assisted` | Posts, special pages | `true` / `false` | `false` |
 | `noindex` | Posts, special pages | `true` / `false` | `false` |
+| `description` | Posts, special pages | Plain text | Not set |
 
 - **`date`** — publish date. Required on posts; optional on special pages (omit it and no date footer is rendered). Shown in the footer as `D Month YYYY` and used for the Atom feed, sitemap `lastmod`, and archive month grouping.
 - **`title`** — rendered as the page's `<h1>` on its own page, or `<h2>` when shown alongside other posts (index and category pages). Omit it for an Image post or a Note — see [Post types](#post-types).
@@ -178,6 +179,7 @@ This is the single reference for every frontmatter key a post or special page ca
 - **`favourite`** — adds an additional `favourite` CSS class to the post's entry in the archive.
 - **`ai_assisted`** — inserts a disclosure banner above the post's heading, wherever it's shown (individual page, and index/category excerpts or full body). The banner text comes from `ai_disclosure_html` in `config.yaml` (raw HTML, so it can include a link) — Magnetizer falls back to a generic sentence if `ai_disclosure_html` isn't set. The banner needs the `.container-brown` and `.ai-disclosure` CSS rules to be present in the project's `resources/` directory — the icon itself is a CSS background image, base64-encoded in the project's own stylesheet, same as every other icon on the site.
 - **`noindex`** — excludes the page from `sitemap.xml` and adds a `<meta name="robots" content="noindex">` tag via `MAGNETIZER_METADATA`, but is otherwise treated normally (still shown on index pages, category pages, the feed, the archive, post navigation, and `posts.json`) — it only affects search indexing. Works the same way on special pages as on posts.
+- **`description`** — content for the page's own `<meta name="description">` tag via `MAGNETIZER_METADATA`, used verbatim if set. If absent, a description is generated from the post's plain-text body: the first 160 characters, preferring a sentence-boundary cut if that leaves a reasonably full description (at least 100 of the 160 characters), otherwise the last complete word before the limit followed by `…`. Never cuts a word or sentence mid-way. Independent of `index_meta_description` in `config.yaml`, which only applies to index pages. Works the same way on special pages as on posts.
 
 ## Comments
 
@@ -232,7 +234,7 @@ Magnetizer uses a single template file: `templates/index.html`. It must contain 
 
 | Placeholder | Required | Replaced with |
 |---|---|---|
-| `MAGNETIZER_METADATA` | Yes | A block of `<head>` metadata tags: `<title>`, an optional `<meta name="description">` (index pages only, from `index_meta_description`), a `<link rel="canonical">`, and — for posts or special pages with `noindex: true` — a `<meta name="robots" content="noindex">`. Each line is present only when applicable. |
+| `MAGNETIZER_METADATA` | Yes | A block of `<head>` metadata tags: `<title>`, an optional `<meta name="description">` (index pages from `index_meta_description`; individual posts/special pages from their `description` frontmatter or an auto-generated fallback — see the `description` entry in [Frontmatter reference](#frontmatter-reference)), a `<link rel="canonical">`, and — for posts or special pages with `noindex: true` — a `<meta name="robots" content="noindex">`. Each line is present only when applicable. |
 | `MAGNETIZER_CONTENT` | Yes | The generated page content |
 | `MAGNETIZER_BUILD_ID` | No | A Unix timestamp, useful for cache-busting: `style.css?v=MAGNETIZER_BUILD_ID` |
 | `MAGNETIZER_PAGE_ID` | No | The current page's bare id, e.g. `56` for a post, `about` for a special page, `photography` for a category page, `index`/`index-2`/`notes`/`archive`/`search` otherwise. Never includes `.html`. Not used by Magnetizer itself — useful for e.g. a per-page tracking pixel. |

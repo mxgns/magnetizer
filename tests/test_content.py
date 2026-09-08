@@ -544,6 +544,81 @@ class TestCharCount:
 
 
 # ---------------------------------------------------------------------------
+# Meta description
+# ---------------------------------------------------------------------------
+
+class TestMetaDescription:
+
+    def test_explicit_description_used_verbatim(self):
+        md = ("---\ndate: 2026-05-24\ndescription: A hand-written meta description.\n---\n\n"
+              "Some unrelated body text that would otherwise become the description.\n")
+        post = parse_post(md, 1, [])
+        assert post.meta_description == "A hand-written meta description."
+
+    def test_description_key_does_not_trigger_unknown_key_warning(self, capsys):
+        md = "---\ndate: 2026-05-24\ndescription: A description.\n---\n"
+        parse_post(md, 1, [])
+        assert "Warning" not in capsys.readouterr().out
+
+    def test_blank_description_falls_back_to_body_text(self):
+        md = "---\ndate: 2026-05-24\ndescription:\n---\n\nHello world\n"
+        post = parse_post(md, 1, [])
+        assert post.meta_description == "Hello world"
+
+    def test_falls_back_to_body_text_when_no_description(self):
+        post = parse_post(make_md(body="Hello world"), 1, [])
+        assert post.meta_description == "Hello world"
+
+    def test_meta_description_is_none_when_post_has_no_body(self):
+        post = parse_post(make_md(), 1, [])
+        assert post.meta_description is None
+
+    def test_body_text_at_160_chars_not_truncated(self):
+        text = "a" * 160
+        post = parse_post(make_md(body=text), 1, [])
+        assert post.meta_description == text
+
+    def test_sentence_boundary_preferred_when_reasonably_full(self):
+        # First sentence is 114 chars (>=100) and ends within the 160-char
+        # budget; a second sentence pushes the total well past 160.
+        s1 = ("This was a wonderful and quite unexpectedly long day spent "
+              "wandering slowly through the old town near the harbour.")
+        s2 = "We stopped for coffee twice and took far too many photographs of the boats."
+        assert 100 <= len(s1) <= 160
+        post = parse_post(make_md(body=f"{s1} {s2}"), 1, [])
+        assert post.meta_description == s1
+
+    def test_short_sentence_falls_back_to_word_boundary(self):
+        # The only sentence break before 160 chars is after "Quick note."
+        # (11 chars, well under the 100-char "reasonably full" threshold),
+        # so this must fall back to word-boundary truncation instead.
+        s1 = "Quick note."
+        s2 = ("We spent the whole afternoon wandering slowly through the old town "
+              "near the harbour without a single plan and it was absolutely "
+              "wonderful in every way you could possibly imagine")
+        text = f"{s1} {s2}"
+        post = parse_post(make_md(body=text), 1, [])
+        window = text[:160]
+        expected = window.rsplit(' ', 1)[0] + "…"
+        assert post.meta_description == expected
+
+    def test_word_boundary_truncation_ends_with_ellipsis(self):
+        text = ("wandering " * 20).strip()
+        post = parse_post(make_md(body=text), 1, [])
+        assert post.meta_description.endswith("…")
+
+    def test_word_boundary_truncation_does_not_cut_mid_word(self):
+        text = ("wandering " * 20).strip()
+        post = parse_post(make_md(body=text), 1, [])
+        assert "wanderi…" not in post.meta_description
+
+    def test_single_long_word_with_no_spaces_still_truncated(self):
+        text = "a" * 200
+        post = parse_post(make_md(body=text), 1, [])
+        assert post.meta_description == "a" * 160 + "…"
+
+
+# ---------------------------------------------------------------------------
 # Favourite posts
 # ---------------------------------------------------------------------------
 
