@@ -772,7 +772,7 @@ If a post has images but the `images:` list is absent or incomplete, a warning i
 Warning: Post {post-id} is missing one or more alt texts
 ```
 
-The build continues normally — this is a warning, not an error.
+The same warning is printed for each [special page](#special-pages), using its configured name in place of `{post-id}`. The build continues normally — this is a warning, not an error.
 
 ### Inline images
 

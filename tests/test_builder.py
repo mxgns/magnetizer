@@ -2301,6 +2301,30 @@ class TestAltTextWarnings:
         assert capsys.readouterr().out.count("unknown frontmatter key") == 1
         assert sum(1 for f, msg in warnings if "alt" in msg.lower()) == 1
 
+    def test_warning_when_special_page_has_images_without_alt_texts(self, tmp_path):
+        md = "---\ntitle: About\n---\n\nHello\n"
+        p = make_project(tmp_path, posts={1: MINIMAL_MD}, config=_ABOUT_CONFIG)
+        (p / "content" / "about.md").write_text(md)
+        make_jpg(p / "content" / "about-image-01.jpg")
+        warnings = build(p)["warnings"]
+        assert any(f == "about.html" and "alt" in msg.lower() for f, msg in warnings)
+
+    def test_no_warning_when_special_page_images_have_alt_texts(self, tmp_path):
+        md = "---\ntitle: About\nimages:\n  - Alt text\n---\n\nHello\n"
+        p = make_project(tmp_path, posts={1: MINIMAL_MD}, config=_ABOUT_CONFIG)
+        (p / "content" / "about.md").write_text(md)
+        make_jpg(p / "content" / "about-image-01.jpg")
+        warnings = build(p)["warnings"]
+        assert not any(f == "about.html" for f, msg in warnings)
+
+    def test_special_page_alt_text_warning_propagated_when_built_by_filename(self, tmp_path):
+        md = "---\ntitle: About\n---\n\nHello\n"
+        p = make_project(tmp_path, posts={1: MINIMAL_MD}, config=_ABOUT_CONFIG)
+        (p / "content" / "about.md").write_text(md)
+        make_jpg(p / "content" / "about-image-01.jpg")
+        warnings = build(p, filename="about.md")["warnings"]
+        assert any(f == "about.html" and "alt" in msg.lower() for f, msg in warnings)
+
 
 # ---------------------------------------------------------------------------
 # Note detection
