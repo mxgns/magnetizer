@@ -1307,6 +1307,21 @@ class TestAboutPage:
         build(p)
         assert "<html>" in (p / "dist" / "about.html").read_text()
 
+    def test_about_page_uses_frontmatter_description(self, tmp_path):
+        md = "---\ndate: 2026-05-24\ntitle: About\ndescription: All about this blog.\n---\n\nThis is the about page.\n"
+        p = make_project(tmp_path, posts={1: MINIMAL_MD}, config=_ABOUT_CONFIG)
+        (p / "content" / "about.md").write_text(md)
+        (p / "templates" / "index.html").write_text(META_DESCRIPTION_TEMPLATE)
+        build(p)
+        assert '<meta name="description" content="All about this blog.">' in (p / "dist" / "about.html").read_text()
+
+    def test_about_page_generates_description_from_body_when_absent(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD}, config=_ABOUT_CONFIG)
+        (p / "content" / "about.md").write_text(ABOUT_MD)
+        (p / "templates" / "index.html").write_text(META_DESCRIPTION_TEMPLATE)
+        build(p)
+        assert '<meta name="description" content="This is the about page.">' in (p / "dist" / "about.html").read_text()
+
     def test_about_html_title_includes_post_title_and_site_name(self, tmp_path):
         p = make_project(tmp_path, posts={1: MINIMAL_MD}, config=_ABOUT_CONFIG)
         (p / "content" / "about.md").write_text(ABOUT_MD)
@@ -1631,6 +1646,26 @@ class TestNotFoundPage:
         (p / "content" / "error-404.md").write_text(NOT_FOUND_MD)
         build(p)
         assert "<html>" in (p / "dist" / "404.html").read_text()
+
+    def test_404_page_uses_frontmatter_description(self, tmp_path):
+        md = "---\ntitle: Page Not Found\ndescription: The page you're after doesn't exist.\n---\n\nSorry, that page doesn't exist.\n"
+        p = make_project(tmp_path, posts={1: MINIMAL_MD}, config=_NOT_FOUND_CONFIG)
+        (p / "content" / "error-404.md").write_text(md)
+        (p / "templates" / "index.html").write_text(META_DESCRIPTION_TEMPLATE)
+        build(p)
+        html = (p / "dist" / "404.html").read_text()
+        assert '<meta name="description" content="The page you&#x27;re after doesn&#x27;t exist.">' in html
+
+    def test_404_page_generates_description_from_body_when_absent(self, tmp_path):
+        # NOT_FOUND_MD's apostrophe is smart-quoted by markdown/smarty before
+        # _plain_text unescapes it back to a literal '’' character — unlike
+        # the frontmatter-sourced description above, which is never markdown-rendered.
+        p = make_project(tmp_path, posts={1: MINIMAL_MD}, config=_NOT_FOUND_CONFIG)
+        (p / "content" / "error-404.md").write_text(NOT_FOUND_MD)
+        (p / "templates" / "index.html").write_text(META_DESCRIPTION_TEMPLATE)
+        build(p)
+        html = (p / "dist" / "404.html").read_text()
+        assert '<meta name="description" content="Sorry, that page doesn’t exist.">' in html
 
     def test_no_404_page_built_when_not_configured(self, tmp_path):
         p = make_project(tmp_path, posts={1: MINIMAL_MD})

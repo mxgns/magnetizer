@@ -12,6 +12,7 @@
 - Added a `description` frontmatter key for post meta descriptions
 - Paginated index pages append " (Page N)" to index_meta_description
 - Categories now take a name/description mapping instead of a plain string
+- Fixed special pages and the 404 page not getting a meta description
 
 ### 6/9/26
 

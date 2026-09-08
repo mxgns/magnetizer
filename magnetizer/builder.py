@@ -428,6 +428,7 @@ def _build_special_page(name, content_dir, dist_dir, config, template, values, w
     filename = output_filename or f"{name}.html"
     html = render_template(template, title=title, content=content_html,
                            canonical=canonical_url(config["site_url"], filename),
+                           meta_description=post.meta_description,
                            navigation=render_navigation(config["navigation"], filename),
                            is_noindex=post.is_noindex, page_id=_page_id(filename))
     (dist_dir / filename).write_text(html)
