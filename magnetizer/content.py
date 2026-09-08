@@ -111,7 +111,9 @@ def _build_meta_description(description, body_html):
     cutting at a sentence boundary if that leaves a reasonably full
     description (at least 100 of the 160 characters); otherwise falls back
     to the last complete word before the limit, marked with an ellipsis.
-    Never cuts a word or sentence mid-way."""
+    Never cuts a word or sentence mid-way, except for a single word with no
+    spaces at all longer than the limit, which has no word boundary to fall
+    back to and is truncated to make room for the ellipsis."""
     if description:
         return description
     text = _plain_text(body_html) if body_html else ''
@@ -128,7 +130,13 @@ def _build_meta_description(description, body_html):
     if sentence_end is not None and sentence_end >= _META_DESCRIPTION_MIN_SENTENCE:
         return text[:sentence_end]
 
-    truncated = text[:_META_DESCRIPTION_LIMIT].rsplit(' ', 1)[0]
+    window = text[:_META_DESCRIPTION_LIMIT]
+    truncated = window.rsplit(' ', 1)[0]
+    if truncated == window:
+        # No space at all in the window — a single word longer than the
+        # limit, so there's no word boundary to fall back to. Reserve one
+        # character for the ellipsis rather than exceeding the limit.
+        return window[:-1] + '…'
     return truncated + '…'
 
 

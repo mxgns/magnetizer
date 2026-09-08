@@ -615,7 +615,12 @@ class TestMetaDescription:
     def test_single_long_word_with_no_spaces_still_truncated(self):
         text = "a" * 200
         post = parse_post(make_md(body=text), 1, [])
-        assert post.meta_description == "a" * 160 + "…"
+        assert post.meta_description == "a" * 159 + "…"
+
+    def test_single_long_word_result_never_exceeds_160_chars(self):
+        text = "a" * 200
+        post = parse_post(make_md(body=text), 1, [])
+        assert len(post.meta_description) == 160
 
 
 # ---------------------------------------------------------------------------

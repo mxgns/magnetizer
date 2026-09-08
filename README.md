@@ -182,7 +182,26 @@ This is the single reference for every frontmatter key a post or special page ca
 - **`favourite`** — adds an additional `favourite` CSS class to the post's entry in the archive.
 - **`ai_assisted`** — inserts a disclosure banner above the post's heading, wherever it's shown (individual page, and index/category excerpts or full body). The banner text comes from `ai_disclosure_html` in `config.yaml` (raw HTML, so it can include a link) — Magnetizer falls back to a generic sentence if `ai_disclosure_html` isn't set. The banner needs the `.container-brown` and `.ai-disclosure` CSS rules to be present in the project's `resources/` directory — the icon itself is a CSS background image, base64-encoded in the project's own stylesheet, same as every other icon on the site.
 - **`noindex`** — excludes the page from `sitemap.xml` and adds a `<meta name="robots" content="noindex">` tag via `MAGNETIZER_METADATA`, but is otherwise treated normally (still shown on index pages, category pages, the feed, the archive, post navigation, and `posts.json`) — it only affects search indexing. Works the same way on special pages as on posts.
-- **`description`** — content for the page's own `<meta name="description">` tag via `MAGNETIZER_METADATA`, used verbatim if set. If absent, a description is generated from the post's plain-text body: the first 160 characters, preferring a sentence-boundary cut if that leaves a reasonably full description (at least 100 of the 160 characters), otherwise the last complete word before the limit followed by `…`. Never cuts a word or sentence mid-way. Independent of `index_meta_description` in `config.yaml`, which only applies to index pages. Works the same way on special pages as on posts.
+- **`description`** — content for the page's own `<meta name="description">` tag via `MAGNETIZER_METADATA`, used verbatim if set. If absent, a description is generated from the post's plain-text body: the first 160 characters, preferring a sentence-boundary cut if that leaves a reasonably full description (at least 100 of the 160 characters), otherwise the last complete word before the limit followed by `…`. Never cuts a word or sentence mid-way, except a single word with no spaces longer than 160 characters, which has no word boundary to fall back to and is truncated to make room for `…`. Independent of `index_meta_description` in `config.yaml`, which only applies to index pages. Works the same way on special pages as on posts.
+
+## Categories
+
+Categories are configured in `config.yaml` as a map of slug to a mapping with a required `name` and an optional `description`:
+
+```yaml
+categories:
+  out-and-about:
+    name: Out & About
+    description: Places I've been, things I've done, and stuff worth getting out of the house for.
+  travel:
+    name: Travel
+```
+
+A category value with no `name` — including the old flat `slug: Display Name` shorthand — is a build error. `name` is used for the category page's `<h1>`, its link text everywhere it's shown (post footers, the archive categories list), and as the fallback for its page `<title>`.
+
+If `description` is set, it becomes the category page's `<meta name="description">` content, the same way `index_meta_description` works for index pages — including a ` (Page N)` suffix on `{slug}-2.html` and beyond. If absent, the category page gets no meta description; there's no auto-generated fallback, since (unlike a post) a category page has no single body of text to summarise.
+
+A post is assigned to a category via `category` in its frontmatter — see [Frontmatter reference](#frontmatter-reference).
 
 ## Comments
 
@@ -237,7 +256,7 @@ Magnetizer uses a single template file: `templates/index.html`. It must contain 
 
 | Placeholder | Required | Replaced with |
 |---|---|---|
-| `MAGNETIZER_METADATA` | Yes | A block of `<head>` metadata tags: `<title>`, an optional `<meta name="description">` (index pages from `index_meta_description`; individual posts/special pages from their `description` frontmatter or an auto-generated fallback — see the `description` entry in [Frontmatter reference](#frontmatter-reference)), a `<link rel="canonical">`, and — for posts or special pages with `noindex: true` — a `<meta name="robots" content="noindex">`. Each line is present only when applicable. |
+| `MAGNETIZER_METADATA` | Yes | A block of `<head>` metadata tags: `<title>`, an optional `<meta name="description">` (index pages from `index_meta_description`; category pages from that category's `description` — see [Categories](#categories); individual posts/special pages from their `description` frontmatter or an auto-generated fallback — see the `description` entry in [Frontmatter reference](#frontmatter-reference)), a `<link rel="canonical">`, and — for posts or special pages with `noindex: true` — a `<meta name="robots" content="noindex">`. Each line is present only when applicable. Paginated index/category pages append ` (Page N)` to their configured description from page 2 onward. |
 | `MAGNETIZER_CONTENT` | Yes | The generated page content |
 | `MAGNETIZER_BUILD_ID` | No | A Unix timestamp, useful for cache-busting: `style.css?v=MAGNETIZER_BUILD_ID` |
 | `MAGNETIZER_PAGE_ID` | No | The current page's bare id, e.g. `56` for a post, `about` for a special page, `photography` for a category page, `index`/`index-2`/`notes`/`archive`/`search` otherwise. Never includes `.html`. Not used by Magnetizer itself — useful for e.g. a per-page tracking pixel. |
