@@ -218,23 +218,60 @@ class TestCategories:
         assert load_config(tmp_path / "config.yaml")["categories"] == {}
 
     def test_categories_loaded_from_config(self, tmp_path):
-        p = write_config(tmp_path, "categories:\n  photography: Photography\n  travel: Travel\n")
-        assert load_config(p)["categories"] == {"photography": "Photography", "travel": "Travel"}
+        p = write_config(tmp_path, "categories:\n  photography:\n    name: Photography\n  travel:\n    name: Travel\n")
+        assert load_config(p)["categories"] == {
+            "photography": {"name": "Photography", "description": None},
+            "travel": {"name": "Travel", "description": None},
+        }
 
     def test_single_category_loaded(self, tmp_path):
-        p = write_config(tmp_path, "categories:\n  thoughts: Thoughts\n")
-        assert load_config(p)["categories"] == {"thoughts": "Thoughts"}
+        p = write_config(tmp_path, "categories:\n  thoughts:\n    name: Thoughts\n")
+        assert load_config(p)["categories"] == {"thoughts": {"name": "Thoughts", "description": None}}
+
+    def test_category_description_loaded(self, tmp_path):
+        p = write_config(
+            tmp_path,
+            "categories:\n  out-and-about:\n    name: Out & About\n"
+            "    description: Places I've been, things I've done.\n",
+        )
+        category = load_config(p)["categories"]["out-and-about"]
+        assert category == {"name": "Out & About", "description": "Places I've been, things I've done."}
+
+    def test_category_description_optional(self, tmp_path):
+        p = write_config(tmp_path, "categories:\n  thoughts:\n    name: Thoughts\n")
+        assert load_config(p)["categories"]["thoughts"]["description"] is None
+
+    def test_blank_category_description_treated_as_unset(self, tmp_path):
+        p = write_config(tmp_path, "categories:\n  thoughts:\n    name: Thoughts\n    description:\n")
+        assert load_config(p)["categories"]["thoughts"]["description"] is None
 
     def test_categories_not_included_in_known_keys_check(self, tmp_path):
-        p = write_config(tmp_path, "categories:\n  photography: Photography\n")
+        p = write_config(tmp_path, "categories:\n  photography:\n    name: Photography\n")
         config = load_config(p)
         assert "categories" in config
 
     def test_mutating_returned_categories_does_not_leak_into_next_load(self, tmp_path):
         config = load_config(tmp_path / "config.yaml")
-        config["categories"]["photography"] = "Photography"
+        config["categories"]["photography"] = {"name": "Photography", "description": None}
         fresh = load_config(tmp_path / "config.yaml")
         assert fresh["categories"] == {}
+
+    def test_plain_string_category_value_raises_error(self, tmp_path):
+        # The old flat `slug: Display Name` shape is no longer supported —
+        # every category must be a mapping with at least a 'name' key.
+        p = write_config(tmp_path, "categories:\n  photography: Photography\n")
+        with pytest.raises(ValueError):
+            load_config(p)
+
+    def test_category_mapping_without_name_raises_error(self, tmp_path):
+        p = write_config(tmp_path, "categories:\n  photography:\n    description: No name set.\n")
+        with pytest.raises(ValueError):
+            load_config(p)
+
+    def test_category_with_blank_name_raises_error(self, tmp_path):
+        p = write_config(tmp_path, "categories:\n  photography:\n    name:\n")
+        with pytest.raises(ValueError):
+            load_config(p)
 
 
 # ---------------------------------------------------------------------------

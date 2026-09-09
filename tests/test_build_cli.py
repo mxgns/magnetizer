@@ -314,7 +314,7 @@ class TestCLIVerbose:
 
 _CATEGORIES_CLI_CONFIG = (
     "site_name: Test Blog\nsite_url: https://example.github.io\n"
-    "posts_per_page: 2\ncategories:\n  photography: Photography\n  travel: Travel\n"
+    "posts_per_page: 2\ncategories:\n  photography:\n    name: Photography\n  travel:\n    name: Travel\n"
 )
 _PHOTO_MD = "---\ndate: 2026-05-24\ntitle: Photo Post\ncategory: photography\n---\n\nContent\n"
 _TRAVEL_MD = "---\ndate: 2026-05-24\ntitle: Travel Post\ncategory: travel\n---\n\nContent\n"

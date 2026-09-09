@@ -26,6 +26,18 @@ DEFAULTS = {
 }
 
 
+def _normalize_categories(raw_categories):
+    normalized = {}
+    for slug, value in raw_categories.items():
+        if not isinstance(value, dict) or not value.get("name"):
+            raise ValueError(
+                f"category '{slug}' in config.yaml must be a mapping with at least a 'name' key, e.g.:\n"
+                f"categories:\n  {slug}:\n    name: ...\n    description: ... (optional)"
+            )
+        normalized[slug] = {"name": value["name"], "description": value.get("description") or None}
+    return normalized
+
+
 def load_config(path):
     config = deepcopy(DEFAULTS)
     p = Path(path)
@@ -36,6 +48,7 @@ def load_config(path):
         for key in DEFAULTS:
             if key in data:
                 config[key] = data[key]
+    config["categories"] = _normalize_categories(config["categories"])
     if config["notes_per_page"] < 1:
         raise ValueError("notes_per_page must be a positive integer")
     if config["gallery_per_page"] < 1:

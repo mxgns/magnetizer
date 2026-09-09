@@ -287,9 +287,9 @@ Examples:
 | `gallery_per_page` | Number of photos per page when generating the gallery pages | `60` |
 | `images_per_post` | Number of top-level images shown per post on multi-post pages (index, category, notes) — 0 is valid and shows none. Never limits an individual post's own page, where all top-level images are always shown. Inline images (via `{{ image N }}`) aren't counted; those are governed by `<!-- more -->` instead. | `2` |
 | `feed_max_posts` | Maximum number of most-recent dated posts included in the Atom feed | `30` |
-| `index_meta_description` | Content for the `<meta name="description">` tag on index pages, via the `MAGNETIZER_METADATA` template placeholder | Not set — line is omitted |
+| `index_meta_description` | Content for the `<meta name="description">` tag on index pages, via the `MAGNETIZER_METADATA` template placeholder — see [Metadata](#metadata) for the page-2-and-beyond ` (Page N)` suffix | Not set — line is omitted |
 | `index_title` | When set, the title of `index.html` becomes `site_name - index_title` instead of just `site_name` | Not set — `index.html` title is just `site_name` |
-| `categories` | A map of category slug to display name, e.g. `{photography: Photography}`. See [Categories](#categories). | `{}` (no categories) |
+| `categories` | A map of category slug to a `{name, description}` mapping, e.g. `{photography: {name: Photography}}`. See [Categories](#categories). | `{}` (no categories) |
 | `navigation` | A map of page filename to nav label, e.g. `{index.html: Home}`. See [Navigation](#navigation). | `{}` (no navigation) |
 | `special_pages` | A list of page names, each backed by a `{name}.md` file in `content/`, e.g. `[about, cookies]`. See [Special pages](#special-pages). | `[]` (no special pages) |
 | `ai_disclosure_html` | Raw HTML shown in the AI-assisted disclosure banner (see [AI-assisted disclosure](#ai-assisted-disclosure)). Not escaped, so it may include markup such as a link. | Not set — falls back to a generic built-in disclosure sentence |
@@ -365,7 +365,7 @@ Magnetizer does not enforce any structure beyond the presence of the placeholder
   - `site_name - index_title` (index.html, with `index_title`)
   - `site_name - Page 2` (index-2.html and beyond)
   - `post_heading - site_name` (individual post page — `post_heading` follows the title/name/date-fallback priority order described in [Post types](#post-types))
-- `<meta name="description">` appears only on index pages, using `index_meta_description` from config, if set.
+- `<meta name="description">` appears on index pages, using `index_meta_description` from config, if set, and on category pages, using that category's `description` from config, if set (see [Categories](#categories)) — in both cases page 1 uses it verbatim and page 2 and beyond append ` (Page N)`, so paginated pages don't all carry an identical description. On an individual post or special page it appears whenever a description is available — see [Meta descriptions](#meta-descriptions) — independently of `index_meta_description` and category `description`, which only ever apply to their own page family.
 - `<link rel="canonical">` appears on every generated page, derived from `site_url` in config. For `index.html` this is the root URL (e.g. `https://example.github.io/`); for all other pages it is `site_url` + `/` + filename (e.g. `https://example.github.io/1.html`).
 - `<meta name="robots" content="noindex">` appears only for posts or special pages with `noindex: true` in frontmatter — see [Noindex posts](#noindex-posts).
 
@@ -562,6 +562,7 @@ This is the single overview of every frontmatter key a post or special page can 
 | `favourite` | Posts | `true` / `false` | `false` | [Favourite posts](#favourite-posts) |
 | `ai_assisted` | Posts, special pages | `true` / `false` | `false` | [AI-assisted disclosure](#ai-assisted-disclosure) |
 | `noindex` | Posts, special pages | `true` / `false` | `false` | [Noindex posts](#noindex-posts) |
+| `description` | Posts, special pages | Plain text | Not set | [Meta descriptions](#meta-descriptions) |
 
 ### Favourite posts
 
@@ -637,15 +638,41 @@ A noindex post is excluded from `sitemap.xml`, and its own page gets a `<meta na
 
 If `noindex` is absent or set to `false`, the post is indexed normally.
 
+### Meta descriptions
+
+A post or special page can set its own `<meta name="description">` content by setting `description` in its frontmatter:
+
+```yaml
+---
+date: 2026-05-21
+description: A short summer trip to the coast, with far too many photos of the sea.
+---
+```
+
+If set, `description` is used verbatim (escaped, not truncated) as the page's meta description.
+
+If `description` is absent, one is generated automatically from the post's plain-text body (tags stripped, entities unescaped, whitespace normalised): the first 160 characters, preferring to cut at the end of a complete sentence if that leaves a reasonably full description (the sentence covers at least 100 of the 160 characters); otherwise cutting at the last complete word before the 160-character limit, with a trailing `…`. A word or sentence is never cut mid-way, except for a single word with no spaces at all longer than 160 characters — with no word boundary to fall back to, it's truncated to 159 characters plus `…` rather than exceeding the limit. If the body is 160 characters or fewer, it's used in full with no `…`. A post with no body text and no `description` gets no meta description at all — the `<meta name="description">` line is omitted, same as when `index_meta_description` is unset (see [Metadata](#metadata)).
+
+This is entirely independent of `index_meta_description` in `config.yaml`, which only applies to index pages (see [Metadata](#metadata)).
+
+`description` works the same way on special pages as on regular posts.
+
 ### Categories
 
-Categories are configured in `config.yaml` as a map of slug to display name:
+Categories are configured in `config.yaml` as a map of slug to a mapping with a required `name` and an optional `description`:
 
 ```yaml
 categories:
-  photography: Photography
-  travel: Travel
+  out-and-about:
+    name: Out & About
+    description: Places I've been, things I've done, and stuff worth getting out of the house for.
+  travel:
+    name: Travel
 ```
+
+`name` is the category's display name — used for its page `<h1>`, its link text wherever it's shown (post footers, the archive categories list), and as the fallback for its page `<title>`. A category with no `name` (or a value that isn't a mapping at all — e.g. the old flat `slug: Display Name` shorthand) is a build error, since there's nothing to display for it.
+
+If `description` is set, it's used verbatim as the category page's `<meta name="description">` content, the same way `index_meta_description` works for index pages (see [Metadata](#metadata)) — including the ` (Page N)` suffix on `{slug}-2.html` and beyond. If `description` is absent, the category page gets no meta description at all. Unlike a post's `description` (see [Meta descriptions](#meta-descriptions)), there's no auto-generated fallback — a category page has no single body of text to summarise.
 
 A post is assigned to a category by setting `category` in its frontmatter to the category's slug. Matching is case-insensitive and the value is normalised to lowercase:
 

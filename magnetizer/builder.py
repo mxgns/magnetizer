@@ -38,6 +38,7 @@ from magnetizer.render import (
     render_index_page_content,
     render_notes_page_content,
     render_navigation,
+    render_page_meta_description,
     render_page_title,
     render_post_page_content,
     render_search_page_content,
@@ -241,6 +242,7 @@ def _write_post_html(post, dist_dir, config, template, newer_url=None, older_url
     filename = f"{post.id}.html"
     html = render_template(template, title=title, content=content_html,
                            canonical=canonical_url(config["site_url"], filename),
+                           meta_description=post.meta_description,
                            navigation=render_navigation(config["navigation"], filename),
                            is_noindex=post.is_noindex, page_id=_page_id(filename))
     (dist_dir / filename).write_text(html)
@@ -258,7 +260,7 @@ def _write_index_pages(posts_sorted_desc, dist_dir, config, template, categories
         filename = index_page_url(page_num)
         html = render_template(template, title=title, content=content_html,
                                canonical=canonical_url(config["site_url"], filename),
-                               meta_description=config["index_meta_description"],
+                               meta_description=render_page_meta_description(config["index_meta_description"], page_num),
                                navigation=render_navigation(config["navigation"], filename),
                                page_id=_page_id(filename))
         (dist_dir / filename).write_text(html)
@@ -268,12 +270,12 @@ def _category_pages(posts_sorted_desc, categories, per_page):
     """Yield (slug, display_name, category_posts, total_pages) for each configured
     category with at least one matching post — the single source of truth for
     category pagination, shared by rendering, build logging, and the sitemap."""
-    for slug, display_name in categories.items():
+    for slug, category in categories.items():
         category_posts = [p for p in posts_sorted_desc if p.category == slug]
         if not category_posts:
             continue
         total_pages = max(1, (len(category_posts) + per_page - 1) // per_page)
-        yield slug, display_name, category_posts, total_pages
+        yield slug, category["name"], category_posts, total_pages
 
 
 def _write_category_pages(posts_sorted_desc, dist_dir, config, template):
@@ -292,6 +294,7 @@ def _write_category_pages(posts_sorted_desc, dist_dir, config, template):
             filename = category_page_url(slug, page_num)
             html = render_template(template, title=title, content=content_html,
                                    canonical=canonical_url(config["site_url"], filename),
+                                   meta_description=render_page_meta_description(categories[slug].get("description"), page_num),
                                    navigation=render_navigation(config["navigation"], filename),
                                    page_id=_page_id(filename))
             (dist_dir / filename).write_text(html)
@@ -425,6 +428,7 @@ def _build_special_page(name, content_dir, dist_dir, config, template, values, w
     filename = output_filename or f"{name}.html"
     html = render_template(template, title=title, content=content_html,
                            canonical=canonical_url(config["site_url"], filename),
+                           meta_description=post.meta_description,
                            navigation=render_navigation(config["navigation"], filename),
                            is_noindex=post.is_noindex, page_id=_page_id(filename))
     (dist_dir / filename).write_text(html)

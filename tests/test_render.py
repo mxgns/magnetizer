@@ -19,6 +19,7 @@ from magnetizer.render import (
     render_index_page_content,
     render_notes_page_content,
     render_navigation,
+    render_page_meta_description,
     render_page_title,
     render_post_page_content,
     render_search_page_content,
@@ -805,6 +806,31 @@ class TestRenderPageTitle:
 
     def test_index_page_2_not_affected_by_index_title(self):
         assert render_page_title("My Blog", None, page_num=2, index_title="Photos") == "My Blog - Page 2"
+
+
+# ---------------------------------------------------------------------------
+# render_page_meta_description
+# ---------------------------------------------------------------------------
+
+class TestRenderPageMetaDescription:
+
+    def test_page_1_returned_verbatim(self):
+        assert render_page_meta_description("A great blog.", page_num=1) == "A great blog."
+
+    def test_page_2_appends_page_number(self):
+        assert render_page_meta_description("A great blog.", page_num=2) == "A great blog. (Page 2)"
+
+    def test_page_3_appends_page_number(self):
+        assert render_page_meta_description("A great blog.", page_num=3) == "A great blog. (Page 3)"
+
+    def test_none_base_stays_none_on_page_1(self):
+        assert render_page_meta_description(None, page_num=1) is None
+
+    def test_none_base_stays_none_on_page_2(self):
+        assert render_page_meta_description(None, page_num=2) is None
+
+    def test_empty_string_base_stays_falsy_on_page_2(self):
+        assert render_page_meta_description("", page_num=2) is None
 
 
 # ---------------------------------------------------------------------------
@@ -1713,7 +1739,7 @@ class TestArchiveCategoriesList:
 
     def test_category_display_name_escaped(self):
         post = make_dated_post(1, "2026-05-24", category="a-and-b")
-        html = render_archive_page_content([post], categories={"a-and-b": "A & B"})
+        html = render_archive_page_content([post], categories={"a-and-b": {"name": "A & B", "description": None}})
         assert "&amp;" in html
         assert ">A & B<" not in html
 
@@ -2009,7 +2035,10 @@ class TestArchiveDisplayText:
 # render_article — category link
 # ---------------------------------------------------------------------------
 
-_CATEGORIES = {"photography": "Photography", "travel": "Travel"}
+_CATEGORIES = {
+    "photography": {"name": "Photography", "description": None},
+    "travel": {"name": "Travel", "description": None},
+}
 
 
 class TestRenderArticleCategory:
@@ -2054,7 +2083,7 @@ class TestRenderArticleCategory:
         assert 'class="category"' not in html
 
     def test_category_display_name_is_html_escaped(self):
-        cats = {"fun": "Fun & Games"}
+        cats = {"fun": {"name": "Fun & Games", "description": None}}
         html = render_article(make_post(category="fun"), on_index_page=False, categories=cats)
         assert "Fun &amp; Games" in html
         assert "Fun & Games<" not in html
