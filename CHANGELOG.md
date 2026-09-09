@@ -7,12 +7,11 @@
 
 ### 8/9/26
 
-- Special pages now warn about missing alt texts, same as posts
-- Special pages now warn about title+name both set, or title with no content
-- Added a `description` frontmatter key for post meta descriptions
-- Paginated index pages append " (Page N)" to index_meta_description
-- Categories now take a name/description mapping instead of a plain string
-- Fixed special pages and the 404 page not getting a meta description
+- Added meta descriptions for posts
+- Added meta descriptions for categories
+- Paginated pages now append " (Page N)" to meta description
+- Bug fix: special pages now warn about missing alt texts
+- Bug fix: special pages warn about title+name both set, or title w/o content
 
 ### 6/9/26
 
