@@ -27,12 +27,12 @@ DEFAULTS = {
 def _normalize_categories(raw_categories):
     normalized = {}
     for slug, value in raw_categories.items():
-        if not isinstance(value, dict) or not value.get("name"):
+        if not isinstance(value, str) or not value.strip():
             raise ValueError(
-                f"category '{slug}' in config.yaml must be a mapping with a 'name' key, e.g.:\n"
-                f"categories:\n  {slug}:\n    name: ..."
+                f"category '{slug}' in config.yaml must be a display name string, e.g.:\n"
+                f"categories:\n  {slug}: Display Name"
             )
-        normalized[slug] = {"name": value["name"]}
+        normalized[slug] = {"name": value}
     return normalized
 
 

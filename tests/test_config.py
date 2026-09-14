@@ -206,29 +206,18 @@ class TestCategories:
         assert load_config(tmp_path / "config.yaml")["categories"] == {}
 
     def test_categories_loaded_from_config(self, tmp_path):
-        p = write_config(tmp_path, "categories:\n  photography:\n    name: Photography\n  travel:\n    name: Travel\n")
+        p = write_config(tmp_path, "categories:\n  photography: Photography\n  travel: Travel\n")
         assert load_config(p)["categories"] == {
             "photography": {"name": "Photography"},
             "travel": {"name": "Travel"},
         }
 
     def test_single_category_loaded(self, tmp_path):
-        p = write_config(tmp_path, "categories:\n  thoughts:\n    name: Thoughts\n")
+        p = write_config(tmp_path, "categories:\n  thoughts: Thoughts\n")
         assert load_config(p)["categories"] == {"thoughts": {"name": "Thoughts"}}
 
-    def test_category_description_is_ignored(self, tmp_path):
-        # Category descriptions live in metadata.yaml now, not config.yaml —
-        # a stray 'description' key here is silently dropped, not an error.
-        p = write_config(
-            tmp_path,
-            "categories:\n  out-and-about:\n    name: Out & About\n"
-            "    description: Places I've been, things I've done.\n",
-        )
-        category = load_config(p)["categories"]["out-and-about"]
-        assert category == {"name": "Out & About"}
-
     def test_categories_not_included_in_known_keys_check(self, tmp_path):
-        p = write_config(tmp_path, "categories:\n  photography:\n    name: Photography\n")
+        p = write_config(tmp_path, "categories:\n  photography: Photography\n")
         config = load_config(p)
         assert "categories" in config
 
@@ -238,20 +227,16 @@ class TestCategories:
         fresh = load_config(tmp_path / "config.yaml")
         assert fresh["categories"] == {}
 
-    def test_plain_string_category_value_raises_error(self, tmp_path):
-        # The old flat `slug: Display Name` shape is no longer supported —
-        # every category must be a mapping with at least a 'name' key.
-        p = write_config(tmp_path, "categories:\n  photography: Photography\n")
+    def test_mapping_category_value_raises_error(self, tmp_path):
+        # The {name: ...} mapping shape (needed while categories also carried
+        # a 'description' in config.yaml) is no longer supported — every
+        # category is just a plain display-name string now.
+        p = write_config(tmp_path, "categories:\n  photography:\n    name: Photography\n")
         with pytest.raises(ValueError):
             load_config(p)
 
-    def test_category_mapping_without_name_raises_error(self, tmp_path):
-        p = write_config(tmp_path, "categories:\n  photography:\n    description: No name set.\n")
-        with pytest.raises(ValueError):
-            load_config(p)
-
-    def test_category_with_blank_name_raises_error(self, tmp_path):
-        p = write_config(tmp_path, "categories:\n  photography:\n    name:\n")
+    def test_blank_category_value_raises_error(self, tmp_path):
+        p = write_config(tmp_path, "categories:\n  photography:\n")
         with pytest.raises(ValueError):
             load_config(p)
 

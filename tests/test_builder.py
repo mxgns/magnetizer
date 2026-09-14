@@ -1602,7 +1602,7 @@ class TestSpecialPagesGeneric:
     def test_category_slug_matching_configured_special_page_name_errors(self, tmp_path):
         config = (
             "site_name: Test Blog\nsite_url: https://example.github.io\n"
-            "posts_per_page: 2\nspecial_pages:\n  - now\ncategories:\n  now:\n    name: Now\n"
+            "posts_per_page: 2\nspecial_pages:\n  - now\ncategories:\n  now: Now\n"
         )
         p = make_project(tmp_path, posts={1: MINIMAL_MD}, config=config)
         (p / "content" / "now.md").write_text(NOW_MD)
@@ -2596,7 +2596,7 @@ class TestTitleWithoutImageOrContentWarning:
 
 _CATEGORIES_CONFIG = (
     "site_name: Test Blog\nsite_url: https://example.github.io\n"
-    "posts_per_page: 2\ncategories:\n  photography:\n    name: Photography\n  travel:\n    name: Travel\n"
+    "posts_per_page: 2\ncategories:\n  photography: Photography\n  travel: Travel\n"
 )
 _CATEGORY_MD = "---\ndate: 2026-05-24\ntitle: My Post\ncategory: photography\n---\n\nHello world\n"
 _NO_CATEGORY_MD = "---\ndate: 2026-05-24\ntitle: My Post\n---\n\nHello world\n"
@@ -2769,8 +2769,7 @@ class TestCategoryMetaDescription:
     def test_category_meta_description_is_independent_of_other_categories(self, tmp_path):
         config = (
             "site_name: Test Blog\nsite_url: https://example.github.io\n"
-            "posts_per_page: 2\ncategories:\n  photography:\n    name: Photography\n"
-            "  travel:\n    name: Travel\n"
+            "posts_per_page: 2\ncategories:\n  photography: Photography\n  travel: Travel\n"
         )
         metadata = "photography:\n  description: About photography.\n"
         travel_md = "---\ndate: 2026-05-24\ntitle: Travel Post\ncategory: travel\n---\n\nContent\n"
@@ -2782,7 +2781,7 @@ class TestCategoryMetaDescription:
     def test_category_title_overridden_by_metadata_leaves_display_name_untouched(self, tmp_path):
         # metadata.yaml's 'title' only affects the <title> tag — the H1 and
         # any other display use of the category still comes from its
-        # config.yaml 'name', same as the archive category-list link below.
+        # config.yaml display name, same as the archive category-list link below.
         metadata = "photography:\n  title: Snapshots From Around Town\n"
         p = make_project(tmp_path, posts={1: _CATEGORY_MD}, config=_CATEGORIES_CONFIG, metadata=metadata)
         build(p)
@@ -3074,7 +3073,7 @@ class TestWarnings:
     def test_missing_category_produces_warning(self, tmp_path):
         config = (
             "site_name: Test Blog\nsite_url: https://example.github.io\n"
-            "posts_per_page: 2\ncategories:\n  photo:\n    name: Photography\n"
+            "posts_per_page: 2\ncategories:\n  photo: Photography\n"
         )
         p = make_project(tmp_path, posts={1: MINIMAL_MD}, config=config)
         warnings = build(p)["warnings"]
@@ -3083,7 +3082,7 @@ class TestWarnings:
     def test_invalid_category_produces_warning(self, tmp_path):
         config = (
             "site_name: Test Blog\nsite_url: https://example.github.io\n"
-            "posts_per_page: 2\ncategories:\n  photo:\n    name: Photography\n"
+            "posts_per_page: 2\ncategories:\n  photo: Photography\n"
         )
         cat_md = "---\ndate: 2026-05-24\ncategory: unknown\n---\n\nContent\n"
         p = make_project(tmp_path, posts={1: cat_md}, config=config)
@@ -3190,7 +3189,7 @@ class TestNavigation:
         assert 'current' not in html
 
     def test_navigation_rendered_on_category_page(self, tmp_path):
-        config = _NAVIGATION_CONFIG + "categories:\n  photography:\n    name: Photography\n"
+        config = _NAVIGATION_CONFIG + "categories:\n  photography: Photography\n"
         md = "---\ndate: 2026-05-24\ntitle: My Post\ncategory: photography\n---\n\nHello\n"
         p = make_project(tmp_path, posts={1: md}, config=config)
         build(p)

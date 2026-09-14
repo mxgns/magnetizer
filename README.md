@@ -35,7 +35,7 @@ manifest.json  Build state (created automatically)
 | `gallery_per_page` | Photos shown per gallery page (`gallery.html`, `gallery-2.html`, …) | `60` |
 | `images_per_post` | Top-level images shown per post on multi-post pages (index, category, notes) — `0` shows none. The post's own page always shows all top-level images regardless. Inline images (`{{ image N }}`) aren't counted; use `<!-- more -->` to control those | `2` |
 | `feed_max_posts` | Maximum number of most-recent dated posts included in the Atom feed | `30` |
-| `categories` | Map of category slug to a `{name}` mapping — see [Categories](#categories) | `{}` (no categories) |
+| `categories` | Map of category slug to a display name, e.g. `{photography: Photography}` — see [Categories](#categories) | `{}` (no categories) |
 | `navigation` | Map of page filename to nav label, e.g. `{index.html: Home}`, in display order | `{}` (no navigation) |
 | `special_pages` | List of standalone page names, each backed by a `content/{name}.md` file — see [Special pages](#special-pages) | `[]` (no special pages) |
 | `ai_disclosure_html` | Raw HTML (not escaped, so it may include a link) shown in the disclosure banner when a post or special page sets `ai_assisted: true` — see the `ai_assisted` entry in [Frontmatter reference](#frontmatter-reference) | Not set — falls back to a generic disclosure sentence |
@@ -51,10 +51,8 @@ posts_per_page: 12
 image_max_dimension: 1600
 image_quality: 75
 categories:
-  photography:
-    name: Photography
-  travel:
-    name: Travel
+  photography: Photography
+  travel: Travel
 navigation:
   index.html: Home
   archive.html: Archive
@@ -184,17 +182,15 @@ This is the single reference for every frontmatter key a post or special page ca
 
 ## Categories
 
-Categories are configured in `config.yaml` as a map of slug to a mapping with a required `name`:
+Categories are configured in `config.yaml` as a map of slug to a display name:
 
 ```yaml
 categories:
-  out-and-about:
-    name: Out & About
-  travel:
-    name: Travel
+  out-and-about: Out & About
+  travel: Travel
 ```
 
-A category value with no `name` — including the old flat `slug: Display Name` shorthand — is a build error. `name` is used for the category page's `<h1>`, its link text everywhere it's shown (post footers, the archive categories list), and as the fallback for its page `<title>`.
+A blank category value is a build error. The display name is used for the category page's `<h1>`, its link text everywhere it's shown (post footers, the archive categories list), and as the fallback for its page `<title>`.
 
 A category page's `<meta name="description">` and `<title>` override come from `metadata.yaml`, keyed by the same slug — see [Page metadata overrides](#page-metadata-overrides).
 
@@ -218,7 +214,7 @@ out-and-about:
 
 A key that doesn't match a real page or a configured category slug is a build error — there's no silent typo. An entry must set at least one of `title`/`description`; an empty entry is also a build error.
 
-If `title` is set, it replaces the page-specific part of the `<title>` tag — `site_name` is still appended the same way it is everywhere else (e.g. `Everything - My Blog`). For a category, this only affects the `<title>` tag; the category's `name` in `config.yaml` still controls its `<h1>` and every other place its display label appears. If `title` is unset, the page keeps its usual title (`Archive`, `Search`, `Short notes`, `Photo archive`, or the category's `name`).
+If `title` is set, it replaces the page-specific part of the `<title>` tag — `site_name` is still appended the same way it is everywhere else (e.g. `Everything - My Blog`). For a category, this only affects the `<title>` tag; its display name from `categories` in `config.yaml` still controls its `<h1>` and every other place its display label appears. If `title` is unset, the page keeps its usual title (`Archive`, `Search`, `Short notes`, `Photo archive`, or the category's display name).
 
 If `description` is set, it becomes the page's `<meta name="description">` content, the same way a post's `description` frontmatter does — including a ` (Page N)` suffix on page 2 and beyond for a page family that paginates (the index, notes, gallery, and category pages). If unset, the page gets no meta description; there's no auto-generated fallback, since none of these pages has a single body of text to summarise.
 

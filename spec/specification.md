@@ -288,7 +288,7 @@ Examples:
 | `gallery_per_page` | Number of photos per page when generating the gallery pages | `60` |
 | `images_per_post` | Number of top-level images shown per post on multi-post pages (index, category, notes) — 0 is valid and shows none. Never limits an individual post's own page, where all top-level images are always shown. Inline images (via `{{ image N }}`) aren't counted; those are governed by `<!-- more -->` instead. | `2` |
 | `feed_max_posts` | Maximum number of most-recent dated posts included in the Atom feed | `30` |
-| `categories` | A map of category slug to a `{name}` mapping, e.g. `{photography: {name: Photography}}`. See [Categories](#categories). | `{}` (no categories) |
+| `categories` | A map of category slug to a display name, e.g. `{photography: Photography}`. See [Categories](#categories). | `{}` (no categories) |
 | `navigation` | A map of page filename to nav label, e.g. `{index.html: Home}`. See [Navigation](#navigation). | `{}` (no navigation) |
 | `special_pages` | A list of page names, each backed by a `{name}.md` file in `content/`, e.g. `[about, cookies]`. See [Special pages](#special-pages). | `[]` (no special pages) |
 | `ai_disclosure_html` | Raw HTML shown in the AI-assisted disclosure banner (see [AI-assisted disclosure](#ai-assisted-disclosure)). Not escaped, so it may include markup such as a link. | Not set — falls back to a generic built-in disclosure sentence |
@@ -658,17 +658,15 @@ This is entirely independent of `metadata.yaml`, which only overrides pages that
 
 ### Categories
 
-Categories are configured in `config.yaml` as a map of slug to a mapping with a required `name`:
+Categories are configured in `config.yaml` as a map of slug to a display name:
 
 ```yaml
 categories:
-  out-and-about:
-    name: Out & About
-  travel:
-    name: Travel
+  out-and-about: Out & About
+  travel: Travel
 ```
 
-`name` is the category's display name — used for its page `<h1>`, its link text wherever it's shown (post footers, the archive categories list), and as the fallback for its page `<title>`. A category with no `name` (or a value that isn't a mapping at all — e.g. the old flat `slug: Display Name` shorthand) is a build error, since there's nothing to display for it.
+The display name is used for the category page's `<h1>`, its link text wherever it's shown (post footers, the archive categories list), and as the fallback for its page `<title>`. A blank or missing display name (or a value that isn't a plain string at all — e.g. a `{name: ...}` mapping) is a build error, since there's nothing to display for it.
 
 A category page's `<meta name="description">` and `<title>` override come from `metadata.yaml`, keyed by the same slug — see [Page metadata overrides](#page-metadata-overrides).
 
@@ -738,7 +736,7 @@ out-and-about:
 
 Valid keys are `index`, `archive`, `search`, `notes`, `gallery`, and any slug present in `categories` in `config.yaml`. A key matching neither is a build error — `metadata.yaml entry '{key}' does not match any page or category — check for a typo`. An entry must set at least one of `title`/`description`; a mapping with neither (or a non-mapping value, e.g. a bare string) is also a build error, raised while loading `metadata.yaml` itself, before the page/category cross-check runs.
 
-If `title` is set, it replaces the page-specific part of the `<title>` tag, the same way a post's own `title`/`name` does (see [Metadata](#metadata)) — `site_name` is still appended the same way. For a category, this only affects the `<title>` tag; the category's `name` in `config.yaml` still controls its `<h1>` and every other place its display label appears (post footers, the archive categories list) — `name` and a `metadata.yaml` `title` serve different purposes and don't need to match. If `title` is unset, the page keeps its built-in default title: `Archive`, `Search`, `Short notes`, `Photo archive`, or — for the index and for a category — the same fallback as if `metadata.yaml` didn't exist (`site_name` alone for the index; the category's `name` for a category).
+If `title` is set, it replaces the page-specific part of the `<title>` tag, the same way a post's own `title`/`name` does (see [Metadata](#metadata)) — `site_name` is still appended the same way. For a category, this only affects the `<title>` tag; its display name from `categories` in `config.yaml` still controls its `<h1>` and every other place its display label appears (post footers, the archive categories list) — the two serve different purposes and don't need to match. If `title` is unset, the page keeps its built-in default title: `Archive`, `Search`, `Short notes`, `Photo archive`, or — for the index and for a category — the same fallback as if `metadata.yaml` didn't exist (`site_name` alone for the index; the category's display name for a category).
 
 If `description` is set, it becomes the page's `<meta name="description">` content, used verbatim (escaped, not truncated) — for a page family that paginates (the index, notes, gallery, and category pages), page 1 uses it verbatim and page 2 and beyond append ` (Page N)`, the same suffixing rule as everywhere else (see [Metadata](#metadata)). If `description` is unset, the page gets no meta description at all — there's no auto-generated fallback, since none of these pages has a single body of text to summarise the way a post does.
 
