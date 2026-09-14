@@ -17,8 +17,6 @@ DEFAULTS = {
     "gallery_per_page": 60,
     "images_per_post": 2,
     "feed_max_posts": 30,
-    "index_meta_description": None,
-    "index_title": None,
     "categories": {},
     "navigation": {},
     "special_pages": [],
@@ -42,9 +40,6 @@ class TestDefaults:
 
     def test_site_name_default(self, tmp_path):
         assert load_config(tmp_path / "config.yaml")["site_name"] == "My Blog"
-
-    def test_index_title_default(self, tmp_path):
-        assert load_config(tmp_path / "config.yaml")["index_title"] is None
 
     def test_image_max_dimension_default(self, tmp_path):
         assert load_config(tmp_path / "config.yaml")["image_max_dimension"] == 1600
@@ -72,9 +67,6 @@ class TestDefaults:
 
     def test_feed_max_posts_default(self, tmp_path):
         assert load_config(tmp_path / "config.yaml")["feed_max_posts"] == 30
-
-    def test_index_meta_description_default(self, tmp_path):
-        assert load_config(tmp_path / "config.yaml")["index_meta_description"] is None
 
     def test_ai_disclosure_html_default(self, tmp_path):
         assert load_config(tmp_path / "config.yaml")["ai_disclosure_html"] is None
@@ -133,10 +125,6 @@ class TestCustomValues:
     def test_feed_max_posts_overridden(self, tmp_path):
         p = write_config(tmp_path, "feed_max_posts: 10\n")
         assert load_config(p)["feed_max_posts"] == 10
-
-    def test_index_meta_description_overridden(self, tmp_path):
-        p = write_config(tmp_path, "index_meta_description: A blog about things.\n")
-        assert load_config(p)["index_meta_description"] == "A blog about things."
 
     def test_ai_disclosure_html_overridden(self, tmp_path):
         p = write_config(tmp_path, 'ai_disclosure_html: \'Some text with a <a href="48.html">link</a>.\'\n')
@@ -220,30 +208,24 @@ class TestCategories:
     def test_categories_loaded_from_config(self, tmp_path):
         p = write_config(tmp_path, "categories:\n  photography:\n    name: Photography\n  travel:\n    name: Travel\n")
         assert load_config(p)["categories"] == {
-            "photography": {"name": "Photography", "description": None},
-            "travel": {"name": "Travel", "description": None},
+            "photography": {"name": "Photography"},
+            "travel": {"name": "Travel"},
         }
 
     def test_single_category_loaded(self, tmp_path):
         p = write_config(tmp_path, "categories:\n  thoughts:\n    name: Thoughts\n")
-        assert load_config(p)["categories"] == {"thoughts": {"name": "Thoughts", "description": None}}
+        assert load_config(p)["categories"] == {"thoughts": {"name": "Thoughts"}}
 
-    def test_category_description_loaded(self, tmp_path):
+    def test_category_description_is_ignored(self, tmp_path):
+        # Category descriptions live in metadata.yaml now, not config.yaml —
+        # a stray 'description' key here is silently dropped, not an error.
         p = write_config(
             tmp_path,
             "categories:\n  out-and-about:\n    name: Out & About\n"
             "    description: Places I've been, things I've done.\n",
         )
         category = load_config(p)["categories"]["out-and-about"]
-        assert category == {"name": "Out & About", "description": "Places I've been, things I've done."}
-
-    def test_category_description_optional(self, tmp_path):
-        p = write_config(tmp_path, "categories:\n  thoughts:\n    name: Thoughts\n")
-        assert load_config(p)["categories"]["thoughts"]["description"] is None
-
-    def test_blank_category_description_treated_as_unset(self, tmp_path):
-        p = write_config(tmp_path, "categories:\n  thoughts:\n    name: Thoughts\n    description:\n")
-        assert load_config(p)["categories"]["thoughts"]["description"] is None
+        assert category == {"name": "Out & About"}
 
     def test_categories_not_included_in_known_keys_check(self, tmp_path):
         p = write_config(tmp_path, "categories:\n  photography:\n    name: Photography\n")
@@ -252,7 +234,7 @@ class TestCategories:
 
     def test_mutating_returned_categories_does_not_leak_into_next_load(self, tmp_path):
         config = load_config(tmp_path / "config.yaml")
-        config["categories"]["photography"] = {"name": "Photography", "description": None}
+        config["categories"]["photography"] = {"name": "Photography"}
         fresh = load_config(tmp_path / "config.yaml")
         assert fresh["categories"] == {}
 

@@ -5,6 +5,10 @@
 
 ## Released changes
 
+### 14/9/26
+
+- Added metadata.yaml for per-page title/description overrides
+
 ### 8/9/26
 
 - Added meta descriptions for posts
