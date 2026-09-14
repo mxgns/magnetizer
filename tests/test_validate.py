@@ -1,7 +1,7 @@
 """Tests for magnetizer/validate.py — validate_project(), validate_content(), validate_config()"""
 
 import pytest
-from magnetizer.validate import validate_config, validate_content, validate_project
+from magnetizer.validate import validate_config, validate_content, validate_metadata, validate_project
 from conftest import make_content
 
 
@@ -592,7 +592,7 @@ class TestValidateConfig:
     def test_passes_with_non_reserved_category_slugs(self):
         validate_config({"site_url": "https://example.github.io", "categories": {"photography": "Photography"}})  # should not raise
 
-    @pytest.mark.parametrize("slug", ["index", "archive", "gallery"])
+    @pytest.mark.parametrize("slug", ["index", "archive", "gallery", "search", "notes"])
     def test_fails_when_category_slug_is_reserved(self, slug):
         with pytest.raises(SystemExit):
             validate_config({"site_url": "https://example.github.io", "categories": {slug: "Whatever"}})
@@ -619,7 +619,11 @@ class TestValidateConfig:
         with pytest.raises(SystemExit):
             validate_config({"site_url": "https://example.github.io", "categories": {"gallery-2": "Whatever"}})
 
-    @pytest.mark.parametrize("name", ["index", "archive", "gallery", "gallery-2", "index-2"])
+    def test_fails_when_category_slug_matches_notes_pagination_pattern(self):
+        with pytest.raises(SystemExit):
+            validate_config({"site_url": "https://example.github.io", "categories": {"notes-2": "Whatever"}})
+
+    @pytest.mark.parametrize("name", ["index", "archive", "gallery", "search", "notes", "gallery-2", "index-2", "notes-2"])
     def test_fails_when_special_page_name_is_reserved(self, name):
         with pytest.raises(SystemExit):
             validate_config({"site_url": "https://example.github.io", "special_pages": [name]})
@@ -698,3 +702,36 @@ class TestValidateConfig:
             "404-page-input-filename": "error-404.md",
             "404-page-output-filename": "not-found.html",
         })  # should not raise — configurable output name, just no path separators
+
+
+# ---------------------------------------------------------------------------
+# validate_metadata — metadata.yaml keys match a real page or category
+# ---------------------------------------------------------------------------
+
+class TestValidateMetadata:
+
+    @pytest.mark.parametrize("key", ["index", "archive", "search", "notes", "gallery"])
+    def test_passes_with_generated_page_key(self, key):
+        validate_metadata({key: {"title": "Custom", "description": None}}, {"categories": {}})  # should not raise
+
+    def test_passes_with_configured_category_slug(self):
+        validate_metadata(
+            {"photography": {"title": None, "description": "About photography."}},
+            {"categories": {"photography": {"name": "Photography"}}},
+        )  # should not raise
+
+    def test_fails_with_unknown_key(self):
+        with pytest.raises(SystemExit):
+            validate_metadata({"nonexistent": {"title": "Whatever", "description": None}}, {"categories": {}})
+
+    def test_fails_when_key_is_an_unconfigured_category_slug(self):
+        with pytest.raises(SystemExit):
+            validate_metadata({"photography": {"title": "Whatever", "description": None}}, {"categories": {}})
+
+    def test_error_message_mentions_the_unknown_key(self, capsys):
+        with pytest.raises(SystemExit):
+            validate_metadata({"nonexistent": {"title": "Whatever", "description": None}}, {"categories": {}})
+        assert "nonexistent" in capsys.readouterr().err
+
+    def test_passes_with_empty_metadata(self):
+        validate_metadata({}, {"categories": {}})  # should not raise

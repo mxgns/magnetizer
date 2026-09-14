@@ -452,15 +452,17 @@ class TestIndexPages:
         html = (p / "dist" / "index.html").read_text()
         assert "<title>Test Blog</title>" in html
 
-    def test_index_page_title_includes_index_title_when_configured(self, tmp_path):
-        config = "site_name: Test Blog\nsite_url: https://example.github.io\nposts_per_page: 2\nindex_title: My Photos\n"
-        p = make_project(tmp_path, posts={1: MINIMAL_MD}, config=config)
+    def test_index_page_title_includes_metadata_title_when_configured(self, tmp_path):
+        config = "site_name: Test Blog\nsite_url: https://example.github.io\nposts_per_page: 2\n"
+        metadata = "index:\n  title: My Photos\n"
+        p = make_project(tmp_path, posts={1: MINIMAL_MD}, config=config, metadata=metadata)
         build(p)
         assert "<title>Test Blog - My Photos</title>" in (p / "dist" / "index.html").read_text()
 
-    def test_index_page_2_title_not_affected_by_index_title(self, tmp_path):
-        config = "site_name: Test Blog\nsite_url: https://example.github.io\nposts_per_page: 1\nindex_title: My Photos\n"
-        p = make_project(tmp_path, posts={1: MINIMAL_MD, 2: MINIMAL_MD}, config=config)
+    def test_index_page_2_title_not_affected_by_metadata_title(self, tmp_path):
+        config = "site_name: Test Blog\nsite_url: https://example.github.io\nposts_per_page: 1\n"
+        metadata = "index:\n  title: My Photos\n"
+        p = make_project(tmp_path, posts={1: MINIMAL_MD, 2: MINIMAL_MD}, config=config, metadata=metadata)
         build(p)
         assert "<title>Test Blog - Page 2</title>" in (p / "dist" / "index-2.html").read_text()
 
@@ -1600,7 +1602,7 @@ class TestSpecialPagesGeneric:
     def test_category_slug_matching_configured_special_page_name_errors(self, tmp_path):
         config = (
             "site_name: Test Blog\nsite_url: https://example.github.io\n"
-            "posts_per_page: 2\nspecial_pages:\n  - now\ncategories:\n  now:\n    name: Now\n"
+            "posts_per_page: 2\nspecial_pages:\n  - now\ncategories:\n  now: Now\n"
         )
         p = make_project(tmp_path, posts={1: MINIMAL_MD}, config=config)
         (p / "content" / "now.md").write_text(NOW_MD)
@@ -2134,25 +2136,25 @@ class TestExternalLinks:
 
 class TestIndexMetaDescription:
 
+    _CONFIG = "site_name: Test Blog\nsite_url: https://example.github.io\nposts_per_page: 2\n"
+    _METADATA = "index:\n  description: A great blog.\n"
+
     def test_index_page_includes_meta_description_when_configured(self, tmp_path):
-        config = "site_name: Test Blog\nsite_url: https://example.github.io\nposts_per_page: 2\nindex_meta_description: A great blog.\n"
-        p = make_project(tmp_path, posts={1: MINIMAL_MD}, config=config)
+        p = make_project(tmp_path, posts={1: MINIMAL_MD}, config=self._CONFIG, metadata=self._METADATA)
         (p / "templates" / "index.html").write_text(META_DESCRIPTION_TEMPLATE)
         build(p)
         assert '<meta name="description" content="A great blog.">' in (p / "dist" / "index.html").read_text()
 
     def test_first_index_page_meta_description_has_no_page_suffix(self, tmp_path):
-        config = "site_name: Test Blog\nsite_url: https://example.github.io\nposts_per_page: 2\nindex_meta_description: A great blog.\n"
         posts = {i: MINIMAL_MD for i in range(1, 4)}
-        p = make_project(tmp_path, posts=posts, config=config)
+        p = make_project(tmp_path, posts=posts, config=self._CONFIG, metadata=self._METADATA)
         (p / "templates" / "index.html").write_text(META_DESCRIPTION_TEMPLATE)
         build(p)
         assert '<meta name="description" content="A great blog.">' in (p / "dist" / "index.html").read_text()
 
     def test_second_index_page_meta_description_has_page_suffix(self, tmp_path):
-        config = "site_name: Test Blog\nsite_url: https://example.github.io\nposts_per_page: 2\nindex_meta_description: A great blog.\n"
         posts = {i: MINIMAL_MD for i in range(1, 4)}
-        p = make_project(tmp_path, posts=posts, config=config)
+        p = make_project(tmp_path, posts=posts, config=self._CONFIG, metadata=self._METADATA)
         (p / "templates" / "index.html").write_text(META_DESCRIPTION_TEMPLATE)
         build(p)
         html = (p / "dist" / "index-2.html").read_text()
@@ -2160,17 +2162,15 @@ class TestIndexMetaDescription:
         assert '<meta name="description" content="A great blog.">' not in html
 
     def test_third_index_page_meta_description_has_page_suffix(self, tmp_path):
-        config = "site_name: Test Blog\nsite_url: https://example.github.io\nposts_per_page: 2\nindex_meta_description: A great blog.\n"
         posts = {i: MINIMAL_MD for i in range(1, 6)}
-        p = make_project(tmp_path, posts=posts, config=config)
+        p = make_project(tmp_path, posts=posts, config=self._CONFIG, metadata=self._METADATA)
         (p / "templates" / "index.html").write_text(META_DESCRIPTION_TEMPLATE)
         build(p)
         html = (p / "dist" / "index-3.html").read_text()
         assert '<meta name="description" content="A great blog. (Page 3)">' in html
 
     def test_post_page_meta_description_is_independent_of_index_meta_description(self, tmp_path):
-        config = "site_name: Test Blog\nsite_url: https://example.github.io\nposts_per_page: 2\nindex_meta_description: A great blog.\n"
-        p = make_project(tmp_path, posts={1: MINIMAL_MD}, config=config)
+        p = make_project(tmp_path, posts={1: MINIMAL_MD}, config=self._CONFIG, metadata=self._METADATA)
         (p / "templates" / "index.html").write_text(META_DESCRIPTION_TEMPLATE)
         build(p)
         html = (p / "dist" / "1.html").read_text()
@@ -2596,7 +2596,7 @@ class TestTitleWithoutImageOrContentWarning:
 
 _CATEGORIES_CONFIG = (
     "site_name: Test Blog\nsite_url: https://example.github.io\n"
-    "posts_per_page: 2\ncategories:\n  photography:\n    name: Photography\n  travel:\n    name: Travel\n"
+    "posts_per_page: 2\ncategories:\n  photography: Photography\n  travel: Travel\n"
 )
 _CATEGORY_MD = "---\ndate: 2026-05-24\ntitle: My Post\ncategory: photography\n---\n\nHello world\n"
 _NO_CATEGORY_MD = "---\ndate: 2026-05-24\ntitle: My Post\n---\n\nHello world\n"
@@ -2734,17 +2734,15 @@ class TestCategoryPages:
 # Category meta descriptions
 # ---------------------------------------------------------------------------
 
-_CATEGORY_WITH_DESCRIPTION_CONFIG = (
-    "site_name: Test Blog\nsite_url: https://example.github.io\n"
-    "posts_per_page: 2\ncategories:\n  photography:\n"
-    "    name: Photography\n    description: Places I've been and things I've done.\n"
+_CATEGORY_WITH_DESCRIPTION_METADATA = (
+    "photography:\n  description: Places I've been and things I've done.\n"
 )
 
 
 class TestCategoryMetaDescription:
 
     def test_category_page_uses_configured_description(self, tmp_path):
-        p = make_project(tmp_path, posts={1: _CATEGORY_MD}, config=_CATEGORY_WITH_DESCRIPTION_CONFIG)
+        p = make_project(tmp_path, posts={1: _CATEGORY_MD}, config=_CATEGORIES_CONFIG, metadata=_CATEGORY_WITH_DESCRIPTION_METADATA)
         build(p)
         html = (p / "dist" / "photography.html").read_text()
         assert '<meta name="description" content="Places I&#x27;ve been and things I&#x27;ve done.">' in html
@@ -2756,14 +2754,14 @@ class TestCategoryMetaDescription:
 
     def test_second_category_page_appends_page_suffix(self, tmp_path):
         posts = {i: _CATEGORY_MD for i in range(1, 4)}  # 3 posts, per_page=2
-        p = make_project(tmp_path, posts=posts, config=_CATEGORY_WITH_DESCRIPTION_CONFIG)
+        p = make_project(tmp_path, posts=posts, config=_CATEGORIES_CONFIG, metadata=_CATEGORY_WITH_DESCRIPTION_METADATA)
         build(p)
         html = (p / "dist" / "photography-2.html").read_text()
         assert '<meta name="description" content="Places I&#x27;ve been and things I&#x27;ve done. (Page 2)">' in html
 
     def test_first_category_page_has_no_page_suffix(self, tmp_path):
         posts = {i: _CATEGORY_MD for i in range(1, 4)}  # 3 posts, per_page=2
-        p = make_project(tmp_path, posts=posts, config=_CATEGORY_WITH_DESCRIPTION_CONFIG)
+        p = make_project(tmp_path, posts=posts, config=_CATEGORIES_CONFIG, metadata=_CATEGORY_WITH_DESCRIPTION_METADATA)
         build(p)
         html = (p / "dist" / "photography.html").read_text()
         assert '<meta name="description" content="Places I&#x27;ve been and things I&#x27;ve done.">' in html
@@ -2771,15 +2769,148 @@ class TestCategoryMetaDescription:
     def test_category_meta_description_is_independent_of_other_categories(self, tmp_path):
         config = (
             "site_name: Test Blog\nsite_url: https://example.github.io\n"
-            "posts_per_page: 2\ncategories:\n  photography:\n"
-            "    name: Photography\n    description: About photography.\n"
-            "  travel:\n    name: Travel\n"
+            "posts_per_page: 2\ncategories:\n  photography: Photography\n  travel: Travel\n"
         )
+        metadata = "photography:\n  description: About photography.\n"
         travel_md = "---\ndate: 2026-05-24\ntitle: Travel Post\ncategory: travel\n---\n\nContent\n"
-        p = make_project(tmp_path, posts={1: _CATEGORY_MD, 2: travel_md}, config=config)
+        p = make_project(tmp_path, posts={1: _CATEGORY_MD, 2: travel_md}, config=config, metadata=metadata)
         build(p)
         assert '<meta name="description"' not in (p / "dist" / "travel.html").read_text()
         assert '<meta name="description" content="About photography.">' in (p / "dist" / "photography.html").read_text()
+
+    def test_category_title_overridden_by_metadata_leaves_display_name_untouched(self, tmp_path):
+        # metadata.yaml's 'title' only affects the <title> tag — the H1 and
+        # any other display use of the category still comes from its
+        # config.yaml display name, same as the archive category-list link below.
+        metadata = "photography:\n  title: Snapshots From Around Town\n"
+        p = make_project(tmp_path, posts={1: _CATEGORY_MD}, config=_CATEGORIES_CONFIG, metadata=metadata)
+        build(p)
+        html = (p / "dist" / "photography.html").read_text()
+        assert "<title>Snapshots From Around Town - Test Blog</title>" in html
+        assert "<h1>Photography</h1>" in html
+
+    def test_category_page_title_falls_back_to_name_when_no_metadata(self, tmp_path):
+        p = make_project(tmp_path, posts={1: _CATEGORY_MD}, config=_CATEGORIES_CONFIG)
+        build(p)
+        assert "<title>Photography - Test Blog</title>" in (p / "dist" / "photography.html").read_text()
+
+
+# ---------------------------------------------------------------------------
+# Archive, search, notes and gallery page metadata overrides
+# ---------------------------------------------------------------------------
+
+class TestArchiveMetadata:
+
+    def test_archive_title_overridden_by_metadata(self, tmp_path):
+        metadata = "archive:\n  title: Everything\n"
+        p = make_project(tmp_path, posts={1: MINIMAL_MD}, metadata=metadata)
+        build(p)
+        assert "<title>Everything - Test Blog</title>" in (p / "dist" / "archive.html").read_text()
+
+    def test_archive_title_defaults_when_no_metadata(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD})
+        build(p)
+        assert "<title>Archive - Test Blog</title>" in (p / "dist" / "archive.html").read_text()
+
+    def test_archive_description_overridden_by_metadata(self, tmp_path):
+        metadata = "archive:\n  description: Every post, all in one place.\n"
+        p = make_project(tmp_path, posts={1: MINIMAL_MD}, metadata=metadata)
+        (p / "templates" / "index.html").write_text(META_DESCRIPTION_TEMPLATE)
+        build(p)
+        assert '<meta name="description" content="Every post, all in one place.">' in (p / "dist" / "archive.html").read_text()
+
+    def test_archive_has_no_meta_description_when_no_metadata(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD})
+        (p / "templates" / "index.html").write_text(META_DESCRIPTION_TEMPLATE)
+        build(p)
+        assert '<meta name="description"' not in (p / "dist" / "archive.html").read_text()
+
+
+class TestSearchMetadata:
+
+    def test_search_title_overridden_by_metadata(self, tmp_path):
+        metadata = "search:\n  title: Find Something\n"
+        p = make_project(tmp_path, posts={1: MINIMAL_MD}, metadata=metadata)
+        build(p)
+        assert "<title>Find Something - Test Blog</title>" in (p / "dist" / "search.html").read_text()
+
+    def test_search_title_defaults_when_no_metadata(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD})
+        build(p)
+        assert "<title>Search - Test Blog</title>" in (p / "dist" / "search.html").read_text()
+
+    def test_search_description_overridden_by_metadata(self, tmp_path):
+        metadata = "search:\n  description: Search every post on the site.\n"
+        p = make_project(tmp_path, posts={1: MINIMAL_MD}, metadata=metadata)
+        (p / "templates" / "index.html").write_text(META_DESCRIPTION_TEMPLATE)
+        build(p)
+        assert '<meta name="description" content="Search every post on the site.">' in (p / "dist" / "search.html").read_text()
+
+
+class TestNotesMetadata:
+
+    _NOTE_MD = "---\ndate: 2026-05-24\n---\n\nJust a quick note.\n"
+
+    def test_notes_title_overridden_by_metadata(self, tmp_path):
+        metadata = "notes:\n  title: Quick Thoughts\n"
+        p = make_project(tmp_path, posts={1: self._NOTE_MD}, metadata=metadata)
+        build(p)
+        assert "<title>Quick Thoughts - Test Blog</title>" in (p / "dist" / "notes.html").read_text()
+
+    def test_notes_title_defaults_when_no_metadata(self, tmp_path):
+        p = make_project(tmp_path, posts={1: self._NOTE_MD})
+        build(p)
+        assert "<title>Short notes - Test Blog</title>" in (p / "dist" / "notes.html").read_text()
+
+    def test_notes_description_overridden_by_metadata(self, tmp_path):
+        metadata = "notes:\n  description: Short thoughts and updates.\n"
+        p = make_project(tmp_path, posts={1: self._NOTE_MD}, metadata=metadata)
+        (p / "templates" / "index.html").write_text(META_DESCRIPTION_TEMPLATE)
+        build(p)
+        assert '<meta name="description" content="Short thoughts and updates.">' in (p / "dist" / "notes.html").read_text()
+
+    def test_second_notes_page_description_has_page_suffix(self, tmp_path):
+        config = "site_name: Test Blog\nsite_url: https://example.github.io\nnotes_per_page: 1\n"
+        metadata = "notes:\n  description: Short thoughts and updates.\n"
+        posts = {i: self._NOTE_MD for i in range(1, 3)}
+        p = make_project(tmp_path, posts=posts, config=config, metadata=metadata)
+        (p / "templates" / "index.html").write_text(META_DESCRIPTION_TEMPLATE)
+        build(p)
+        html = (p / "dist" / "notes-2.html").read_text()
+        assert '<meta name="description" content="Short thoughts and updates. (Page 2)">' in html
+
+
+class TestGalleryMetadata:
+
+    def test_gallery_title_overridden_by_metadata(self, tmp_path):
+        metadata = "gallery:\n  title: Photos\n"
+        p = make_project(tmp_path, posts={1: MINIMAL_MD}, metadata=metadata)
+        make_jpg(p / "content" / "1-image-01.jpg")
+        build(p)
+        assert "<title>Photos - Test Blog</title>" in (p / "dist" / "gallery.html").read_text()
+
+    def test_gallery_title_defaults_when_no_metadata(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD})
+        make_jpg(p / "content" / "1-image-01.jpg")
+        build(p)
+        assert "<title>Photo archive - Test Blog</title>" in (p / "dist" / "gallery.html").read_text()
+
+    def test_gallery_description_overridden_by_metadata(self, tmp_path):
+        metadata = "gallery:\n  description: Every photo on the site.\n"
+        p = make_project(tmp_path, posts={1: MINIMAL_MD}, metadata=metadata)
+        make_jpg(p / "content" / "1-image-01.jpg")
+        (p / "templates" / "index.html").write_text(META_DESCRIPTION_TEMPLATE)
+        build(p)
+        assert '<meta name="description" content="Every photo on the site.">' in (p / "dist" / "gallery.html").read_text()
+
+
+class TestMetadataValidationDuringBuild:
+
+    def test_build_fails_when_metadata_key_matches_no_page_or_category(self, tmp_path):
+        metadata = "nonexistent:\n  title: Whatever\n"
+        p = make_project(tmp_path, posts={1: MINIMAL_MD}, metadata=metadata)
+        with pytest.raises(SystemExit):
+            build(p)
 
 
 # ---------------------------------------------------------------------------
@@ -2942,7 +3073,7 @@ class TestWarnings:
     def test_missing_category_produces_warning(self, tmp_path):
         config = (
             "site_name: Test Blog\nsite_url: https://example.github.io\n"
-            "posts_per_page: 2\ncategories:\n  photo:\n    name: Photography\n"
+            "posts_per_page: 2\ncategories:\n  photo: Photography\n"
         )
         p = make_project(tmp_path, posts={1: MINIMAL_MD}, config=config)
         warnings = build(p)["warnings"]
@@ -2951,7 +3082,7 @@ class TestWarnings:
     def test_invalid_category_produces_warning(self, tmp_path):
         config = (
             "site_name: Test Blog\nsite_url: https://example.github.io\n"
-            "posts_per_page: 2\ncategories:\n  photo:\n    name: Photography\n"
+            "posts_per_page: 2\ncategories:\n  photo: Photography\n"
         )
         cat_md = "---\ndate: 2026-05-24\ncategory: unknown\n---\n\nContent\n"
         p = make_project(tmp_path, posts={1: cat_md}, config=config)
@@ -3058,7 +3189,7 @@ class TestNavigation:
         assert 'current' not in html
 
     def test_navigation_rendered_on_category_page(self, tmp_path):
-        config = _NAVIGATION_CONFIG + "categories:\n  photography:\n    name: Photography\n"
+        config = _NAVIGATION_CONFIG + "categories:\n  photography: Photography\n"
         md = "---\ndate: 2026-05-24\ntitle: My Post\ncategory: photography\n---\n\nHello\n"
         p = make_project(tmp_path, posts={1: md}, config=config)
         build(p)

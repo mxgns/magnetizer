@@ -8,9 +8,10 @@ from magnetizer.content import IMAGE_EXTENSIONS, _IMAGE_EXT_RE, special_page_com
 _MD_PATTERN = re.compile(r'^([1-9]\d*)\.md$')
 _IMAGE_PATTERN = re.compile(rf'^([1-9]\d*)-image-(\d{{2}})\.({_IMAGE_EXT_RE})$')
 _COMMENT_PATTERN = re.compile(r'^([1-9]\d*)-comment-(\d{2})\.md$')
-_BASE_RESERVED_SLUGS = {"index", "archive", "gallery"}
+_BASE_RESERVED_SLUGS = {"index", "archive", "gallery", "search", "notes"}
 _INDEX_PAGE_SLUG_PATTERN = re.compile(r'^index-\d+$')
 _GALLERY_PAGE_SLUG_PATTERN = re.compile(r'^gallery-\d+$')
+_NOTES_PAGE_SLUG_PATTERN = re.compile(r'^notes-\d+$')
 
 
 def _error(msg) -> NoReturn:
@@ -23,6 +24,7 @@ def _is_reserved_slug(slug, reserved):
         slug in reserved
         or _INDEX_PAGE_SLUG_PATTERN.match(slug)
         or _GALLERY_PAGE_SLUG_PATTERN.match(slug)
+        or _NOTES_PAGE_SLUG_PATTERN.match(slug)
         or slug.isdigit()
     )
 
@@ -43,6 +45,13 @@ def validate_config(config):
     for slug in config.get("categories", {}):
         if _is_reserved_slug(slug, reserved):
             _error(f"category slug '{slug}' in config.yaml is reserved and would overwrite a generated page — choose a different slug")
+
+
+def validate_metadata(metadata, config):
+    valid_keys = _BASE_RESERVED_SLUGS | set(config.get("categories", {}))
+    for key in metadata:
+        if key not in valid_keys:
+            _error(f"metadata.yaml entry '{key}' does not match any page or category — check for a typo")
 
 
 def validate_project(cwd):

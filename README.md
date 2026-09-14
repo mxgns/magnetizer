@@ -12,6 +12,7 @@ templates/     HTML templates
 resources/     CSS, JS, fonts, icons, etc.
 dist/          Generated output (publish this to the web)
 config.yaml    Site configuration
+metadata.yaml  Per-page title/description overrides (optional) — see Page metadata overrides
 manifest.json  Build state (created automatically)
 ```
 
@@ -34,9 +35,7 @@ manifest.json  Build state (created automatically)
 | `gallery_per_page` | Photos shown per gallery page (`gallery.html`, `gallery-2.html`, …) | `60` |
 | `images_per_post` | Top-level images shown per post on multi-post pages (index, category, notes) — `0` shows none. The post's own page always shows all top-level images regardless. Inline images (`{{ image N }}`) aren't counted; use `<!-- more -->` to control those | `2` |
 | `feed_max_posts` | Maximum number of most-recent dated posts included in the Atom feed | `30` |
-| `index_meta_description` | `<meta name="description">` content on index pages (via `MAGNETIZER_METADATA` placeholder) — `index.html` uses it verbatim, `index-2.html` and beyond append ` (Page N)` | Not set |
-| `index_title` | When set, the title of `index.html` becomes `site_name - index_title` | Not set |
-| `categories` | Map of category slug to a `{name, description}` mapping — see [Categories](#categories) | `{}` (no categories) |
+| `categories` | Map of category slug to a display name, e.g. `{photography: Photography}` — see [Categories](#categories) | `{}` (no categories) |
 | `navigation` | Map of page filename to nav label, e.g. `{index.html: Home}`, in display order | `{}` (no navigation) |
 | `special_pages` | List of standalone page names, each backed by a `content/{name}.md` file — see [Special pages](#special-pages) | `[]` (no special pages) |
 | `ai_disclosure_html` | Raw HTML (not escaped, so it may include a link) shown in the disclosure banner when a post or special page sets `ai_assisted: true` — see the `ai_assisted` entry in [Frontmatter reference](#frontmatter-reference) | Not set — falls back to a generic disclosure sentence |
@@ -52,11 +51,8 @@ posts_per_page: 12
 image_max_dimension: 1600
 image_quality: 75
 categories:
-  photography:
-    name: Photography
-  travel:
-    name: Travel
-    description: Trips near and far.
+  photography: Photography
+  travel: Travel
 navigation:
   index.html: Home
   archive.html: Archive
@@ -182,26 +178,49 @@ This is the single reference for every frontmatter key a post or special page ca
 - **`favourite`** — adds an additional `favourite` CSS class to the post's entry in the archive.
 - **`ai_assisted`** — inserts a disclosure banner above the post's heading, wherever it's shown (individual page, and index/category excerpts or full body). The banner text comes from `ai_disclosure_html` in `config.yaml` (raw HTML, so it can include a link) — Magnetizer falls back to a generic sentence if `ai_disclosure_html` isn't set. The banner needs the `.container-brown` and `.ai-disclosure` CSS rules to be present in the project's `resources/` directory — the icon itself is a CSS background image, base64-encoded in the project's own stylesheet, same as every other icon on the site.
 - **`noindex`** — excludes the page from `sitemap.xml` and adds a `<meta name="robots" content="noindex">` tag via `MAGNETIZER_METADATA`, but is otherwise treated normally (still shown on index pages, category pages, the feed, the archive, post navigation, and `posts.json`) — it only affects search indexing. Works the same way on special pages as on posts.
-- **`description`** — content for the page's own `<meta name="description">` tag via `MAGNETIZER_METADATA`, used verbatim if set. If absent, a description is generated from the post's plain-text body: the first 160 characters, preferring a sentence-boundary cut if that leaves a reasonably full description (at least 100 of the 160 characters), otherwise the last complete word before the limit followed by `…`. Never cuts a word or sentence mid-way, except a single word with no spaces longer than 160 characters, which has no word boundary to fall back to and is truncated to make room for `…`. Independent of `index_meta_description` in `config.yaml`, which only applies to index pages. Works the same way on special pages as on posts.
+- **`description`** — content for the page's own `<meta name="description">` tag via `MAGNETIZER_METADATA`, used verbatim if set. If absent, a description is generated from the post's plain-text body: the first 160 characters, preferring a sentence-boundary cut if that leaves a reasonably full description (at least 100 of the 160 characters), otherwise the last complete word before the limit followed by `…`. Never cuts a word or sentence mid-way, except a single word with no spaces longer than 160 characters, which has no word boundary to fall back to and is truncated to make room for `…`. Independent of `metadata.yaml`, which only overrides pages that have no `content/` file of their own — see [Page metadata overrides](#page-metadata-overrides). Works the same way on special pages as on posts.
 
 ## Categories
 
-Categories are configured in `config.yaml` as a map of slug to a mapping with a required `name` and an optional `description`:
+Categories are configured in `config.yaml` as a map of slug to a display name:
 
 ```yaml
 categories:
-  out-and-about:
-    name: Out & About
-    description: Places I've been, things I've done, and stuff worth getting out of the house for.
-  travel:
-    name: Travel
+  out-and-about: Out & About
+  travel: Travel
 ```
 
-A category value with no `name` — including the old flat `slug: Display Name` shorthand — is a build error. `name` is used for the category page's `<h1>`, its link text everywhere it's shown (post footers, the archive categories list), and as the fallback for its page `<title>`.
+A blank category value is a build error. The display name is used for the category page's `<h1>`, its link text everywhere it's shown (post footers, the archive categories list), and as the fallback for its page `<title>`.
 
-If `description` is set, it becomes the category page's `<meta name="description">` content, the same way `index_meta_description` works for index pages — including a ` (Page N)` suffix on `{slug}-2.html` and beyond. If absent, the category page gets no meta description; there's no auto-generated fallback, since (unlike a post) a category page has no single body of text to summarise.
+A category slug can't be `index`, `archive`, `gallery`, `search`, `notes`, a configured special page name, purely numeric, or match the `index-N`/`gallery-N`/`notes-N` pagination pattern — any of these would collide with a generated page, and is a build error.
+
+A category page's `<meta name="description">` and `<title>` override come from `metadata.yaml`, keyed by the same slug — see [Page metadata overrides](#page-metadata-overrides).
 
 A post is assigned to a category via `category` in its frontmatter — see [Frontmatter reference](#frontmatter-reference).
+
+## Page metadata overrides
+
+`metadata.yaml`, in the project root, sets a custom `<title>` and/or `<meta name="description">` for pages that have no `content/` file of their own to hold frontmatter — the index, the archive, the search page, the notes listing, the gallery, and category pages. A post or a content-backed special page (`about.html`, `cookies.html`, etc.) already has `title`/`description` frontmatter for this — see [Frontmatter reference](#frontmatter-reference) — and isn't affected by `metadata.yaml`.
+
+It's optional; omit the file entirely if you don't need it. Each entry is keyed by the page's slug — `index`, `archive`, `search`, `notes`, `gallery`, or a configured category slug — and may set `title`, `description`, or both:
+
+```yaml
+archive:
+  title: Everything
+  description: Overview of every category, post, note and photo on the site.
+search:
+  description: Search the whole site.
+out-and-about:
+  description: Places I've been, things I've seen and stuff I've done.
+```
+
+A key that doesn't match a real page or a configured category slug is a build error — there's no silent typo. An entry must set at least one of `title`/`description`; an empty entry is also a build error.
+
+If `title` is set, it replaces the page-specific part of the `<title>` tag — `site_name` is still appended the same way it is everywhere else (e.g. `Everything - My Blog`). For a category, this only affects the `<title>` tag; its display name from `categories` in `config.yaml` still controls its `<h1>` and every other place its display label appears. If `title` is unset, the page keeps its usual title (`Archive`, `Search`, `Short notes`, `Photo archive`, or the category's display name).
+
+If `description` is set, it becomes the page's `<meta name="description">` content, the same way a post's `description` frontmatter does — including a ` (Page N)` suffix on page 2 and beyond for a page family that paginates (the index, notes, gallery, and category pages). If unset, the page gets no meta description; there's no auto-generated fallback, since none of these pages has a single body of text to summarise.
+
+Setting only one of `title`/`description` leaves the other at whatever it would otherwise have been — they're independent.
 
 ## Comments
 
@@ -256,7 +275,7 @@ Magnetizer uses a single template file: `templates/index.html`. It must contain 
 
 | Placeholder | Required | Replaced with |
 |---|---|---|
-| `MAGNETIZER_METADATA` | Yes | A block of `<head>` metadata tags: `<title>`, an optional `<meta name="description">` (index pages from `index_meta_description`; category pages from that category's `description` — see [Categories](#categories); individual posts/special pages from their `description` frontmatter or an auto-generated fallback — see the `description` entry in [Frontmatter reference](#frontmatter-reference)), a `<link rel="canonical">`, and — for posts or special pages with `noindex: true` — a `<meta name="robots" content="noindex">`. Each line is present only when applicable. Paginated index/category pages append ` (Page N)` to their configured description from page 2 onward. |
+| `MAGNETIZER_METADATA` | Yes | A block of `<head>` metadata tags: `<title>`, an optional `<meta name="description">` (index/archive/search/notes/gallery/category pages from `metadata.yaml` — see [Page metadata overrides](#page-metadata-overrides); individual posts/special pages from their `description` frontmatter or an auto-generated fallback — see the `description` entry in [Frontmatter reference](#frontmatter-reference)), a `<link rel="canonical">`, and — for posts or special pages with `noindex: true` — a `<meta name="robots" content="noindex">`. Each line is present only when applicable. Paginated index/category/notes/gallery pages append ` (Page N)` to their configured description from page 2 onward. |
 | `MAGNETIZER_CONTENT` | Yes | The generated page content |
 | `MAGNETIZER_BUILD_ID` | No | A Unix timestamp, useful for cache-busting: `style.css?v=MAGNETIZER_BUILD_ID` |
 | `MAGNETIZER_PAGE_ID` | No | The current page's bare id, e.g. `56` for a post, `about` for a special page, `photography` for a category page, `index`/`index-2`/`notes`/`archive`/`search` otherwise. Never includes `.html`. Not used by Magnetizer itself — useful for e.g. a per-page tracking pixel. |

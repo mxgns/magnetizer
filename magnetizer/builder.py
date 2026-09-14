@@ -6,6 +6,7 @@ from datetime import datetime as _datetime
 from pathlib import Path
 
 from magnetizer.config import load_config
+from magnetizer.metadata import load_metadata
 from magnetizer.content import (
     _IMAGE_EXT_RE,
     parse_comment,
@@ -47,7 +48,7 @@ from magnetizer.render import (
 from magnetizer.feed import render_feed
 from magnetizer.posts_index import render_posts_index
 from magnetizer.sitemap import render_sitemap, render_robots_txt
-from magnetizer.validate import validate_config, validate_content, validate_project
+from magnetizer.validate import validate_config, validate_content, validate_metadata, validate_project
 
 _FLUSH_PRESERVE = {'.git', 'CNAME', '.nojekyll'}
 
@@ -236,6 +237,14 @@ def _page_id(filename):
     return filename.rsplit('.', 1)[0]
 
 
+def _metadata_title(metadata, key, default):
+    return (metadata or {}).get(key, {}).get("title") or default
+
+
+def _metadata_description(metadata, key):
+    return (metadata or {}).get(key, {}).get("description")
+
+
 def _write_post_html(post, dist_dir, config, template, newer_url=None, older_url=None, categories=None):
     content_html = render_post_page_content(post, newer_url=newer_url, older_url=older_url, categories=categories, ai_disclosure_html=config["ai_disclosure_html"])
     title = render_page_title(config["site_name"], post_display_text(post), page_num=None)
@@ -248,19 +257,21 @@ def _write_post_html(post, dist_dir, config, template, newer_url=None, older_url
     (dist_dir / filename).write_text(html)
 
 
-def _write_index_pages(posts_sorted_desc, dist_dir, config, template, categories=None):
+def _write_index_pages(posts_sorted_desc, dist_dir, config, template, categories=None, metadata=None):
     per_page = config["posts_per_page"]
     total = len(posts_sorted_desc)
     total_pages = max(1, (total + per_page - 1) // per_page)
+    index_title = _metadata_title(metadata, "index", None)
+    index_description = _metadata_description(metadata, "index")
 
     for page_num in range(1, total_pages + 1):
         slice_ = posts_sorted_desc[(page_num - 1) * per_page: page_num * per_page]
         content_html = render_index_page_content(slice_, page_num, total_pages, categories=categories, ai_disclosure_html=config["ai_disclosure_html"], images_per_post=config["images_per_post"])
-        title = render_page_title(config["site_name"], None, page_num=page_num, index_title=config["index_title"])
+        title = render_page_title(config["site_name"], None, page_num=page_num, index_title=index_title)
         filename = index_page_url(page_num)
         html = render_template(template, title=title, content=content_html,
                                canonical=canonical_url(config["site_url"], filename),
-                               meta_description=render_page_meta_description(config["index_meta_description"], page_num),
+                               meta_description=render_page_meta_description(index_description, page_num),
                                navigation=render_navigation(config["navigation"], filename),
                                page_id=_page_id(filename))
         (dist_dir / filename).write_text(html)
@@ -278,29 +289,31 @@ def _category_pages(posts_sorted_desc, categories, per_page):
         yield slug, category["name"], category_posts, total_pages
 
 
-def _write_category_pages(posts_sorted_desc, dist_dir, config, template):
+def _write_category_pages(posts_sorted_desc, dist_dir, config, template, metadata=None):
     categories = config["categories"]
     if not categories:
         return
     per_page = config["posts_per_page"]
     for slug, display_name, category_posts, total_pages in _category_pages(posts_sorted_desc, categories, per_page):
+        title_text = _metadata_title(metadata, slug, display_name)
+        description = _metadata_description(metadata, slug)
         for page_num in range(1, total_pages + 1):
             slice_ = category_posts[(page_num - 1) * per_page: page_num * per_page]
             content_html = render_category_page_content(
                 slice_, display_name, slug, page_num, total_pages, categories=categories,
                 ai_disclosure_html=config["ai_disclosure_html"], images_per_post=config["images_per_post"]
             )
-            title = render_page_title(config["site_name"], display_name, page_num=None)
+            title = render_page_title(config["site_name"], title_text, page_num=None)
             filename = category_page_url(slug, page_num)
             html = render_template(template, title=title, content=content_html,
                                    canonical=canonical_url(config["site_url"], filename),
-                                   meta_description=render_page_meta_description(categories[slug].get("description"), page_num),
+                                   meta_description=render_page_meta_description(description, page_num),
                                    navigation=render_navigation(config["navigation"], filename),
                                    page_id=_page_id(filename))
             (dist_dir / filename).write_text(html)
 
 
-def _write_notes_pages(posts_sorted_desc, dist_dir, config, template):
+def _write_notes_pages(posts_sorted_desc, dist_dir, config, template, metadata=None):
     note_posts = [p for p in posts_sorted_desc if p.post_type == "note"]
     if not note_posts:
         return
@@ -308,13 +321,16 @@ def _write_notes_pages(posts_sorted_desc, dist_dir, config, template):
     total = len(note_posts)
     total_pages = max(1, (total + per_page - 1) // per_page)
     categories = config["categories"]
+    title_text = _metadata_title(metadata, "notes", "Short notes")
+    description = _metadata_description(metadata, "notes")
     for page_num in range(1, total_pages + 1):
         slice_ = note_posts[(page_num - 1) * per_page: page_num * per_page]
         content_html = render_notes_page_content(slice_, page_num, total_pages, categories=categories, ai_disclosure_html=config["ai_disclosure_html"], images_per_post=config["images_per_post"])
-        title = render_page_title(config["site_name"], "Short notes", page_num=None)
+        title = render_page_title(config["site_name"], title_text, page_num=None)
         filename = notes_page_url(page_num)
         html = render_template(template, title=title, content=content_html,
                                canonical=canonical_url(config["site_url"], filename),
+                               meta_description=render_page_meta_description(description, page_num),
                                navigation=render_navigation(config["navigation"], filename),
                                page_id=_page_id(filename))
         (dist_dir / filename).write_text(html)
@@ -358,14 +374,17 @@ def _gallery_pages(photos, per_page):
         yield page_num, photos[(page_num - 1) * per_page: page_num * per_page], total_pages
 
 
-def _write_gallery_pages(photos, dist_dir, config, template):
+def _write_gallery_pages(photos, dist_dir, config, template, metadata=None):
     per_page = config["gallery_per_page"]
+    title_text = _metadata_title(metadata, "gallery", "Photo archive")
+    description = _metadata_description(metadata, "gallery")
     for page_num, slice_, total_pages in _gallery_pages(photos, per_page):
         content_html = render_gallery_page_content(slice_, page_num, total_pages)
-        title = render_page_title(config["site_name"], "Photo archive", page_num=None)
+        title = render_page_title(config["site_name"], title_text, page_num=None)
         filename = gallery_page_url(page_num)
         html = render_template(template, title=title, content=content_html,
                                canonical=canonical_url(config["site_url"], filename),
+                               meta_description=render_page_meta_description(description, page_num),
                                navigation=render_navigation(config["navigation"], filename),
                                page_id=_page_id(filename))
         (dist_dir / filename).write_text(html)
@@ -723,37 +742,38 @@ def _rebuild_stale_not_found_page(config, content_dir, dist_dir, template, value
     return True
 
 
-def _write_generated_pages(published_posts_sorted_desc, dist_dir, config, template, log, build_date, build_datetime, photos):
-    _write_index_pages(published_posts_sorted_desc, dist_dir, config, template, categories=config["categories"])
+def _write_generated_pages(published_posts_sorted_desc, dist_dir, config, template, log, build_date, build_datetime, photos, metadata=None):
+    _write_index_pages(published_posts_sorted_desc, dist_dir, config, template, categories=config["categories"], metadata=metadata)
     per_page = config["posts_per_page"]
     total_pages = max(1, (len(published_posts_sorted_desc) + per_page - 1) // per_page)
     for page_num in range(1, total_pages + 1):
         log(("UPDATED", index_page_url(page_num)))
-    _write_category_pages(published_posts_sorted_desc, dist_dir, config, template)
+    _write_category_pages(published_posts_sorted_desc, dist_dir, config, template, metadata=metadata)
     categories = config["categories"]
     for slug, _, _, total_cat_pages in _category_pages(published_posts_sorted_desc, categories, per_page):
         for page_num in range(1, total_cat_pages + 1):
             log(("UPDATED", category_page_url(slug, page_num)))
     note_posts = [p for p in published_posts_sorted_desc if p.post_type == "note"]
-    _write_notes_pages(published_posts_sorted_desc, dist_dir, config, template)
+    _write_notes_pages(published_posts_sorted_desc, dist_dir, config, template, metadata=metadata)
     notes_per_page = config["notes_per_page"]
     total_notes_pages = max(1, (len(note_posts) + notes_per_page - 1) // notes_per_page) if note_posts else 0
     for page_num in range(1, total_notes_pages + 1):
         log(("UPDATED", notes_page_url(page_num)))
-    _write_gallery_pages(photos, dist_dir, config, template)
+    _write_gallery_pages(photos, dist_dir, config, template, metadata=metadata)
     for page_num, _, _ in _gallery_pages(photos, config["gallery_per_page"]):
         log(("UPDATED", gallery_page_url(page_num)))
     (dist_dir / "feed.xml").write_text(render_feed(published_posts_sorted_desc, config))
     log(("UPDATED", "feed.xml"))
     archive_html = render_template(
         template,
-        title=render_page_title(config["site_name"], "Archive", page_num=None),
+        title=render_page_title(config["site_name"], _metadata_title(metadata, "archive", "Archive"), page_num=None),
         content=render_archive_page_content(
             published_posts_sorted_desc, categories=config["categories"],
             build_date=build_date, build_datetime=build_datetime, posts_per_page=config["posts_per_page"],
             has_photos=bool(photos),
         ),
         canonical=canonical_url(config["site_url"], "archive.html"),
+        meta_description=_metadata_description(metadata, "archive"),
         navigation=render_navigation(config["navigation"], "archive.html"),
         page_id="archive",
     )
@@ -762,9 +782,10 @@ def _write_generated_pages(published_posts_sorted_desc, dist_dir, config, templa
 
     search_html = render_template(
         template,
-        title=render_page_title(config["site_name"], "Search", page_num=None),
+        title=render_page_title(config["site_name"], _metadata_title(metadata, "search", "Search"), page_num=None),
         content=render_search_page_content(),
         canonical=canonical_url(config["site_url"], "search.html"),
+        meta_description=_metadata_description(metadata, "search"),
         navigation=render_navigation(config["navigation"], "search.html"),
         page_id="search",
         page_scripts='<script type="module" src="resources/search.js"></script>',
@@ -834,7 +855,7 @@ def _write_sitemap_and_robots(published_post_ids_sorted_desc, published_posts_so
     log(("UPDATED", "robots.txt"))
 
 
-def _write_posts_index(published_posts_sorted_desc, config, special_page_posts_by_name, not_found_post, dist_dir, log, photos):
+def _write_posts_index(published_posts_sorted_desc, config, special_page_posts_by_name, not_found_post, dist_dir, log, photos, metadata=None):
     entries = [
         (post.id, archive_display_text(post), post.category, post.date)
         for post in published_posts_sorted_desc
@@ -842,7 +863,7 @@ def _write_posts_index(published_posts_sorted_desc, config, special_page_posts_b
 
     per_page = config["posts_per_page"]
     total_pages = max(1, (len(published_posts_sorted_desc) + per_page - 1) // per_page)
-    index_title = config["index_title"] or config["site_name"]
+    index_title = _metadata_title(metadata, "index", config["site_name"])
     for page_num in range(1, total_pages + 1):
         title = index_title if page_num == 1 else f"{index_title} (page {page_num})"
         entries.append((_page_id(index_page_url(page_num)), title, None, None))
@@ -891,6 +912,8 @@ def build(cwd, filename=None, flush=False, resources=False, refresh=False, on_pr
     config = load_config(cwd / "config.yaml")
     validate_config(config)
     validate_content(content_dir, config)
+    metadata = load_metadata(cwd / "metadata.yaml")
+    validate_metadata(metadata, config)
     template = (cwd / "templates" / "index.html").read_text().replace(
         'MAGNETIZER_BUILD_ID', str(int(time.time()))
     )
@@ -1007,7 +1030,7 @@ def build(cwd, filename=None, flush=False, resources=False, refresh=False, on_pr
     photos = None
     if not filename and (post_ids_to_build or refresh):
         photos = _gallery_photos(published_posts_sorted_desc, dist_dir)
-        _write_generated_pages(published_posts_sorted_desc, dist_dir, config, template, _log, build_date, build_datetime, photos)
+        _write_generated_pages(published_posts_sorted_desc, dist_dir, config, template, _log, build_date, build_datetime, photos, metadata=metadata)
 
     if not filename and (log or refresh):
         # post_ids_to_build can be empty while log is still non-empty (e.g. a
@@ -1021,6 +1044,7 @@ def build(cwd, filename=None, flush=False, resources=False, refresh=False, on_pr
         )
         _write_posts_index(
             published_posts_sorted_desc, config, special_page_posts_by_name, not_found_post, dist_dir, _log, photos,
+            metadata=metadata,
         )
 
     resources_dir = cwd / "resources"

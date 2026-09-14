@@ -15,8 +15,6 @@ DEFAULTS = {
     "gallery_per_page": 60,
     "images_per_post": 2,
     "feed_max_posts": 30,
-    "index_meta_description": None,
-    "index_title": None,
     "categories": {},
     "navigation": {},
     "special_pages": [],
@@ -29,12 +27,12 @@ DEFAULTS = {
 def _normalize_categories(raw_categories):
     normalized = {}
     for slug, value in raw_categories.items():
-        if not isinstance(value, dict) or not value.get("name"):
+        if not isinstance(value, str) or not value.strip():
             raise ValueError(
-                f"category '{slug}' in config.yaml must be a mapping with at least a 'name' key, e.g.:\n"
-                f"categories:\n  {slug}:\n    name: ...\n    description: ... (optional)"
+                f"category '{slug}' in config.yaml must be a display name string, e.g.:\n"
+                f"categories:\n  {slug}: Display Name"
             )
-        normalized[slug] = {"name": value["name"], "description": value.get("description") or None}
+        normalized[slug] = {"name": value}
     return normalized
 
 

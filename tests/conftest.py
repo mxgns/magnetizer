@@ -10,7 +10,7 @@ _DEFAULT_CONFIG = "site_name: Test Blog\nsite_url: https://example.github.io\npo
 _UNSET_POST_TYPE = object()
 
 
-def make_project(tmp_path, posts=None, config=_DEFAULT_CONFIG):
+def make_project(tmp_path, posts=None, config=_DEFAULT_CONFIG, metadata=None):
     (tmp_path / "content").mkdir()
     (tmp_path / "dist").mkdir()
     (tmp_path / "templates").mkdir()
@@ -18,6 +18,8 @@ def make_project(tmp_path, posts=None, config=_DEFAULT_CONFIG):
     (tmp_path / "resources" / "style.css").write_text("body {}")
     (tmp_path / "templates" / "index.html").write_text(TEMPLATE)
     (tmp_path / "config.yaml").write_text(config)
+    if metadata is not None:
+        (tmp_path / "metadata.yaml").write_text(metadata)
     if posts:
         for post_id, md_text in posts.items():
             (tmp_path / "content" / f"{post_id}.md").write_text(md_text)
