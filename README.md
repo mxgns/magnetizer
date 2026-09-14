@@ -192,6 +192,8 @@ categories:
 
 A blank category value is a build error. The display name is used for the category page's `<h1>`, its link text everywhere it's shown (post footers, the archive categories list), and as the fallback for its page `<title>`.
 
+A category slug can't be `index`, `archive`, `gallery`, `search`, `notes`, a configured special page name, purely numeric, or match the `index-N`/`gallery-N`/`notes-N` pagination pattern — any of these would collide with a generated page, and is a build error.
+
 A category page's `<meta name="description">` and `<title>` override come from `metadata.yaml`, keyed by the same slug — see [Page metadata overrides](#page-metadata-overrides).
 
 A post is assigned to a category via `category` in its frontmatter — see [Frontmatter reference](#frontmatter-reference).

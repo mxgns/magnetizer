@@ -7,7 +7,11 @@ def load_metadata(path):
     p = Path(path)
     if not p.is_file():
         return {}
-    data = yaml.safe_load(p.read_text()) or {}
+    data = yaml.safe_load(p.read_text())
+    if data is None:
+        data = {}
+    if not isinstance(data, dict):
+        raise ValueError("metadata.yaml must contain a mapping of page slug to title/description")
     metadata = {}
     for key, value in data.items():
         if not isinstance(value, dict) or not (value.get("title") or value.get("description")):

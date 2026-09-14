@@ -668,6 +668,8 @@ categories:
 
 The display name is used for the category page's `<h1>`, its link text wherever it's shown (post footers, the archive categories list), and as the fallback for its page `<title>`. A blank or missing display name (or a value that isn't a plain string at all — e.g. a `{name: ...}` mapping) is a build error, since there's nothing to display for it.
 
+A category slug is rejected as a build error if it's reserved — `index`, `archive`, `gallery`, `search`, `notes`, a configured `special_pages` name, purely numeric, or matching the `index-N`/`gallery-N`/`notes-N` pagination pattern — since any of these would silently overwrite a generated page.
+
 A category page's `<meta name="description">` and `<title>` override come from `metadata.yaml`, keyed by the same slug — see [Page metadata overrides](#page-metadata-overrides).
 
 A post is assigned to a category by setting `category` in its frontmatter to the category's slug. Matching is case-insensitive and the value is normalised to lowercase:

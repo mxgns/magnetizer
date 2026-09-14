@@ -82,3 +82,13 @@ class TestInvalidEntries:
         p = write_metadata(tmp_path, "archive: {}\n")
         with pytest.raises(ValueError):
             load_metadata(p)
+
+    def test_non_mapping_document_root_raises_error(self, tmp_path):
+        p = write_metadata(tmp_path, "- archive\n- search\n")
+        with pytest.raises(ValueError):
+            load_metadata(p)
+
+    def test_scalar_document_root_raises_error(self, tmp_path):
+        p = write_metadata(tmp_path, "just some text\n")
+        with pytest.raises(ValueError):
+            load_metadata(p)
