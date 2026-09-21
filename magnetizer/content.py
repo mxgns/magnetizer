@@ -35,6 +35,8 @@ _TARGET_ATTR_RE = re.compile(r'target\s*=\s*(["\'])(.*?)\1', re.IGNORECASE)
 _REL_ATTR_RE = re.compile(r'rel\s*=\s*(["\'])(.*?)\1', re.IGNORECASE)
 
 _FOOTNOTE_ID_RE = re.compile(r'((?:id="|href="#)(?:fnref\d*|fn):)([^"]+)"')
+_FOOTNOTE_REF_RE = re.compile(r'\[\^([^\]]+)\](?!:)')
+_FOOTNOTE_DEF_RE = re.compile(r'^\[\^([^\]]+)\]:')
 
 
 def _error(msg) -> NoReturn:
@@ -258,6 +260,30 @@ def _mark_external_links(body_html, site_url):
     return _A_TAG_RE.sub(_replace, body_html)
 
 
+def _borrow_footnote_definitions(part0, part1):
+    """A footnote referenced in part0 (the excerpt) but conventionally
+    defined at the end of the post, after the <!-- more --> marker in part1,
+    would otherwise render as literal "[^1]" text in the excerpt — the
+    excerpt is rendered from part0 alone, so the definition isn't available
+    to it. Copy over just the definitions part0 actually references, so the
+    excerpt resolves the same footnote self-containedly. A footnote
+    referenced only in part1 is left alone — it isn't part of the excerpt."""
+    referenced = set(_FOOTNOTE_REF_RE.findall(part0))
+    if not referenced:
+        return part0
+    defined_in_part0 = set(_FOOTNOTE_DEF_RE.findall(part0))
+    missing = referenced - defined_in_part0
+    if not missing:
+        return part0
+    borrowed = [
+        block.strip() for block in part1.split('\n\n')
+        if (m := _FOOTNOTE_DEF_RE.match(block.strip())) and m.group(1) in missing
+    ]
+    if not borrowed:
+        return part0
+    return part0 + '\n\n' + '\n\n'.join(borrowed)
+
+
 def _scope_footnote_ids(body_html, post_id):
     """Prefix footnote element ids/hrefs with the post id, so two posts each
     using [^1] don't collide when shown together on an index/category page —
@@ -352,7 +378,8 @@ def parse_post(md_text, post_id, image_filenames, site_url="", comments=None):
         part1, used1 = _substitute_image_tokens(more_parts[1], images, post_id)
         inline_image_filenames = excerpt_inline_image_filenames | used1
         body_html = _mark_external_links(_scope_footnote_ids(_markdown.markdown(part0 + '\n\n' + part1, extensions=_MARKDOWN_EXTENSIONS), post_id), site_url)
-        excerpt_html = _mark_external_links(_scope_footnote_ids(_markdown.markdown(part0.strip(), extensions=_MARKDOWN_EXTENSIONS), post_id), site_url)
+        excerpt_source = _borrow_footnote_definitions(part0, part1).strip()
+        excerpt_html = _mark_external_links(_scope_footnote_ids(_markdown.markdown(excerpt_source, extensions=_MARKDOWN_EXTENSIONS), post_id), site_url)
     else:
         body, inline_image_filenames = _substitute_image_tokens(body, images, post_id)
         excerpt_inline_image_filenames = inline_image_filenames

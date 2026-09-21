@@ -274,11 +274,23 @@ class TestBodyHtml:
         assert 'id="fnref:2-1"' in post2.body_html
         assert 'id="fn:2-1"' in post2.body_html
 
-    def test_footnote_reference_before_more_marker_with_definition_after_left_literal_in_excerpt(self):
+    def test_footnote_referenced_before_more_marker_resolves_in_excerpt_even_if_defined_after(self):
+        # Conventional style: keep the reference near the claim, definitions
+        # together at the very end of the post, after the marker.
         body = "A claim[^1]<!-- more -->the rest.\n\n[^1]: The source."
         post = parse_post(make_md(body=body), 1, [])
         assert post.excerpt_html is not None
-        assert "[^1]" in post.excerpt_html
+        assert "[^1]" not in post.excerpt_html
+        assert 'class="footnote-ref"' in post.excerpt_html
+        assert "The source." in post.excerpt_html
+        assert 'class="footnote-ref"' in post.body_html
+
+    def test_footnote_referenced_only_after_more_marker_not_borrowed_into_excerpt(self):
+        body = "Intro.<!-- more -->A claim[^1].\n\n[^1]: The source."
+        post = parse_post(make_md(body=body), 1, [])
+        assert post.excerpt_html is not None
+        assert "footnote" not in post.excerpt_html
+        assert "The source." not in post.excerpt_html
         assert 'class="footnote-ref"' in post.body_html
 
 
