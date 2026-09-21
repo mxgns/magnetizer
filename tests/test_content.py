@@ -624,6 +624,55 @@ class TestMetaDescription:
 
 
 # ---------------------------------------------------------------------------
+# Meta description — image-alt-text fallback for image-only posts
+# ---------------------------------------------------------------------------
+
+class TestMetaDescriptionImageFallback:
+
+    def test_falls_back_to_alt_texts_when_no_body_and_no_description(self):
+        md = "---\ndate: 2026-05-24\ntitle: Brunch\nimages:\n  - French toast\n  - Canary Wharf station\n---\n"
+        post = parse_post(md, 1, ["1-image-01.jpg", "1-image-02.jpg"])
+        assert post.meta_description == "2-image post with photos showing French toast, Canary Wharf station"
+
+    def test_singular_image_uses_singular_phrasing(self):
+        md = "---\ndate: 2026-05-24\ntitle: One photo\nimages:\n  - A single sunset\n---\n"
+        post = parse_post(md, 1, ["1-image-01.jpg"])
+        assert post.meta_description == "1-image post with a photo showing A single sunset"
+
+    def test_image_fallback_only_used_when_no_body_text(self):
+        md = "---\ndate: 2026-05-24\nimages:\n  - An alt text\n---\n\nReal body text here.\n"
+        post = parse_post(md, 1, ["1-image-01.jpg"])
+        assert post.meta_description == "Real body text here."
+
+    def test_explicit_description_wins_over_image_fallback(self):
+        md = ("---\ndate: 2026-05-24\ndescription: A hand-written description.\n"
+              "images:\n  - An alt text\n---\n")
+        post = parse_post(md, 1, ["1-image-01.jpg"])
+        assert post.meta_description == "A hand-written description."
+
+    def test_no_fallback_when_images_have_no_alt_text(self):
+        post = parse_post(make_md(), 1, ["1-image-01.jpg", "1-image-02.jpg"])
+        assert post.meta_description is None
+
+    def test_images_with_no_alt_text_are_skipped_in_the_joined_list(self):
+        md = "---\ndate: 2026-05-24\nimages:\n  - First alt\n---\n"
+        post = parse_post(md, 1, ["1-image-01.jpg", "1-image-02.jpg"])
+        assert post.meta_description == "2-image post with photos showing First alt"
+
+    def test_image_fallback_count_reflects_total_image_count(self):
+        md = "---\ndate: 2026-05-24\nimages:\n  - One\n  - Two\n  - Three\n---\n"
+        post = parse_post(md, 1, ["1-image-01.jpg", "1-image-02.jpg", "1-image-03.jpg"])
+        assert post.meta_description.startswith("3-image post")
+
+    def test_image_fallback_is_truncated_as_normal(self):
+        alts = [f"A long alt text number {i} describing the photo in detail" for i in range(5)]
+        md = "---\ndate: 2026-05-24\nimages:\n" + "".join(f"  - {a}\n" for a in alts) + "---\n"
+        post = parse_post(md, 1, [f"1-image-{i:02d}.jpg" for i in range(1, 6)])
+        assert len(post.meta_description) <= 160
+        assert post.meta_description.endswith("…")
+
+
+# ---------------------------------------------------------------------------
 # Favourite posts
 # ---------------------------------------------------------------------------
 

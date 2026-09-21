@@ -5,6 +5,10 @@
 
 ## Released changes
 
+### 21/9/26
+
+- Image-only posts fall back to alt texts for a meta description
+
 ### 14/9/26
 
 - Added metadata.yaml for per-page title/description overrides
