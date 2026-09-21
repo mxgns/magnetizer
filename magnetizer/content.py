@@ -105,20 +105,15 @@ _META_DESCRIPTION_MIN_SENTENCE = 100
 _SENTENCE_END_RE = re.compile(r'[.!?]+(?=\s|$)')
 
 
-def _build_meta_description(description, body_html):
-    """A post's meta description: its `description` frontmatter verbatim if
-    set, otherwise the first 160 characters of its plain-text body. Prefers
-    cutting at a sentence boundary if that leaves a reasonably full
-    description (at least 100 of the 160 characters); otherwise falls back
-    to the last complete word before the limit, marked with an ellipsis.
-    Never cuts a word or sentence mid-way, except for a single word with no
-    spaces at all longer than the limit, which has no word boundary to fall
-    back to and is truncated to make room for the ellipsis."""
-    if description:
-        return description
-    text = _plain_text(body_html) if body_html else ''
-    if not text:
-        return None
+def _truncate_meta_description(text):
+    """Truncate arbitrary plain text to a meta description: the first 160
+    characters, preferring to cut at a sentence boundary if that leaves a
+    reasonably full description (at least 100 of the 160 characters),
+    otherwise the last complete word before the limit, marked with an
+    ellipsis. Never cuts a word or sentence mid-way, except for a single
+    word with no spaces at all longer than the limit, which has no word
+    boundary to fall back to and is truncated to make room for the
+    ellipsis."""
     if len(text) <= _META_DESCRIPTION_LIMIT:
         return text
 
@@ -138,6 +133,35 @@ def _build_meta_description(description, body_html):
         # character for the ellipsis rather than exceeding the limit.
         return window[:-1] + '…'
     return truncated + '…'
+
+
+def _images_fallback_text(images):
+    """A synthesized description for a post with no body text to draw from —
+    e.g. an image-only post with just a title and photos. Built from the
+    images' own alt texts (skipping any without one), since that's the only
+    descriptive text such a post has. Returns None if no image has alt text,
+    since there's nothing to describe."""
+    alt_texts = [image.alt for image in images if image.alt]
+    if not alt_texts:
+        return None
+    count = len(images)
+    subject = "a photo" if count == 1 else "photos"
+    return f"{count}-image post with {subject} showing " + ", ".join(alt_texts)
+
+
+def _build_meta_description(description, body_html, images):
+    """A post's meta description, in priority order: its `description`
+    frontmatter verbatim if set; otherwise its plain-text body, truncated;
+    otherwise — for a post with no body text at all — a description
+    synthesized from its images' alt texts, truncated the same way."""
+    if description:
+        return description
+    text = _plain_text(body_html) if body_html else ''
+    if not text:
+        text = _images_fallback_text(images)
+        if not text:
+            return None
+    return _truncate_meta_description(text)
 
 
 def _parse_frontmatter(text):
@@ -327,7 +351,7 @@ def parse_post(md_text, post_id, image_filenames, site_url="", comments=None):
         excerpt_html = None
 
     char_count = len(_plain_text(body_html))
-    meta_description = _build_meta_description(description, body_html)
+    meta_description = _build_meta_description(description, body_html, images)
 
     top_level_image_count = len(images) - len(inline_image_filenames)
     has_content = char_count > 0

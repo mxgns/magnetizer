@@ -2221,6 +2221,22 @@ class TestPostMetaDescription:
         html = (p / "dist" / "1.html").read_text()
         assert 'content="A &quot;great&quot; post &amp; more"' in html
 
+    def test_image_only_post_falls_back_to_alt_texts(self, tmp_path):
+        # Mirrors a real image-only post: title + image alt texts, no body
+        # text and no explicit description — e.g. a photo-diary entry.
+        md = (
+            "---\ndate: 2026-05-24\ntitle: Brunch in Canary Wharf\n"
+            "images:\n  - French toast and egg benedict\n  - Canary Wharf station\n---\n"
+        )
+        p = make_project(tmp_path, posts={1: md})
+        make_jpg(p / "content" / "1-image-01.jpg")
+        make_jpg(p / "content" / "1-image-02.jpg")
+        (p / "templates" / "index.html").write_text(META_DESCRIPTION_TEMPLATE)
+        build(p)
+        html = (p / "dist" / "1.html").read_text()
+        expected = "2-image post with photos showing French toast and egg benedict, Canary Wharf station"
+        assert f'<meta name="description" content="{expected}">' in html
+
 
 # ---------------------------------------------------------------------------
 # AI-assisted disclosure banner
