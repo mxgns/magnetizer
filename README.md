@@ -118,7 +118,7 @@ A claim that needs backing up[^1].
 [^1]: The source for that claim.
 ```
 
-This renders an inline reference linking down to a footnote list at the end of the body, with a backlink from the list back up to the reference. Since index and category pages can show several posts on one page, each post's footnote ids are prefixed with its post id behind the scenes so they don't collide — this doesn't affect the footnote numbers shown to readers.
+This renders an inline reference linking down to a footnote list at the end of the body, with a backlink from the list back up to the reference. Since index and category pages can show several posts on one page, each post's footnote ids are prefixed with its post id behind the scenes so they don't collide — this doesn't affect the footnote numbers shown to readers. Footnotes only show up on the post's own individual page — both the reference and the footnote list are stripped out on index, category, and notes pages, so browsing a listing doesn't show a dangling reference number or footnote list out of context.
 
 Place a specific image inline in the body with `{{ image N }}`, where `N` is the image's number from its filename (`{{ image 3 }}` → `{post-id}-image-03.{ext}`):
 

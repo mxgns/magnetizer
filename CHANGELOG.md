@@ -7,6 +7,7 @@
 
 ### 21/9/26
 
+- Footnotes are hidden on index/category/notes pages, post page only
 - Added footnote support to post Markdown bodies
 - Image-only posts fall back to alt texts for a meta description
 
