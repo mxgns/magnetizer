@@ -543,6 +543,22 @@ This renders as:
 
 Rendered using Python-Markdown's built-in `tables` extension — no project-specific parsing. Styling the resulting `<table>`, `<th>` and `<td>` elements is left to the project's own `resources/` stylesheet, the same way container colour variants rely on styling the project author supplies.
 
+### Footnotes
+
+A post's Markdown body supports footnotes:
+
+```markdown
+A claim that needs backing up[^1].
+
+[^1]: The source for that claim.
+```
+
+This renders using Python-Markdown's built-in `footnotes` extension: an inline `<sup>` reference linking down to a `<div class="footnote">` list at the end of the body, with a backlink from each list item back up to its reference. Footnote definitions can appear anywhere in the body — by convention at the end — and are collected into the list regardless of where they're written.
+
+Since index and category pages render multiple posts on one page, and Python-Markdown numbers footnote ids per document rather than per post, each post's footnote ids (`id="fn:1"`, `id="fnref:1"`, and their `href`s) are prefixed with its post id (e.g. `id="fn:12-1"`) so two posts each using `[^1]` don't collide. This is purely an id-scoping detail — the rendered footnote number shown to readers is unaffected.
+
+A footnote reference before a `<!-- more -->` marker whose definition is written after the marker is left as literal `[^1]` text in the excerpt, since the excerpt is rendered from the pre-marker text alone and the definition isn't available to it there; the full body still renders correctly since it's built from the whole post. Not supported in comments, same as tables — see [Comments](#comments).
+
 ### External links
 
 Every `<a>` tag in a post's rendered body or excerpt — whether from Markdown link syntax or raw HTML passed through — is checked against `site_url` from config. A link is external if its host doesn't match `site_url`'s host: this covers ordinary absolute URLs, protocol-relative URLs (`//example.com`), and lookalike hosts (`https://example.com.evil.example` isn't fooled by a naive prefix match). A link with no host at all — a relative path, a fragment, a query string, or a `mailto:`/`tel:` link — is never external. External links get `target="_blank" rel="noopener"` added automatically, so they open in a new tab without a `window.opener` reference back to the page, along with an `external-link` class. Any `class`, `target`, or `rel` the `<a>` tag already has (e.g. a raw-HTML `download-link`) is merged into rather than duplicated — an existing `rel` keeps its other values with `noopener` added, and an existing `target` is overridden to `_blank`. If `site_url` isn't set, every link with a host is treated as external, since there's nothing to compare it against.
@@ -759,7 +775,7 @@ Each comment's frontmatter has two required fields:
 
 Both are required — the build exits with an error if either is missing or blank. Any other frontmatter key produces a build warning naming the comment file and the unknown key, the same as an unrecognised key on a post.
 
-A comment's body is Markdown, rendered the same way as a post body — including the automatic external-link handling described in [External links](#external-links) (`target="_blank" rel="noopener"` and an `external-link` class) — but without container blocks, `{{ image N }}` tokens, or `{{ shortcode }}` dynamic values: those are post-authoring features a short manual comment doesn't need, and any such syntax is left as literal text rather than expanded.
+A comment's body is Markdown, rendered the same way as a post body — including the automatic external-link handling described in [External links](#external-links) (`target="_blank" rel="noopener"` and an `external-link` class) — but without container blocks, tables, footnotes, `{{ image N }}` tokens, or `{{ shortcode }}` dynamic values: those are post-authoring features a short manual comment doesn't need, and any such syntax is left as literal text rather than expanded.
 
 Comments are shown only on the post's (or special page's) own individual page — never on index, category, or notes pages, which show a comment-count link instead (see below). They're rendered inside the `<article>`, below the existing `<footer>`, inside a `<section class="comments" id="comments">`, oldest first (lowest comment number, regardless of the comment's own `date`):
 

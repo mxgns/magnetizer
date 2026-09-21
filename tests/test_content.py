@@ -256,6 +256,31 @@ class TestBodyHtml:
         assert "<th>Column 1</th>" in post.body_html
         assert "<td>Item 1</td>" in post.body_html
 
+    def test_footnote_syntax_converted_to_footnote_elements(self):
+        body = "A claim[^1].\n\n[^1]: The source."
+        post = parse_post(make_md(body=body), 1, [])
+        assert 'class="footnote-ref"' in post.body_html
+        assert 'class="footnote"' in post.body_html
+        assert "The source." in post.body_html
+
+    def test_footnote_ids_scoped_by_post_id_to_avoid_collisions_across_posts(self):
+        body = "A claim[^1].\n\n[^1]: The source."
+        post1 = parse_post(make_md(body=body), 1, [])
+        post2 = parse_post(make_md(body=body), 2, [])
+        assert 'id="fnref:1-1"' in post1.body_html
+        assert 'href="#fn:1-1"' in post1.body_html
+        assert 'id="fn:1-1"' in post1.body_html
+        assert 'href="#fnref:1-1"' in post1.body_html
+        assert 'id="fnref:2-1"' in post2.body_html
+        assert 'id="fn:2-1"' in post2.body_html
+
+    def test_footnote_reference_before_more_marker_with_definition_after_left_literal_in_excerpt(self):
+        body = "A claim[^1]<!-- more -->the rest.\n\n[^1]: The source."
+        post = parse_post(make_md(body=body), 1, [])
+        assert post.excerpt_html is not None
+        assert "[^1]" in post.excerpt_html
+        assert 'class="footnote-ref"' in post.body_html
+
 
 # ---------------------------------------------------------------------------
 # External links
@@ -1143,6 +1168,12 @@ class TestCommentNoExtendedFeatures:
     def test_inline_image_token_left_as_literal_text(self):
         comment = parse_comment(make_comment_md(body="{{ image 1 }}"), "1-comment-01.md")
         assert "{{ image 1 }}" in comment.body_html
+
+    def test_footnote_syntax_not_expanded(self):
+        body = "A claim[^1].\n\n[^1]: The source."
+        comment = parse_comment(make_comment_md(body=body), "1-comment-01.md")
+        assert "[^1]" in comment.body_html
+        assert 'class="footnote-ref"' not in comment.body_html
 
 
 class TestSpecialPageCommentPattern:
