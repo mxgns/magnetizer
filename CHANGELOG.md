@@ -7,6 +7,9 @@
 
 ### 21/9/26
 
+- Bug fix: footnote defined after `<!-- more -->` no longer leaks as `[^1]`
+- Footnotes are hidden on index/category/notes pages, post page only
+- Added footnote support to post Markdown bodies
 - Image-only posts fall back to alt texts for a meta description
 
 ### 14/9/26

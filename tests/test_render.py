@@ -1149,6 +1149,48 @@ class TestRenderArticleReadMore:
 
 
 # ---------------------------------------------------------------------------
+# render_article — footnotes hidden on index/category pages
+# ---------------------------------------------------------------------------
+
+_FOOTNOTE_BODY_HTML = (
+    '<p>A claim<sup id="fnref:1-1"><a class="footnote-ref" href="#fn:1-1">1</a></sup>.</p>\n'
+    '<div class="footnote">\n<hr />\n<ol>\n<li id="fn:1-1">\n'
+    '<p>The source.<a class="footnote-backref" href="#fnref:1-1">↩</a></p>\n'
+    '</li>\n</ol>\n</div>'
+)
+
+
+class TestRenderArticleFootnotesIndexPage:
+
+    def test_footnote_reference_and_list_hidden_on_index_page(self):
+        post = make_post(body_html=_FOOTNOTE_BODY_HTML)
+        html = render_article(post, on_index_page=True)
+        assert "footnote-ref" not in html
+        assert 'class="footnote"' not in html
+        assert "The source." not in html
+
+    def test_surrounding_text_kept_when_footnote_hidden_on_index_page(self):
+        post = make_post(body_html=_FOOTNOTE_BODY_HTML)
+        html = render_article(post, on_index_page=True)
+        assert "A claim" in html
+
+    def test_footnote_reference_and_list_kept_on_post_page(self):
+        post = make_post(body_html=_FOOTNOTE_BODY_HTML)
+        html = render_article(post, on_index_page=False)
+        assert "footnote-ref" in html
+        assert 'class="footnote"' in html
+        assert "The source." in html
+
+    def test_footnote_hidden_in_excerpt_on_index_page(self):
+        post = make_post(
+            body_html=_FOOTNOTE_BODY_HTML,
+            excerpt_html='<p>A claim<sup id="fnref:1-1"><a class="footnote-ref" href="#fn:1-1">1</a></sup>.</p>',
+        )
+        html = render_article(post, on_index_page=True)
+        assert "footnote-ref" not in html
+
+
+# ---------------------------------------------------------------------------
 # render_archive_page_content
 # ---------------------------------------------------------------------------
 

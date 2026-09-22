@@ -98,6 +98,19 @@ def _link_inline_images(html_content, post):
     return html_content
 
 
+_FOOTNOTE_REF_RE = re.compile(r'<sup id="fnref\d*:[^"]*">.*?</sup>', re.DOTALL)
+_FOOTNOTE_LIST_RE = re.compile(r'<div class="footnote">.*', re.DOTALL)
+
+
+def _strip_footnotes(html_content):
+    """Remove footnote references and the trailing footnote list from a post
+    body shown on an index/category page — footnotes are only meaningful
+    read in the context of the full post, so they're only shown there."""
+    html_content = _FOOTNOTE_REF_RE.sub('', html_content)
+    html_content = _FOOTNOTE_LIST_RE.sub('', html_content)
+    return html_content
+
+
 def render_article(post, on_index_page, categories=None, ai_disclosure_html=None, images_per_post=2):
     article_class = "multiple-posts" if on_index_page else "single-post"
     if post.post_type in _POST_TYPE_CLASS:
@@ -136,10 +149,13 @@ def render_article(post, on_index_page, categories=None, ai_disclosure_html=None
             read_more_label = f'Read more (+{hidden} photo{"s" if hidden != 1 else ""})'
         else:
             read_more_label = 'Read more'
-        excerpt_html = _link_inline_images(post.excerpt_html, post)
+        excerpt_html = _strip_footnotes(_link_inline_images(post.excerpt_html, post))
         parts.append(f'<div class="post-body">{excerpt_html}<a href="{post.url}" class="read-more">{read_more_label}</a></div>')
     else:
-        body_html = _link_inline_images(post.body_html, post) if on_index_page else post.body_html
+        if on_index_page:
+            body_html = _strip_footnotes(_link_inline_images(post.body_html, post))
+        else:
+            body_html = post.body_html
         parts.append(f'<div class="post-body">{body_html}</div>')
 
     if on_index_page and post.excerpt_html is None and hidden_top > 0:
