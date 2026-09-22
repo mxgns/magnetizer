@@ -46,6 +46,7 @@ from magnetizer.render import (
     render_template,
 )
 from magnetizer.feed import render_feed
+from magnetizer.linkcheck import check_internal_links
 from magnetizer.posts_index import render_posts_index
 from magnetizer.sitemap import render_sitemap, render_robots_txt
 from magnetizer.validate import validate_config, validate_content, validate_metadata, validate_project
@@ -1058,6 +1059,8 @@ def build(cwd, filename=None, flush=False, resources=False, refresh=False, on_pr
         _log(("REMOVED", f"resources/{name}"))
 
     if not filename:
+        warnings.extend(check_internal_links(dist_dir, config["site_url"]))
+
         any_change = bool(post_ids_to_build) or specials_rebuilt or bool(copied) or bool(deleted_resources) or refresh
         if any_change:
             final_pages = {**prev_pages, **pages_dynamic_updates}
