@@ -95,13 +95,17 @@ Arguments:
   TITLE     Title for the post (quoted string)
 
 Options:
-  -h, --help  Show this message and exit
+  -h, --help              Show this message and exit
+  --latest-images N       Use the N most recently modified images from
+                          DIRECTORY instead of listing images explicitly.
+                          Requires a DIRECTORY argument (see below).
 
 Examples:
-  new-post.py                                     Empty post
-  new-post.py photo.jpg                           Image post
-  new-post.py "Post title"                        Post with title
-  new-post.py photo1.jpg photo2.jpg "Post title"  Post with images and title
+  new-post.py                                        Empty post
+  new-post.py photo.jpg                              Image post
+  new-post.py "Post title"                           Post with title
+  new-post.py photo1.jpg photo2.jpg "Post title"     Post with images and title
+  new-post.py --latest-images 3 ../blog_images/      Post with the 3 most recent images from a directory
 ```
 
 This will:
@@ -134,8 +138,16 @@ This will:
     2. If not, output a warning on the command line: `Image {image-file-name} could not be found!`
 
     Note: `{image-file-name}`  may include a path (so it could, for example, be `../photos/my-photo.jpg`). If no path specified, the current directory (the project root) is assumed.
-    
-6. Exit and return to the command line, stating: `Post {post-id} successfully created.` 
+
+6. Alternatively, if `--latest-images N` is given, a `DIRECTORY` argument is required in place of explicit `IMAGES`. Instead of step 5, `new-post.py`:
+    1. Validates that `DIRECTORY` exists (or stops execution with a descriptive error).
+    2. Scans the top level of `DIRECTORY` (non-recursively) for image files (`.jpg`, `.jpeg`, `.png`, `.svg`).
+    3. Stops execution with a descriptive error if fewer than `N` images are found.
+    4. Selects the `N` most recently modified images and copies them into `content/`, most recently modified first, following the same numbering and frontmatter rules as explicitly listed images.
+
+    A `TITLE` may still be provided alongside `--latest-images N DIRECTORY`.
+
+7. Exit and return to the command line, stating: `Post {post-id} successfully created.` 
 
 After running the script, the user will typically open the generated .md file in their favourite editor to add further content.
 

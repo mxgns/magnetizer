@@ -10,8 +10,10 @@ Covers all behaviour described in the specification:
   - CLI interface (help, argument forms)
 """
 
+import os
 import subprocess
 import sys
+import time
 from datetime import date
 from pathlib import Path
 
@@ -410,3 +412,113 @@ class TestCLIInterface:
         run_new_post(["not-an-image.txt"], cwd=project_dir)
         content = (project_dir / "content" / "1.md").read_text()
         assert "title: not-an-image.txt" in content
+
+
+# ---------------------------------------------------------------------------
+# --latest-images
+# ---------------------------------------------------------------------------
+
+def make_image(path, content, mtime_offset):
+    """Write an image file with distinguishable content and a controlled mtime.
+
+    mtime_offset is in seconds; higher means more recently modified.
+    """
+    path.write_bytes(content)
+    t = time.time() + mtime_offset
+    os.utime(path, (t, t))
+
+
+@pytest.fixture
+def images_dir(tmp_path):
+    d = tmp_path / "blog_images"
+    d.mkdir()
+    return d
+
+
+class TestLatestImages:
+
+    def test_selects_n_most_recently_modified_images(self, project_dir, images_dir):
+        make_image(images_dir / "oldest.jpg", b"oldest", -300)
+        make_image(images_dir / "middle.jpg", b"middle", -200)
+        make_image(images_dir / "newest.jpg", b"newest", -100)
+        result = run_new_post(["--latest-images", "2", str(images_dir)], cwd=project_dir)
+        assert result.returncode == 0
+        copied = {f.read_bytes() for f in (project_dir / "content").glob("1-image-*.jpg")}
+        assert copied == {b"newest", b"middle"}
+
+    def test_orders_newest_first(self, project_dir, images_dir):
+        make_image(images_dir / "older.jpg", b"older", -200)
+        make_image(images_dir / "newer.jpg", b"newer", -100)
+        run_new_post(["--latest-images", "2", str(images_dir)], cwd=project_dir)
+        content_dir = project_dir / "content"
+        assert (content_dir / "1-image-01.jpg").read_bytes() == b"newer"
+        assert (content_dir / "1-image-02.jpg").read_bytes() == b"older"
+
+    def test_ignores_non_image_files_in_directory(self, project_dir, images_dir):
+        make_image(images_dir / "photo.jpg", b"photo", -100)
+        (images_dir / "notes.txt").write_text("not an image")
+        result = run_new_post(["--latest-images", "1", str(images_dir)], cwd=project_dir)
+        assert result.returncode == 0
+        assert (project_dir / "content" / "1-image-01.jpg").exists()
+
+    def test_ignores_images_in_subdirectories(self, project_dir, images_dir):
+        make_image(images_dir / "top.jpg", b"top", -200)
+        sub = images_dir / "sub"
+        sub.mkdir()
+        make_image(sub / "nested.jpg", b"nested", -100)
+        result = run_new_post(["--latest-images", "1", str(images_dir)], cwd=project_dir)
+        assert result.returncode == 0
+        assert (project_dir / "content" / "1-image-01.jpg").read_bytes() == b"top"
+
+    def test_errors_when_fewer_images_than_requested(self, project_dir, images_dir):
+        make_image(images_dir / "only.jpg", b"only", -100)
+        result = run_new_post(["--latest-images", "3", str(images_dir)], cwd=project_dir)
+        assert result.returncode != 0
+        assert not (project_dir / "content" / "1.md").exists()
+
+    def test_errors_when_directory_does_not_exist(self, project_dir, tmp_path):
+        missing = tmp_path / "does_not_exist"
+        result = run_new_post(["--latest-images", "1", str(missing)], cwd=project_dir)
+        assert result.returncode != 0
+        assert not (project_dir / "content" / "1.md").exists()
+
+    def test_requires_directory_argument(self, project_dir):
+        result = run_new_post(["--latest-images", "3"], cwd=project_dir)
+        assert result.returncode != 0
+
+    def test_combines_with_title(self, project_dir, images_dir):
+        make_image(images_dir / "photo.jpg", b"photo", -100)
+        run_new_post(["--latest-images", "1", str(images_dir), "My Title"], cwd=project_dir)
+        content = (project_dir / "content" / "1.md").read_text()
+        assert "title: My Title" in content
+        assert (project_dir / "content" / "1-image-01.jpg").exists()
+
+    def test_md_frontmatter_lists_images_with_placeholders(self, project_dir, images_dir):
+        make_image(images_dir / "a.jpg", b"a", -200)
+        make_image(images_dir / "b.jpg", b"b", -100)
+        run_new_post(["--latest-images", "2", str(images_dir)], cwd=project_dir)
+        content = (project_dir / "content" / "1.md").read_text()
+        assert "- Image 1" in content
+        assert "- Image 2" in content
+
+    def test_uses_post_id_sequencing_like_normal_images(self, project_dir_with_posts, images_dir):
+        make_image(images_dir / "photo.jpg", b"photo", -100)
+        run_new_post(["--latest-images", "1", str(images_dir)], cwd=project_dir_with_posts)
+        assert (project_dir_with_posts / "content" / "3-image-01.jpg").exists()
+
+    def test_rejects_negative_count(self, project_dir, images_dir):
+        make_image(images_dir / "photo.jpg", b"photo", -100)
+        result = run_new_post(["--latest-images", "-1", str(images_dir)], cwd=project_dir)
+        assert result.returncode != 0
+        assert not (project_dir / "content" / "1.md").exists()
+
+    def test_unreadable_directory_reports_controlled_error(self, project_dir, images_dir):
+        make_image(images_dir / "photo.jpg", b"photo", -100)
+        os.chmod(images_dir, 0o000)
+        try:
+            result = run_new_post(["--latest-images", "1", str(images_dir)], cwd=project_dir)
+        finally:
+            os.chmod(images_dir, 0o755)
+        assert result.returncode != 0
+        assert "Traceback" not in result.stderr
+        assert not (project_dir / "content" / "1.md").exists()
