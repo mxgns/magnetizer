@@ -3876,3 +3876,43 @@ class TestCommentAuthorClass:
         build(p)
         html = (p / "dist" / "1.html").read_text()
         assert 'class="avatar author-magnus" data-initial="M" aria-hidden="true"' in html
+
+
+# ---------------------------------------------------------------------------
+# Internal link warnings
+# ---------------------------------------------------------------------------
+
+class TestInternalLinkWarnings:
+
+    def test_warning_when_post_links_to_nonexistent_post(self, tmp_path):
+        md = "---\ndate: 2026-05-24\n---\n\n[missing](99.html)\n"
+        p = make_project(tmp_path, posts={1: md})
+        warnings = build(p)["warnings"]
+        assert any(f == "1.html" and "99.html" in msg for f, msg in warnings)
+
+    def test_no_warning_when_post_links_to_existing_post(self, tmp_path):
+        md1 = "---\ndate: 2026-05-24\n---\n\n[other](2.html)\n"
+        p = make_project(tmp_path, posts={1: md1, 2: MINIMAL_MD})
+        assert build(p)["warnings"] == []
+
+    def test_no_warning_for_external_link(self, tmp_path):
+        md = "---\ndate: 2026-05-24\n---\n\n[out](https://example.com/page)\n"
+        p = make_project(tmp_path, posts={1: md})
+        assert build(p)["warnings"] == []
+
+    def test_broken_link_detected_after_target_post_deleted(self, tmp_path):
+        # Post 1's own content doesn't change between builds -- the break is
+        # caught only because the check scans the whole dist/ tree on every
+        # full build, not just the pages rebuilt this run.
+        md1 = "---\ndate: 2026-05-24\n---\n\n[other](2.html)\n"
+        p = make_project(tmp_path, posts={1: md1, 2: MINIMAL_MD})
+        build(p)
+        (p / "content" / "2.md").unlink()
+        warnings = build(p)["warnings"]
+        assert any(f == "1.html" and "2.html" in msg for f, msg in warnings)
+
+    def test_no_link_check_on_single_file_preview_build(self, tmp_path):
+        md = "---\ndate: 2026-05-24\n---\n\n[missing](99.html)\n"
+        p = make_project(tmp_path, posts={1: md})
+        warnings = build(p, filename="1.md")["warnings"]
+        assert warnings == []

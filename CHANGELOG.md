@@ -5,6 +5,10 @@
 
 ## Released changes
 
+### 22/9/26
+
+- Full builds now warn about broken internal links in dist/
+
 ### 21/9/26
 
 - Bug fix: footnote defined after `<!-- more -->` no longer leaks as `[^1]`
