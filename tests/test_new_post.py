@@ -505,3 +505,20 @@ class TestLatestImages:
         make_image(images_dir / "photo.jpg", b"photo", -100)
         run_new_post(["--latest-images", "1", str(images_dir)], cwd=project_dir_with_posts)
         assert (project_dir_with_posts / "content" / "3-image-01.jpg").exists()
+
+    def test_rejects_negative_count(self, project_dir, images_dir):
+        make_image(images_dir / "photo.jpg", b"photo", -100)
+        result = run_new_post(["--latest-images", "-1", str(images_dir)], cwd=project_dir)
+        assert result.returncode != 0
+        assert not (project_dir / "content" / "1.md").exists()
+
+    def test_unreadable_directory_reports_controlled_error(self, project_dir, images_dir):
+        make_image(images_dir / "photo.jpg", b"photo", -100)
+        os.chmod(images_dir, 0o000)
+        try:
+            result = run_new_post(["--latest-images", "1", str(images_dir)], cwd=project_dir)
+        finally:
+            os.chmod(images_dir, 0o755)
+        assert result.returncode != 0
+        assert "Traceback" not in result.stderr
+        assert not (project_dir / "content" / "1.md").exists()

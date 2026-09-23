@@ -32,6 +32,8 @@ def main():
         sys.exit(1)
 
     if parsed.latest_images is not None:
+        if parsed.latest_images < 0:
+            parser.error("--latest-images requires a non-negative N")
         if not parsed.args:
             print("Error: --latest-images requires a DIRECTORY argument.", file=sys.stderr)
             sys.exit(1)
@@ -40,7 +42,11 @@ def main():
         if not directory.is_dir():
             print(f"Error: directory {directory} could not be found.", file=sys.stderr)
             sys.exit(1)
-        candidates = [f for f in directory.iterdir() if f.is_file() and f.suffix.lower() in IMAGE_EXTS]
+        try:
+            candidates = [f for f in directory.iterdir() if f.is_file() and f.suffix.lower() in IMAGE_EXTS]
+        except OSError as e:
+            print(f"Error: could not read directory {directory}: {e.strerror}.", file=sys.stderr)
+            sys.exit(1)
         if len(candidates) < parsed.latest_images:
             print(
                 f"Error: found {len(candidates)} image(s) in {directory}, "
@@ -48,7 +54,11 @@ def main():
                 file=sys.stderr,
             )
             sys.exit(1)
-        candidates.sort(key=lambda f: f.stat().st_mtime, reverse=True)
+        try:
+            candidates.sort(key=lambda f: f.stat().st_mtime, reverse=True)
+        except OSError as e:
+            print(f"Error: could not read images in {directory}: {e.strerror}.", file=sys.stderr)
+            sys.exit(1)
         images = [str(f) for f in candidates[: parsed.latest_images]]
     else:
         images = [a for a in parsed.args if Path(a).suffix.lower() in IMAGE_EXTS]
