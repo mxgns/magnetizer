@@ -71,9 +71,12 @@ new-post.py                                     Empty post
 new-post.py photo.jpg                           Post with one image
 new-post.py "Post title"                        Post with a title
 new-post.py photo1.jpg photo2.jpg "Post title"  Post with images and a title
+new-post.py --latest-images 3 ../blog_images/   Post with the 3 most recent images from a directory
 ```
 
 This creates a numbered `.md` file in `content/` and copies any images alongside it. Open the `.md` file in your editor to add content.
+
+Use `--latest-images N DIRECTORY` instead of listing images by hand to pick the `N` most recently modified images from the top level of `DIRECTORY`. A title can still be added after the directory. The command fails if `DIRECTORY` doesn't exist or contains fewer than `N` images.
 
 Post files use a simple frontmatter format:
 

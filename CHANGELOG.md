@@ -5,6 +5,10 @@
 
 ## Released changes
 
+### 23/9/26
+
+- new-post.py: --latest-images N DIRECTORY picks the N newest images
+
 ### 22/9/26
 
 - Full builds now warn about broken internal links in dist/
