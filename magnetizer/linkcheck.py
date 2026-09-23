@@ -1,4 +1,5 @@
 import html
+import posixpath
 from pathlib import Path
 from urllib.parse import urlsplit
 
@@ -21,7 +22,13 @@ def _internal_target(href, site_url):
         return None
     if not split.path:
         return None
-    return 'index.html' if split.path == '/' else split.path.lstrip('/')
+    # normpath collapses dot segments (./2.html, ../2.html) the same way a
+    # browser resolves them against a page -- and since every Magnetizer
+    # page lives flat at dist/'s root, a leading ".." has nowhere to go
+    # above it, so it collapses down to the root the same way it would in
+    # a browser resolving it against a directory-less page URL.
+    path = posixpath.normpath('/' + split.path.lstrip('/'))
+    return 'index.html' if path == '/' else path.lstrip('/')
 
 
 def _dist_files(dist_dir):

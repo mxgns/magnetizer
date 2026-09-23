@@ -39,6 +39,24 @@ class TestCheckInternalLinks:
         _write(dist, "1.html", '<a href="/2.html">next</a>')
         assert check_internal_links(dist, SITE_URL) == []
 
+    def test_dot_slash_prefixed_link_resolves_to_existing_page(self, tmp_path):
+        dist = tmp_path / "dist"
+        dist.mkdir()
+        _write(dist, "2.html", "<html></html>")
+        _write(dist, "1.html", '<a href="./2.html">next</a>')
+        assert check_internal_links(dist, SITE_URL) == []
+
+    def test_parent_relative_link_collapses_to_dist_root(self, tmp_path):
+        # Magnetizer's own pages are always flat at dist/'s root, so a
+        # page-relative "../2.html" written from "/5.html" resolves the same
+        # way a browser would: the leading ".." has nowhere to go above
+        # dist/'s root, so it collapses down to "/2.html".
+        dist = tmp_path / "dist"
+        dist.mkdir()
+        _write(dist, "2.html", "<html></html>")
+        _write(dist, "5.html", '<a href="../2.html">next</a>')
+        assert check_internal_links(dist, SITE_URL) == []
+
     def test_root_relative_link_to_missing_page_warns(self, tmp_path):
         dist = tmp_path / "dist"
         dist.mkdir()
