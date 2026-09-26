@@ -204,14 +204,77 @@ def _print_output(outcome, config, dist_path, verbose):
 def main():
     parser = argparse.ArgumentParser(
         prog="build.py",
-        description="Generate static web pages from the content in ./content.",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        description=(
+            "Generate static web pages from the content in ./content. This command must be\n"
+            "run from a directory containing at least the following:\n\n"
+            "  content/      Directory with blog content as .md and image files\n"
+            "  dist/         Directory where the output is generated\n"
+            "  templates/    Directory with HTML templates used when generating the output\n"
+            "  resources/    Directory with e.g. CSS and JS files to include in ./dist\n"
+            "  config.yaml   Configuration file"
+        ),
+        epilog=(
+            "Examples:\n"
+            "  build.py             Build all content from ./content that has changed since\n"
+            "                       the last build, plus index pages. Copy any changed files\n"
+            "                       from ./resources to ./dist/resources.\n"
+            "  build.py --flush     Remove existing output in ./dist, build ALL content from\n"
+            "                       ./content, plus index pages, and copy all ./resources\n"
+            "                       into ./dist\n"
+            "  build.py --resources Replace all files in ./dist/resources with those from\n"
+            "                       ./resources\n"
+            "  build.py --refresh   Re-render every page from the current templates/code,\n"
+            "                       reusing existing images except for any post that\n"
+            "                       content-change detection finds genuinely changed\n"
+            "  build.py 1.md        Build a single page (e.g. generate 1.html from 1.md).\n"
+            "                       Index pages are not updated."
+        ),
     )
-    parser.add_argument("filename", nargs="?", metavar="FILENAME")
-    parser.add_argument("--flush", action="store_true")
-    parser.add_argument("--resources", action="store_true")
-    parser.add_argument("--refresh", action="store_true")
-    parser.add_argument("--push", action="store_true")
-    parser.add_argument("--verbose", action="store_true")
+    parser.add_argument(
+        "filename",
+        nargs="?",
+        metavar="FILENAME",
+        help=(
+            "A single .md filename (e.g. 1.md) to process. This argument is for "
+            "development/preview purposes and cannot be used together with any other options."
+        ),
+    )
+    parser.add_argument(
+        "--flush",
+        action="store_true",
+        help="Delete the existing output and build all content from scratch. "
+        "Use whenever templates have been updated.",
+    )
+    parser.add_argument(
+        "--resources",
+        action="store_true",
+        help="Replace all files in ./dist/resources with those in ./resources. "
+        "Use to force a full resync of resource files.",
+    )
+    parser.add_argument(
+        "--refresh",
+        action="store_true",
+        help=(
+            "Re-render every post, special/404 page, and generated page using the current "
+            "templates/generator code. Content-change detection still runs as normal, and "
+            "any post it finds genuinely changed is fully reprocessed (images included) -- "
+            "--refresh's savings apply to everything else, which reuses whichever images are "
+            "already in ./dist instead of reprocessing them. Use while iterating on generator "
+            "or template code, instead of --flush's much slower full rebuild. Cannot be used "
+            "together with FILENAME or --push."
+        ),
+    )
+    parser.add_argument(
+        "--push",
+        action="store_true",
+        help="Push the contents of ./dist to GitHub Pages after a successful build.",
+    )
+    parser.add_argument(
+        "--verbose",
+        action="store_true",
+        help="Print a detailed log of every file created, updated, or removed during the build.",
+    )
     args = parser.parse_args()
 
     if args.filename and any([args.flush, args.resources, args.refresh, args.push]):

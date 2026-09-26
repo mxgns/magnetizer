@@ -380,6 +380,24 @@ class TestCLIInterface:
         output = result.stdout + result.stderr
         assert "new-post.py" in output or "usage" in output.lower()
 
+    def test_help_describes_images_and_title_argument(self, tmp_path):
+        result = run_new_post(["--help"], cwd=tmp_path)
+        output = result.stdout + result.stderr
+        assert ".jpg" in output
+        assert "title" in output.lower()
+
+    def test_help_describes_latest_images_option(self, tmp_path):
+        result = run_new_post(["--help"], cwd=tmp_path)
+        output = result.stdout + result.stderr
+        assert "most recently modified" in output.lower()
+
+    def test_help_includes_examples(self, tmp_path):
+        result = run_new_post(["--help"], cwd=tmp_path)
+        output = result.stdout + result.stderr
+        assert "Examples:" in output
+        assert 'new-post.py "Post title"' in output
+        assert "new-post.py --latest-images" in output
+
     def test_empty_invocation_creates_post(self, project_dir):
         result = run_new_post([], cwd=project_dir)
         assert result.returncode == 0

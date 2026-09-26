@@ -5,6 +5,10 @@
 
 ## Released changes
 
+### 26/9/26
+
+- build.py and new-post.py: -h/--help now describe every option
+
 ### 23/9/26
 
 - new-post.py: --latest-images N DIRECTORY picks the N newest images
