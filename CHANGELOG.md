@@ -7,6 +7,7 @@
 
 ### 26/9/26
 
+- build.py and new-post.py: -h/--help now describe every option
 - --latest-images now orders images oldest-first within the post
 - Gallery now shows each post's highest-numbered photo first
 

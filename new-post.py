@@ -14,16 +14,39 @@ IMAGE_EXTS = {f".{ext}" for ext in IMAGE_EXTENSIONS}
 def main():
     parser = argparse.ArgumentParser(
         prog="new-post.py",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
         description="Create a new post in the current directory.",
+        epilog=(
+            "Examples:\n"
+            "  new-post.py                                     Empty post\n"
+            "  new-post.py photo.jpg                           Image post\n"
+            '  new-post.py "Post title"                        Post with title\n'
+            '  new-post.py photo1.jpg photo2.jpg "Post title"  Post with images and title\n'
+            "  new-post.py --latest-images 3 ../blog_images/   Post with the 3 most recent\n"
+            "                                                   images from a directory"
+        ),
     )
     parser.add_argument(
         "--latest-images",
         type=int,
         metavar="N",
         dest="latest_images",
-        help="Use the N most recently modified images from DIRECTORY instead of listing images explicitly.",
+        help=(
+            "Use the N most recently modified images from DIRECTORY instead of listing "
+            "images explicitly. Requires a DIRECTORY argument (see below); a TITLE may "
+            "still be given after it."
+        ),
     )
-    parser.add_argument("args", nargs="*", metavar="IMAGES/TITLE")
+    parser.add_argument(
+        "args",
+        nargs="*",
+        metavar="IMAGES/TITLE",
+        help=(
+            "One or more image files (.jpg, .jpeg, .png, .svg) and/or a title (quoted "
+            "string), in any order. With --latest-images N, the first argument here is "
+            "the DIRECTORY to scan and any remaining argument is the title."
+        ),
+    )
     parsed = parser.parse_args()
 
     content_dir = Path.cwd() / "content"

@@ -35,6 +35,41 @@ class TestHelp:
         result = run_build(["--help"], cwd=tmp_path)
         assert "build.py" in result.stdout or "usage" in result.stdout.lower()
 
+    def test_help_short_flag(self, tmp_path):
+        assert run_build(["-h"], cwd=tmp_path).returncode == 0
+
+    def test_help_describes_filename_argument(self, tmp_path):
+        result = run_build(["--help"], cwd=tmp_path)
+        assert "FILENAME" in result.stdout
+        assert "development" in result.stdout.lower() or "preview" in result.stdout.lower()
+
+    def test_help_describes_flush(self, tmp_path):
+        result = run_build(["--help"], cwd=tmp_path)
+        assert "scratch" in result.stdout.lower()
+
+    def test_help_describes_resources(self, tmp_path):
+        result = run_build(["--help"], cwd=tmp_path)
+        assert "dist/resources" in result.stdout
+
+    def test_help_describes_refresh(self, tmp_path):
+        result = run_build(["--help"], cwd=tmp_path)
+        assert "re-render" in result.stdout.lower()
+
+    def test_help_describes_push(self, tmp_path):
+        result = run_build(["--help"], cwd=tmp_path)
+        assert "github pages" in result.stdout.lower()
+
+    def test_help_describes_verbose(self, tmp_path):
+        result = run_build(["--help"], cwd=tmp_path)
+        assert "verbose" in result.stdout.lower()
+        assert "created, updated" in result.stdout.lower() or "log" in result.stdout.lower()
+
+    def test_help_includes_examples(self, tmp_path):
+        result = run_build(["--help"], cwd=tmp_path)
+        assert "Examples:" in result.stdout
+        assert "build.py --flush" in result.stdout
+        assert "build.py 1.md" in result.stdout
+
 
 # ---------------------------------------------------------------------------
 # Validation errors surfaced through CLI
