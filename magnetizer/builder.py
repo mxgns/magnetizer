@@ -340,11 +340,13 @@ def _write_notes_pages(posts_sorted_desc, dist_dir, config, template, metadata=N
 def _gallery_photos(posts_sorted_desc, dist_dir):
     """Every raster photo across all published posts (top-level and inline
     alike — see the Gallery page spec), newest post first, image number
-    ascending within a post. Special-page images never contribute, since
-    posts_sorted_desc only ever holds published posts."""
+    descending within a post (images are stored oldest-to-newest, so this
+    surfaces each post's most recently taken photo first). Special-page
+    images never contribute, since posts_sorted_desc only ever holds
+    published posts."""
     photos = []
     for post in posts_sorted_desc:
-        for image in post.images:
+        for image in reversed(post.images):
             if image.filename.lower().endswith('.svg'):
                 continue
             thumb_name = thumbnail_filename(image.filename)

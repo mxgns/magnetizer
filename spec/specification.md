@@ -1242,7 +1242,7 @@ The generated page is complete and usable without JavaScript — it is ordinary 
 
 #### Order
 
-Photos are ordered by post id descending (newest post first), then by image number ascending within each post — so a post's photos always appear in the same order as they do on the post's own page.
+Photos are ordered by post id descending (newest post first), then by image number descending within each post — since a post's images are numbered oldest-first, this surfaces each post's most recently taken photo first, ahead of that same post's older photos.
 
 Pagination cuts strictly by photo count: if a post's photos straddle a `gallery_per_page` boundary, some of its photos appear on one gallery page and the rest on the next. This differs from index, notes, and category pages, which paginate by whole post and never split one across a page boundary.
 

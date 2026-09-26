@@ -8,6 +8,7 @@
 ### 26/9/26
 
 - --latest-images now orders images oldest-first within the post
+- Gallery now shows each post's newest photo first, not its oldest
 
 ### 23/9/26
 

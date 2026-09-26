@@ -345,13 +345,13 @@ class TestGalleryPages:
         html = (p / "dist" / "gallery.html").read_text()
         assert html.index('data-post="2"') < html.index('data-post="1"')
 
-    def test_gallery_order_within_post_by_image_number(self, tmp_path):
+    def test_gallery_order_within_post_by_image_number_descending(self, tmp_path):
         p = make_project(tmp_path, posts={1: MINIMAL_MD})
         make_jpg(p / "content" / "1-image-01.jpg")
         make_jpg(p / "content" / "1-image-02.jpg")
         build(p)
         html = (p / "dist" / "gallery.html").read_text()
-        assert html.index('1-image-01-thumb.jpg') < html.index('1-image-02-thumb.jpg')
+        assert html.index('1-image-02-thumb.jpg') < html.index('1-image-01-thumb.jpg')
 
     def test_gallery_pagination_creates_second_page(self, tmp_path):
         config = "site_name: Test Blog\nsite_url: https://example.github.io\nposts_per_page: 2\ngallery_per_page: 2\n"
@@ -377,8 +377,8 @@ class TestGalleryPages:
         page2 = (p / "dist" / "gallery-2.html").read_text()
         assert page1.count('class="gallery-item"') == 2
         assert page2.count('class="gallery-item"') == 1
-        assert '1-image-01-thumb.jpg' in page1 and '1-image-02-thumb.jpg' in page1
-        assert '1-image-03-thumb.jpg' in page2
+        assert '1-image-03-thumb.jpg' in page1 and '1-image-02-thumb.jpg' in page1
+        assert '1-image-01-thumb.jpg' in page2
 
     def test_gallery_pagination_nav_older_has_load_more_class(self, tmp_path):
         config = "site_name: Test Blog\nsite_url: https://example.github.io\nposts_per_page: 2\ngallery_per_page: 1\n"
