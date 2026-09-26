@@ -5,6 +5,11 @@
 
 ## Released changes
 
+### 26/9/26
+
+- --latest-images now orders images oldest-first within the post
+- Gallery now shows each post's highest-numbered photo first
+
 ### 23/9/26
 
 - new-post.py: --latest-images N DIRECTORY picks the N newest images

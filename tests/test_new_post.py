@@ -446,13 +446,22 @@ class TestLatestImages:
         copied = {f.read_bytes() for f in (project_dir / "content").glob("1-image-*.jpg")}
         assert copied == {b"newest", b"middle"}
 
-    def test_orders_newest_first(self, project_dir, images_dir):
+    def test_orders_oldest_in_scope_first(self, project_dir, images_dir):
         make_image(images_dir / "older.jpg", b"older", -200)
         make_image(images_dir / "newer.jpg", b"newer", -100)
         run_new_post(["--latest-images", "2", str(images_dir)], cwd=project_dir)
         content_dir = project_dir / "content"
-        assert (content_dir / "1-image-01.jpg").read_bytes() == b"newer"
-        assert (content_dir / "1-image-02.jpg").read_bytes() == b"older"
+        assert (content_dir / "1-image-01.jpg").read_bytes() == b"older"
+        assert (content_dir / "1-image-02.jpg").read_bytes() == b"newer"
+
+    def test_excluded_older_image_does_not_affect_chronological_order(self, project_dir, images_dir):
+        make_image(images_dir / "excluded.jpg", b"excluded", -300)
+        make_image(images_dir / "older.jpg", b"older", -200)
+        make_image(images_dir / "newer.jpg", b"newer", -100)
+        run_new_post(["--latest-images", "2", str(images_dir)], cwd=project_dir)
+        content_dir = project_dir / "content"
+        assert (content_dir / "1-image-01.jpg").read_bytes() == b"older"
+        assert (content_dir / "1-image-02.jpg").read_bytes() == b"newer"
 
     def test_ignores_non_image_files_in_directory(self, project_dir, images_dir):
         make_image(images_dir / "photo.jpg", b"photo", -100)

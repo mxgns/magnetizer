@@ -143,7 +143,7 @@ This will:
     1. Validates that `DIRECTORY` exists (or stops execution with a descriptive error).
     2. Scans the top level of `DIRECTORY` (non-recursively) for image files (`.jpg`, `.jpeg`, `.png`, `.svg`).
     3. Stops execution with a descriptive error if fewer than `N` images are found.
-    4. Selects the `N` most recently modified images and copies them into `content/`, most recently modified first, following the same numbering and frontmatter rules as explicitly listed images.
+    4. Selects the `N` most recently modified images and copies them into `content/` in chronological order (oldest of the selected images first), following the same numbering and frontmatter rules as explicitly listed images.
 
     A `TITLE` may still be provided alongside `--latest-images N DIRECTORY`.
 
@@ -1242,7 +1242,7 @@ The generated page is complete and usable without JavaScript — it is ordinary 
 
 #### Order
 
-Photos are ordered by post id descending (newest post first), then by image number ascending within each post — so a post's photos always appear in the same order as they do on the post's own page.
+Photos are ordered by post id descending (newest post first), then by image number descending within each post — this surfaces each post's highest-numbered photo first, ahead of that same post's lower-numbered photos.
 
 Pagination cuts strictly by photo count: if a post's photos straddle a `gallery_per_page` boundary, some of its photos appear on one gallery page and the rest on the next. This differs from index, notes, and category pages, which paginate by whole post and never split one across a page boundary.
 

@@ -59,7 +59,7 @@ def main():
         except OSError as e:
             print(f"Error: could not read images in {directory}: {e.strerror}.", file=sys.stderr)
             sys.exit(1)
-        images = [str(f) for f in candidates[: parsed.latest_images]]
+        images = [str(f) for f in reversed(candidates[: parsed.latest_images])]
     else:
         images = [a for a in parsed.args if Path(a).suffix.lower() in IMAGE_EXTS]
         non_images = [a for a in parsed.args if Path(a).suffix.lower() not in IMAGE_EXTS]
