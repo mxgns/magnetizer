@@ -470,7 +470,7 @@ If the blog has at least one qualifying photo (see [Gallery page](#gallery-page)
     <li><a href="42.html"><img src="42-image-01-thumb.jpg" alt="Sunset over the bay" width="400" height="400" loading="lazy"></a></li>
     ...
   </ol>
-  <p class="archive-gallery-count"><a href="gallery.html">CAMERA_ICON_SVG<span>67</span> photos in the photo archive</a></p>
+  <p class="archive-gallery-count"><a href="gallery.html">CAMERA_ICON_SVG<span>67</span> photos in the archive</a></p>
 </div>
 ```
 

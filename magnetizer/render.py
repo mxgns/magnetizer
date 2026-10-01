@@ -606,7 +606,7 @@ def render_archive_page_content(posts, categories=None, build_date=None, build_d
             *preview_items,
             '</ol>',
             f'<p class="archive-gallery-count"><a href="gallery.html">{_CAMERA_ICON_SVG}'
-            f'<span>{len(photos)}</span> photos in the photo archive</a></p>',
+            f'<span>{len(photos)}</span> photos in the archive</a></p>',
         ]
 
     has_sections = bool(category_block) or bool(notes_block) or bool(photos_block)
