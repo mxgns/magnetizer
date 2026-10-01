@@ -1881,7 +1881,7 @@ class TestArchiveCategoriesList:
     def test_photo_archive_preview_count_item_shows_total_photo_count(self):
         photos = [make_photo(post_id=n) for n in range(67)]
         html = render_archive_page_content([make_dated_post(1, "2026-05-24")], photos=photos)
-        assert "<span>67</span> photos in the photo archive" in html
+        assert '<span>67</span> <span class="archive-gallery-label">photos in the photo archive</span>' in html
 
 
 # ---------------------------------------------------------------------------

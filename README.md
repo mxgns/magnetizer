@@ -469,12 +469,12 @@ If the blog has at least one qualifying photo (see [Gallery page](#gallery-page)
   <ol class="archive-gallery-preview">
     <li><a href="gallery.html"><img src="42-image-01-thumb.jpg" alt="Sunset over the bay" width="400" height="400" loading="lazy"></a></li>
     ...
-    <li class="archive-gallery-total"><a href="gallery.html">CAMERA_ICON_SVG<span>67</span> photos in the photo archive</a></li>
+    <li class="archive-gallery-total"><a href="gallery.html">CAMERA_ICON_SVG<span>67</span> <span class="archive-gallery-label">photos in the photo archive</span></a></li>
   </ol>
 </div>
 ```
 
-Each thumbnail uses the same thumbnail file, alt text, and dimensions as on the gallery page itself, newest first. Fewer than 4 thumbnails appear if the blog has fewer than 4 photos in total; the final item's count reflects every qualifying photo on the site, not just the ones shown as thumbnails. The camera icon is a fixed, non-configurable inline `<svg>`, emitted with no `fill` so a project's CSS can colour it (e.g. `fill: currentColor`).
+Each thumbnail uses the same thumbnail file, alt text, and dimensions as on the gallery page itself, newest first. Fewer than 4 thumbnails appear if the blog has fewer than 4 photos in total; the final item's count reflects every qualifying photo on the site, not just the ones shown as thumbnails. The camera icon is a fixed, non-configurable inline `<svg>`, emitted with no `fill` so a project's CSS can colour it (e.g. `fill: currentColor`). The `photos in the photo archive` text sits in its own `<span class="archive-gallery-label">` so a project's CSS can hide it visually (keeping it available to screen readers) if it only wants to show the icon and count.
 
 `archive-categories` and `archive-notes` sit side by side inside `archive-columns` — whichever of the two exist; if only one does, it's the sole child. Like `archive-months`, this is bare structure for a project's CSS to lay out on wide viewports (e.g. a two-column flex row); Magnetizer ships no default column CSS or breakpoint of its own.
 

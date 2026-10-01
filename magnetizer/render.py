@@ -602,7 +602,7 @@ def render_archive_page_content(posts, categories=None, build_date=None, build_d
             )
         preview_items.append(
             f'<li class="archive-gallery-total"><a href="gallery.html">{_CAMERA_ICON_SVG}'
-            f'<span>{len(photos)}</span> photos in the photo archive</a></li>'
+            f'<span>{len(photos)}</span> <span class="archive-gallery-label">photos in the photo archive</span></a></li>'
         )
         photos_block = [
             '<h2>Photo archive</h2>',
