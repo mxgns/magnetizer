@@ -2848,3 +2848,74 @@ class TestRenderSearchPageContent:
         html = render_search_page_content()
         assert "topic" not in html.lower()
         assert "project" not in html.lower()
+
+
+# ---------------------------------------------------------------------------
+# Magnetizer never emits <img>/<svg> markup of its own. An <img> only ever
+# appears when it reflects a real photo from post/gallery content; a
+# decorative icon (favourite's star, the archive page's photo count, the
+# search button) is never backed by generated markup at all -- at most a
+# semantic class or empty element, with the icon itself left entirely to the
+# project's own CSS/templates.
+# ---------------------------------------------------------------------------
+
+class TestNeverEmitsDecorativeImgOrSvg:
+
+    def test_render_article_with_no_images_has_no_img_or_svg(self):
+        html = render_article(make_post(images=None), on_index_page=False)
+        assert '<img' not in html
+        assert '<svg' not in html
+
+    def test_render_article_with_images_has_img_but_no_svg(self):
+        html = render_article(make_post(images=["1-image-01.jpg"]), on_index_page=False)
+        assert '<img' in html
+        assert '<svg' not in html
+
+    def test_render_post_page_content_has_no_svg(self):
+        html = render_post_page_content(make_post(images=["1-image-01.jpg"]))
+        assert '<svg' not in html
+
+    def test_render_index_page_content_with_no_images_has_no_img_or_svg(self):
+        html = render_index_page_content([make_post(images=None)], 1, 1)
+        assert '<img' not in html
+        assert '<svg' not in html
+
+    def test_render_index_page_content_with_images_has_img_but_no_svg(self):
+        html = render_index_page_content([make_post(images=["1-image-01.jpg"])], 1, 1)
+        assert '<img' in html
+        assert '<svg' not in html
+
+    def test_render_category_page_content_with_no_images_has_no_img_or_svg(self):
+        html = render_category_page_content([make_post(images=None)], "Travel", "travel", 1, 1)
+        assert '<img' not in html
+        assert '<svg' not in html
+
+    def test_render_notes_page_content_with_no_images_has_no_img_or_svg(self):
+        html = render_notes_page_content([_NOTE_POST], 1, 1)
+        assert '<img' not in html
+        assert '<svg' not in html
+
+    def test_render_archive_page_content_with_no_photos_has_no_img_or_svg(self):
+        html = render_archive_page_content([make_dated_post(1, "2026-05-24")], photos=None)
+        assert '<img' not in html
+        assert '<svg' not in html
+
+    def test_render_archive_page_content_with_photos_has_img_but_no_svg(self):
+        html = render_archive_page_content([make_dated_post(1, "2026-05-24")], photos=[make_photo()])
+        assert '<img' in html
+        assert '<svg' not in html
+
+    def test_render_gallery_page_content_has_img_but_no_svg(self):
+        html = render_gallery_page_content([make_photo()], 1, 1)
+        assert '<img' in html
+        assert '<svg' not in html
+
+    def test_render_search_page_content_has_no_img_or_svg(self):
+        html = render_search_page_content()
+        assert '<img' not in html
+        assert '<svg' not in html
+
+    def test_render_navigation_has_no_img_or_svg(self):
+        html = render_navigation({"index.html": "Home", "archive.html": "Archive"}, current_filename="index.html")
+        assert '<img' not in html
+        assert '<svg' not in html

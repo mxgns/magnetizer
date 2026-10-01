@@ -16,6 +16,7 @@ I am launching a personal photo blog. Magnetizer (this project) is my static sit
 - All static. No server-side rendering. JS only for progressive enhancement.
 - Hosting: ****GitHub Pages
 - Everything built using a Test-Driven Development (TDD) approach
+- Magnetizer never emits `<img>` or `<svg>` markup of its own. An `<img>` only ever appears when it reflects a real photo from post content (its `src` built from that photo's own filename — see e.g. [Gallery page](#gallery-page), [Archive page](#archive-page)); a decorative icon (the archive page's photo count, the search button, `favourite`'s star) is never backed by generated markup at all — Magnetizer emits a semantic class or empty element at most, and the icon itself is strictly a project template/CSS concern.
 
 ## Project structure
 
@@ -1564,7 +1565,7 @@ Every full build generates `dist/search.html`, plus a [Pagefind](https://pagefin
 <form role="search" id="search-form">
 <label for="search-input" class="visually-hidden">Search</label>
 <input id="search-input" name="q" type="search" placeholder="Search…" autocomplete="off">
-<button type="submit" aria-label="Search">SEARCH_ICON_SVG</button>
+<button type="submit" aria-label="Search"></button>
 <button type="button" id="search-clear" class="search-clear" aria-label="Clear search" hidden>×</button>
 </form>
 <p id="search-status" class="search-status" aria-live="polite"></p>
@@ -1576,7 +1577,7 @@ Notes:
 
 - `search.html` is generated under the same conditions as `archive.html` — on full builds, not on single-file preview builds.
 - The page title is `Search - {site_name}`.
-- `SEARCH_ICON_SVG` is a fixed magnifying-glass icon Magnetizer embeds directly (not project-configurable), reused so the submit control inside the form matches whatever icon a project's own template uses for the search link in its header nav.
+- The submit button has no icon markup of its own — like `favourite`'s star and the archive page's camera icon (see [Archive page](#archive-page)), Magnetizer never embeds decorative `<svg>`/`<img>` markup; any icon on the button is purely a project CSS concern (e.g. a `::before` on `#search-form button[type="submit"]`), free to match whatever icon the project's own template uses for the search link in its header nav.
 - The clear button (`#search-clear`) is always present but `hidden` in the generated markup — a project's `search.js` is responsible for un-hiding it once the input has text, and for wiring its click to clear the query and return to the initial state.
 - `#search-results` and `#search-status` start empty; `search.js` populates them after reading `location.search` and querying Pagefind's index at `/pagefind/pagefind.js`.
 - `search.html` is not part of `MAGNETIZER_NAVIGATION` — it isn't a `navigation` config entry, since a search icon in the header (as opposed to a text nav link) is a project template concern, not something Magnetizer generates.
