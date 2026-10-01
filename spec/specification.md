@@ -1099,7 +1099,7 @@ The `MAGNETIZER_CONTENT` has the following structure:
   <li><a href="POST_URL"><img src="THUMB" alt="ALT_TEXT" width="W" height="H" loading="lazy"></a></li>
   ... (up to 5 thumbnails total)
 </ol>
-<p class="archive-gallery-count"><a href="gallery.html">CAMERA_ICON_SVG<span>N</span> photos in the archive</a></p>
+<p class="archive-gallery-count"><a href="gallery.html"><span>N</span> photos in the archive</a></p>
 </div>
 </div>
 <h2>Blog Posts</h2>
@@ -1125,7 +1125,7 @@ Where:
 - The `<h2>Short notes</h2>` heading and its `<ul>`, together in `<div class="archive-notes">`, are only included when at least one Note exists.
 - The `<h2>Photo archive</h2>` heading, its `<ol class="archive-gallery-preview">`, and the `<p class="archive-gallery-count">` after it are only included when at least one photo qualifies for the gallery (see [Gallery page](#gallery-page)) — the same condition that decides whether `gallery.html` itself is generated. It shares `<div class="archive-notes">` with the short notes block rather than getting its own column, and always comes after it when both are present.
 - `<ol class="archive-gallery-preview">` shows the most recent photos first (the same order as [the gallery page](#gallery-page)), as up to 5 `<li>` thumbnails. Fewer than 5 appear if fewer than 5 photos exist in total. Each thumbnail's `<a>` links to `POST_URL` — the post that photo belongs to, same as on [the gallery page](#gallery-page) — not to `gallery.html` itself. `THUMB`, `ALT_TEXT`, `W`, and `H` are the same thumbnail file, alt text, and pixel dimensions used for that photo on the gallery page.
-- `<p class="archive-gallery-count">` is a single link to `gallery.html`, always present whenever the photo archive section is shown: `CAMERA_ICON_SVG<span>N</span> photos in the archive`, where `N` (wrapped in its own `<span>` for numeric styling, the same convention as the contribution calendar's counts — see [Contribution calendar](#contribution-calendar)) is the total count of qualifying photos across the whole site, not just those shown as thumbnails. `CAMERA_ICON_SVG` is a fixed, non-configurable inline `<svg>` icon, emitted with no `fill` so a project's CSS can colour it (e.g. `fill: currentColor`), the same convention as [the search icon](#search-page).
+- `<p class="archive-gallery-count">` is a single link to `gallery.html`, always present whenever the photo archive section is shown: `<span>N</span> photos in the archive`, where `N` (wrapped in its own `<span>` for numeric styling, the same convention as the contribution calendar's counts — see [Contribution calendar](#contribution-calendar)) is the total count of qualifying photos across the whole site, not just those shown as thumbnails. Magnetizer emits no icon markup here — like `favourite` (see [Favourite posts](#favourite-posts)), any icon is purely a project CSS concern, added via its own selector rather than baked into the generated HTML.
 - The `<h2>Blog Posts</h2>` heading is only included when the categories list, the notes section, the photo archive section, or any combination of the three, is shown.
 - `<div class="archive-months">` wraps every month `<section>`, so a project's CSS can flow them across multiple columns on wide viewports (see [Archive column layout](#archive-column-layout)). It's included whenever at least one dated blog post exists, and omitted when there are none (e.g. a blog with only Notes).
 - Each month heading is an `<h3>` — one level below `<h2>Blog Posts</h2>` — since it's a subsection of the monthly list, not a sibling of it.

@@ -470,11 +470,11 @@ If the blog has at least one qualifying photo (see [Gallery page](#gallery-page)
     <li><a href="42.html"><img src="42-image-01-thumb.jpg" alt="Sunset over the bay" width="400" height="400" loading="lazy"></a></li>
     ...
   </ol>
-  <p class="archive-gallery-count"><a href="gallery.html">CAMERA_ICON_SVG<span>67</span> photos in the archive</a></p>
+  <p class="archive-gallery-count"><a href="gallery.html"><span>67</span> photos in the archive</a></p>
 </div>
 ```
 
-Each thumbnail uses the same thumbnail file, alt text, and dimensions as on the gallery page itself, newest first, and links to the post that photo belongs to (not to `gallery.html`). Fewer than 5 thumbnails appear if the blog has fewer than 5 photos in total. The `<p class="archive-gallery-count">` link always follows the list and always links to `gallery.html`; its count reflects every qualifying photo on the site, not just the ones shown as thumbnails. The camera icon is a fixed, non-configurable inline `<svg>`, emitted with no `fill` so a project's CSS can colour it (e.g. `fill: currentColor`).
+Each thumbnail uses the same thumbnail file, alt text, and dimensions as on the gallery page itself, newest first, and links to the post that photo belongs to (not to `gallery.html`). Fewer than 5 thumbnails appear if the blog has fewer than 5 photos in total. The `<p class="archive-gallery-count">` link always follows the list and always links to `gallery.html`; its count reflects every qualifying photo on the site, not just the ones shown as thumbnails. Magnetizer emits no icon here — same as the `favourite` class's star — any icon is added entirely by the project's own CSS.
 
 `archive-categories` and `archive-notes` sit side by side inside `archive-columns` — whichever of the two exist; if only one does, it's the sole child. Like `archive-months`, this is bare structure for a project's CSS to lay out on wide viewports (e.g. a two-column flex row); Magnetizer ships no default column CSS or breakpoint of its own.
 

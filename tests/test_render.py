@@ -1876,11 +1876,11 @@ class TestArchiveCategoriesList:
 
     def test_photo_archive_preview_count_link_points_to_gallery(self):
         html = render_archive_page_content([make_dated_post(1, "2026-05-24")], photos=[make_photo()])
-        assert '<p class="archive-gallery-count"><a href="gallery.html">' in html
+        assert '<p class="archive-gallery-count"><a href="gallery.html"><span>' in html
 
-    def test_photo_archive_preview_count_link_has_camera_icon(self):
+    def test_photo_archive_preview_emits_no_inline_icon_markup(self):
         html = render_archive_page_content([make_dated_post(1, "2026-05-24")], photos=[make_photo()])
-        assert '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640">' in html
+        assert '<svg' not in html
 
     def test_photo_archive_preview_count_link_shows_total_photo_count(self):
         photos = [make_photo(post_id=n) for n in range(67)]

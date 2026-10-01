@@ -16,20 +16,6 @@ _SEARCH_ICON_SVG = (
     'C416 192.5 351.5 128 272 128C192.5 128 128 192.5 128 272C128 351.5 192.5 416 272 416z"/></svg>'
 )
 
-_CAMERA_ICON_SVG = (
-    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640">'
-    '<path d="M257.1 96C238.4 96 220.9 105.4 210.5 120.9L184.5 160L128 160C92.7 160 64 188.7 64 224L64 480'
-    'C64 515.3 92.7 544 128 544L512 544C547.3 544 576 515.3 576 480L576 224C576 188.7 547.3 160 512 160'
-    'L455.5 160L429.5 120.9C419.1 105.4 401.6 96 382.9 96L257.1 96zM250.4 147.6C251.9 145.4 254.4 144 257.1 144'
-    'L382.8 144C385.5 144 388 145.3 389.5 147.6L422.7 197.4C427.2 204.1 434.6 208.1 442.7 208.1L512 208.1'
-    'C520.8 208.1 528 215.3 528 224.1L528 480.1C528 488.9 520.8 496.1 512 496.1L128 496C119.2 496 112 488.8 112 480'
-    'L112 224C112 215.2 119.2 208 128 208L197.3 208C205.3 208 212.8 204 217.3 197.3L250.5 147.5zM320 448'
-    'C381.9 448 432 397.9 432 336C432 274.1 381.9 224 320 224C258.1 224 208 274.1 208 336C208 397.9 258.1 448 320 448z'
-    'M256 336C256 300.7 284.7 272 320 272C355.3 272 384 300.7 384 336C384 371.3 355.3 400 320 400'
-    'C284.7 400 256 371.3 256 336z"/></svg>'
-)
-
-
 def _render_ai_disclosure(ai_disclosure_html):
     text = ai_disclosure_html or _DEFAULT_AI_DISCLOSURE_TEXT
     return (
@@ -605,7 +591,7 @@ def render_archive_page_content(posts, categories=None, build_date=None, build_d
             '<ol class="archive-gallery-preview">',
             *preview_items,
             '</ol>',
-            f'<p class="archive-gallery-count"><a href="gallery.html">{_CAMERA_ICON_SVG}'
+            f'<p class="archive-gallery-count"><a href="gallery.html">'
             f'<span>{len(photos)}</span> photos in the archive</a></p>',
         ]
 
