@@ -1095,9 +1095,11 @@ The `MAGNETIZER_CONTENT` has the following structure:
   <li><a href="notes.html">All short notes</a></li>
 </ul>
 <h2>Photo archive</h2>
-<ul>
-  <li><a href="gallery.html">All photos</a></li>
-</ul>
+<ol class="archive-gallery-preview">
+  <li><a href="gallery.html"><img src="THUMB" alt="ALT_TEXT" width="W" height="H" loading="lazy"></a></li>
+  ... (up to 4 thumbnails total)
+  <li class="archive-gallery-total"><a href="gallery.html">CAMERA_ICON_SVG<span>N</span> photos in the photo archive</a></li>
+</ol>
 </div>
 </div>
 <h2>Blog Posts</h2>
@@ -1121,7 +1123,8 @@ Where:
 - `<div class="archive-columns">` wraps whichever of `<div class="archive-categories">` / `<div class="archive-notes">` are present, as a stable pair of blocks a project's CSS can lay out side by side on wide viewports (see [Archive column layout](#archive-column-layout)). It's included whenever either is shown, and omitted entirely when neither is.
 - The `<h2>Categories</h2>` heading and its `<ul>`, together in `<div class="archive-categories">`, are only included if `categories` is configured and at least one configured category has a matching post. Each `<li>` links to the corresponding category page (see [Categories](#categories)) and includes the number of posts `(N)` in that category. Categories are listed in descending order of post count; categories with no matching posts are omitted.
 - The `<h2>Short notes</h2>` heading and its `<ul>`, together in `<div class="archive-notes">`, are only included when at least one Note exists.
-- The `<h2>Photo archive</h2>` heading and its `<ul>` are only included when at least one photo qualifies for the gallery (see [Gallery page](#gallery-page)) — the same condition that decides whether `gallery.html` itself is generated. It shares `<div class="archive-notes">` with the short notes block rather than getting its own column, and always comes after it when both are present.
+- The `<h2>Photo archive</h2>` heading and its `<ol class="archive-gallery-preview">` are only included when at least one photo qualifies for the gallery (see [Gallery page](#gallery-page)) — the same condition that decides whether `gallery.html` itself is generated. It shares `<div class="archive-notes">` with the short notes block rather than getting its own column, and always comes after it when both are present.
+- `<ol class="archive-gallery-preview">` shows the most recent photos first (the same order as [the gallery page](#gallery-page)), as up to 4 `<li>` thumbnails followed by one final `<li class="archive-gallery-total">`. Fewer than 4 `<li>` thumbnails appear if fewer than 4 photos exist in total; the final item is always present whenever the section is. Each thumbnail `<a>` and the final item's `<a>` all link to `gallery.html`. `THUMB`, `ALT_TEXT`, `W`, and `H` are the same thumbnail file, alt text, and pixel dimensions used for that photo on [the gallery page](#gallery-page). The final item's `N` is the total count of qualifying photos across the whole site (not just those shown as thumbnails), and `CAMERA_ICON_SVG` is a fixed, non-configurable inline `<svg>` icon, emitted with no `fill` so a project's CSS can colour it (e.g. `fill: currentColor`), the same convention as [the search icon](#search-page).
 - The `<h2>Blog Posts</h2>` heading is only included when the categories list, the notes section, the photo archive section, or any combination of the three, is shown.
 - `<div class="archive-months">` wraps every month `<section>`, so a project's CSS can flow them across multiple columns on wide viewports (see [Archive column layout](#archive-column-layout)). It's included whenever at least one dated blog post exists, and omitted when there are none (e.g. a blog with only Notes).
 - Each month heading is an `<h3>` — one level below `<h2>Blog Posts</h2>` — since it's a subsection of the monthly list, not a sibling of it.

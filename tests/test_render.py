@@ -1819,21 +1819,69 @@ class TestArchiveCategoriesList:
         assert html.index("<h2>Blog Posts</h2>") > html.index("<h2>Short notes</h2>")
 
     def test_photo_archive_section_shown_when_has_photos(self):
-        html = render_archive_page_content([make_dated_post(1, "2026-05-24")], has_photos=True)
+        html = render_archive_page_content([make_dated_post(1, "2026-05-24")], photos=[make_photo()])
         assert "<h2>Photo archive</h2>" in html
 
-    def test_photo_archive_section_links_to_gallery_html(self):
-        html = render_archive_page_content([make_dated_post(1, "2026-05-24")], has_photos=True)
-        assert '<a href="gallery.html">All photos</a>' in html
-
     def test_photo_archive_section_not_shown_when_no_photos(self):
-        html = render_archive_page_content([make_dated_post(1, "2026-05-24")], has_photos=False)
+        html = render_archive_page_content([make_dated_post(1, "2026-05-24")], photos=None)
+        assert "<h2>Photo archive</h2>" not in html
+
+    def test_photo_archive_section_not_shown_when_photos_empty(self):
+        html = render_archive_page_content([make_dated_post(1, "2026-05-24")], photos=[])
         assert "<h2>Photo archive</h2>" not in html
 
     def test_photo_archive_section_after_notes_section(self):
         post = make_dated_post(1, "2026-05-24", post_type="note")
-        html = render_archive_page_content([post], has_photos=True)
+        html = render_archive_page_content([post], photos=[make_photo()])
         assert html.index("<h2>Photo archive</h2>") > html.index("<h2>Short notes</h2>")
+
+    def test_photo_archive_preview_is_ordered_list(self):
+        html = render_archive_page_content([make_dated_post(1, "2026-05-24")], photos=[make_photo()])
+        assert '<ol class="archive-gallery-preview">' in html
+
+    def test_photo_archive_preview_shows_up_to_four_thumbnails(self):
+        photos = [make_photo(post_id=n) for n in range(6)]
+        html = render_archive_page_content([make_dated_post(1, "2026-05-24")], photos=photos)
+        assert html.count("<img") == 4
+
+    def test_photo_archive_preview_shows_fewer_thumbnails_when_fewer_photos(self):
+        photos = [make_photo(post_id=n) for n in range(2)]
+        html = render_archive_page_content([make_dated_post(1, "2026-05-24")], photos=photos)
+        assert html.count("<img") == 2
+
+    def test_photo_archive_preview_shows_most_recent_photos_first(self):
+        photos = [make_photo(thumb="newest-thumb.jpg"), make_photo(thumb="older-thumb.jpg")]
+        html = render_archive_page_content([make_dated_post(1, "2026-05-24")], photos=photos)
+        assert html.index("newest-thumb.jpg") < html.index("older-thumb.jpg")
+
+    def test_photo_archive_preview_thumbnail_links_to_gallery(self):
+        html = render_archive_page_content([make_dated_post(1, "2026-05-24")], photos=[make_photo()])
+        assert '<li><a href="gallery.html"><img' in html
+
+    def test_photo_archive_preview_thumbnail_uses_photo_thumb_src(self):
+        html = render_archive_page_content([make_dated_post(1, "2026-05-24")], photos=[make_photo(thumb="26-image-01-thumb.jpg")])
+        assert 'src="26-image-01-thumb.jpg"' in html
+
+    def test_photo_archive_preview_thumbnail_alt_escaped(self):
+        html = render_archive_page_content([make_dated_post(1, "2026-05-24")], photos=[make_photo(alt='A "sunset" & sky')])
+        assert 'alt="A &quot;sunset&quot; &amp; sky"' in html
+
+    def test_photo_archive_preview_thumbnail_has_width_and_height(self):
+        html = render_archive_page_content([make_dated_post(1, "2026-05-24")], photos=[make_photo(width=400, height=267)])
+        assert 'width="400" height="267"' in html
+
+    def test_photo_archive_preview_count_item_links_to_gallery(self):
+        html = render_archive_page_content([make_dated_post(1, "2026-05-24")], photos=[make_photo()])
+        assert '<li class="archive-gallery-total"><a href="gallery.html">' in html
+
+    def test_photo_archive_preview_count_item_has_camera_icon(self):
+        html = render_archive_page_content([make_dated_post(1, "2026-05-24")], photos=[make_photo()])
+        assert '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640">' in html
+
+    def test_photo_archive_preview_count_item_shows_total_photo_count(self):
+        photos = [make_photo(post_id=n) for n in range(67)]
+        html = render_archive_page_content([make_dated_post(1, "2026-05-24")], photos=photos)
+        assert "<span>67</span> photos in the photo archive" in html
 
 
 # ---------------------------------------------------------------------------
@@ -1879,14 +1927,14 @@ class TestArchiveColumnsLayout:
         assert "archive-categories" not in html
 
     def test_columns_container_present_with_only_photos(self):
-        html = render_archive_page_content([make_dated_post(1, "2026-05-24")], has_photos=True)
+        html = render_archive_page_content([make_dated_post(1, "2026-05-24")], photos=[make_photo()])
         assert '<div class="archive-columns">' in html
         assert "archive-notes" in html
         assert "archive-categories" not in html
 
     def test_photo_archive_shares_notes_div(self):
         post = make_dated_post(1, "2026-05-24", post_type="note")
-        html = render_archive_page_content([post], has_photos=True)
+        html = render_archive_page_content([post], photos=[make_photo()])
         assert (
             '<div class="archive-notes">\n'
             '<h2>Short notes</h2>\n'
@@ -1894,10 +1942,7 @@ class TestArchiveColumnsLayout:
             '<li><a href="notes.html">All short notes</a></li>\n'
             '</ul>\n'
             '<h2>Photo archive</h2>\n'
-            '<ul>\n'
-            '<li><a href="gallery.html">All photos</a></li>\n'
-            '</ul>\n'
-            '</div>'
+            '<ol class="archive-gallery-preview">\n'
         ) in html
 
     def test_no_columns_container_when_neither_categories_nor_notes(self):
