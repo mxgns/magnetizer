@@ -457,7 +457,7 @@ If `categories` is configured and at least one category has a matching post, a c
 
 Each category link shows the number of posts in that category in parentheses. Categories are listed in descending order of post count, and only if they have at least one matching post.
 
-If the blog has at least one qualifying photo (see [Gallery page](#gallery-page)), a `<h2>Photo archive</h2>` section is inserted into `archive-notes` too, after the short notes list (or on its own if there are no Notes) — it never gets its own column. It shows up to the 4 most recent photos as thumbnails, followed by one final item linking to the gallery with a camera icon and the total photo count:
+If the blog has at least one qualifying photo (see [Gallery page](#gallery-page)), a `<h2>Photo archive</h2>` section is inserted into `archive-notes` too, after the short notes list (or on its own if there are no Notes) — it never gets its own column. It shows up to the 5 most recent photos as thumbnails, each linking to its own post, followed by a single link to the gallery with a camera icon and the total photo count:
 
 ```html
 <div class="archive-notes">
@@ -467,14 +467,14 @@ If the blog has at least one qualifying photo (see [Gallery page](#gallery-page)
   </ul>
   <h2>Photo archive</h2>
   <ol class="archive-gallery-preview">
-    <li><a href="gallery.html"><img src="42-image-01-thumb.jpg" alt="Sunset over the bay" width="400" height="400" loading="lazy"></a></li>
+    <li><a href="42.html"><img src="42-image-01-thumb.jpg" alt="Sunset over the bay" width="400" height="400" loading="lazy"></a></li>
     ...
-    <li class="archive-gallery-total"><a href="gallery.html">CAMERA_ICON_SVG<span>67</span> <span class="archive-gallery-label">photos in the photo archive</span></a></li>
   </ol>
+  <p class="archive-gallery-count"><a href="gallery.html">CAMERA_ICON_SVG<span>67</span> photos in the photo archive</a></p>
 </div>
 ```
 
-Each thumbnail uses the same thumbnail file, alt text, and dimensions as on the gallery page itself, newest first. Fewer than 4 thumbnails appear if the blog has fewer than 4 photos in total; the final item's count reflects every qualifying photo on the site, not just the ones shown as thumbnails. The camera icon is a fixed, non-configurable inline `<svg>`, emitted with no `fill` so a project's CSS can colour it (e.g. `fill: currentColor`). The `photos in the photo archive` text sits in its own `<span class="archive-gallery-label">` so a project's CSS can hide it visually (keeping it available to screen readers) if it only wants to show the icon and count.
+Each thumbnail uses the same thumbnail file, alt text, and dimensions as on the gallery page itself, newest first, and links to the post that photo belongs to (not to `gallery.html`). Fewer than 5 thumbnails appear if the blog has fewer than 5 photos in total. The `<p class="archive-gallery-count">` link always follows the list and always links to `gallery.html`; its count reflects every qualifying photo on the site, not just the ones shown as thumbnails. The camera icon is a fixed, non-configurable inline `<svg>`, emitted with no `fill` so a project's CSS can colour it (e.g. `fill: currentColor`).
 
 `archive-categories` and `archive-notes` sit side by side inside `archive-columns` — whichever of the two exist; if only one does, it's the sole child. Like `archive-months`, this is bare structure for a project's CSS to lay out on wide viewports (e.g. a two-column flex row); Magnetizer ships no default column CSS or breakpoint of its own.
 

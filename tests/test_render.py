@@ -1839,10 +1839,10 @@ class TestArchiveCategoriesList:
         html = render_archive_page_content([make_dated_post(1, "2026-05-24")], photos=[make_photo()])
         assert '<ol class="archive-gallery-preview">' in html
 
-    def test_photo_archive_preview_shows_up_to_four_thumbnails(self):
-        photos = [make_photo(post_id=n) for n in range(6)]
+    def test_photo_archive_preview_shows_up_to_five_thumbnails(self):
+        photos = [make_photo(post_id=n) for n in range(7)]
         html = render_archive_page_content([make_dated_post(1, "2026-05-24")], photos=photos)
-        assert html.count("<img") == 4
+        assert html.count("<img") == 5
 
     def test_photo_archive_preview_shows_fewer_thumbnails_when_fewer_photos(self):
         photos = [make_photo(post_id=n) for n in range(2)]
@@ -1854,9 +1854,9 @@ class TestArchiveCategoriesList:
         html = render_archive_page_content([make_dated_post(1, "2026-05-24")], photos=photos)
         assert html.index("newest-thumb.jpg") < html.index("older-thumb.jpg")
 
-    def test_photo_archive_preview_thumbnail_links_to_gallery(self):
-        html = render_archive_page_content([make_dated_post(1, "2026-05-24")], photos=[make_photo()])
-        assert '<li><a href="gallery.html"><img' in html
+    def test_photo_archive_preview_thumbnail_links_to_its_post(self):
+        html = render_archive_page_content([make_dated_post(1, "2026-05-24")], photos=[make_photo(post_url="26.html")])
+        assert '<li><a href="26.html"><img' in html
 
     def test_photo_archive_preview_thumbnail_uses_photo_thumb_src(self):
         html = render_archive_page_content([make_dated_post(1, "2026-05-24")], photos=[make_photo(thumb="26-image-01-thumb.jpg")])
@@ -1870,18 +1870,22 @@ class TestArchiveCategoriesList:
         html = render_archive_page_content([make_dated_post(1, "2026-05-24")], photos=[make_photo(width=400, height=267)])
         assert 'width="400" height="267"' in html
 
-    def test_photo_archive_preview_count_item_links_to_gallery(self):
+    def test_photo_archive_preview_count_link_is_below_the_list(self):
         html = render_archive_page_content([make_dated_post(1, "2026-05-24")], photos=[make_photo()])
-        assert '<li class="archive-gallery-total"><a href="gallery.html">' in html
+        assert html.index('</ol>') < html.index('<p class="archive-gallery-count">')
 
-    def test_photo_archive_preview_count_item_has_camera_icon(self):
+    def test_photo_archive_preview_count_link_points_to_gallery(self):
+        html = render_archive_page_content([make_dated_post(1, "2026-05-24")], photos=[make_photo()])
+        assert '<p class="archive-gallery-count"><a href="gallery.html">' in html
+
+    def test_photo_archive_preview_count_link_has_camera_icon(self):
         html = render_archive_page_content([make_dated_post(1, "2026-05-24")], photos=[make_photo()])
         assert '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640">' in html
 
-    def test_photo_archive_preview_count_item_shows_total_photo_count(self):
+    def test_photo_archive_preview_count_link_shows_total_photo_count(self):
         photos = [make_photo(post_id=n) for n in range(67)]
         html = render_archive_page_content([make_dated_post(1, "2026-05-24")], photos=photos)
-        assert '<span>67</span> <span class="archive-gallery-label">photos in the photo archive</span>' in html
+        assert '<span>67</span> photos in the photo archive' in html
 
 
 # ---------------------------------------------------------------------------
