@@ -5,6 +5,10 @@
 
 ## Released changes
 
+### 3/10/26
+
+- Thumbnails now round scaled dimensions instead of truncating
+
 ### 26/9/26
 
 - build.py and new-post.py: -h/--help now describe every option

@@ -316,7 +316,7 @@ For each raster image (`.jpg`, `.jpeg`, `.png`) in a post, Magnetizer writes two
 | `{post-id}-image-{NN}-resized.{ext}` | `image_max_dimension` | `image_quality` |
 | `{post-id}-image-{NN}-thumb.{ext}` | `thumbnail_max_dimension` | `thumbnail_quality` |
 
-Both follow the rule that an image already within the limit is not scaled up. Both are generated in the same per-post (or per-special-page) step, from the same source file, and both are deleted along with the rest of the post's files when the post is reprocessed or removed. SVG images are neither resized nor thumbnailed — they are copied as-is to `dist/` and referenced by their original filename.
+Both follow the rule that an image already within the limit is not scaled up. The long edge is scaled to exactly the limit; the short edge is scaled by the same factor and rounded to the nearest pixel (not truncated), so two source photos with the same real-world aspect ratio produce the same short-edge pixel count instead of landing a pixel apart. Both are generated in the same per-post (or per-special-page) step, from the same source file, and both are deleted along with the rest of the post's files when the post is reprocessed or removed. SVG images are neither resized nor thumbnailed — they are copied as-is to `dist/` and referenced by their original filename.
 
 All EXIF metadata (camera model, GPS location, timestamps, etc.) is stripped from both the resized image and the thumbnail, for privacy. Before stripping, an EXIF orientation tag, if present, is applied to the pixels themselves, so a photo taken in portrait or upside-down still displays correctly despite carrying no orientation metadata in the output file.
 
