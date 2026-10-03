@@ -5,6 +5,11 @@
 
 ## Released changes
 
+### 1/10/26
+
+- Archive page's photo archive section now shows thumbnails and a count
+- Search button icon is now CSS-only, no inline SVG
+
 ### 26/9/26
 
 - build.py and new-post.py: -h/--help now describe every option
