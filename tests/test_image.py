@@ -87,6 +87,35 @@ class TestResizeLandscape:
 
 
 # ---------------------------------------------------------------------------
+# Short edge rounds rather than truncates — a short edge that scales to
+# e.g. 299.8 must land on 300, not be floored to 299. Two photos cropped to
+# the same real-world aspect ratio should produce pixel-identical short
+# edges; truncation alone introduces a stray 1px difference between them.
+# ---------------------------------------------------------------------------
+
+class TestShortEdgeRounding:
+
+    def test_short_edge_rounds_up_rather_than_truncating(self, tmp_path):
+        # long edge 2000 -> scale 0.2 exactly; short edge 1499 * 0.2 = 299.8,
+        # which must round to 300.
+        src = make_image(tmp_path / "src.jpg", 1499, 2000)
+        dest = tmp_path / "dest.jpg"
+        resize_image(src, dest, max_dimension=400, quality=85)
+        assert open_image(dest).size == (300, 400)
+
+    def test_near_identical_aspect_ratios_produce_the_same_short_edge(self, tmp_path):
+        # Two real-world iPhone photo sizes, both effectively 3:4, that
+        # truncation rounds to different short edges (299 vs 300).
+        src_a = make_image(tmp_path / "a.jpg", 3052, 4070)
+        src_b = make_image(tmp_path / "b.jpg", 4118, 5491)
+        dest_a = tmp_path / "dest_a.jpg"
+        dest_b = tmp_path / "dest_b.jpg"
+        resize_image(src_a, dest_a, max_dimension=400, quality=85)
+        resize_image(src_b, dest_b, max_dimension=400, quality=85)
+        assert open_image(dest_a).size[0] == open_image(dest_b).size[0] == 300
+
+
+# ---------------------------------------------------------------------------
 # Resizing — portrait (height is long edge)
 # ---------------------------------------------------------------------------
 

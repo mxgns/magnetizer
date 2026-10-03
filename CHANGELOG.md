@@ -5,6 +5,10 @@
 
 ## Released changes
 
+### 3/10/26
+
+- Thumbnails now round scaled dimensions instead of truncating
+
 ### 1/10/26
 
 - Archive page's photo archive section now shows thumbnails and a count
