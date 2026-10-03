@@ -16,6 +16,7 @@ I am launching a personal photo blog. Magnetizer (this project) is my static sit
 - All static. No server-side rendering. JS only for progressive enhancement.
 - Hosting: ****GitHub Pages
 - Everything built using a Test-Driven Development (TDD) approach
+- Magnetizer never emits `<img>` or `<svg>` markup of its own. An `<img>` only ever appears when it reflects a real photo from post content (its `src` built from that photo's own filename — see e.g. [Gallery page](#gallery-page), [Archive page](#archive-page)); a decorative icon (the archive page's photo count, the search button, `favourite`'s star) is never backed by generated markup at all — Magnetizer emits a semantic class or empty element at most, and the icon itself is strictly a project template/CSS concern.
 
 ## Project structure
 
@@ -1095,9 +1096,11 @@ The `MAGNETIZER_CONTENT` has the following structure:
   <li><a href="notes.html">All short notes</a></li>
 </ul>
 <h2>Photo archive</h2>
-<ul>
-  <li><a href="gallery.html">All photos</a></li>
-</ul>
+<ol class="archive-gallery-preview">
+  <li><a href="POST_URL"><img src="THUMB" alt="ALT_TEXT" width="W" height="H" loading="lazy"></a></li>
+  ... (up to 5 thumbnails total)
+</ol>
+<p class="archive-gallery-count"><a href="gallery.html"><span>N</span> photos in the archive</a></p>
 </div>
 </div>
 <h2>Blog Posts</h2>
@@ -1121,7 +1124,9 @@ Where:
 - `<div class="archive-columns">` wraps whichever of `<div class="archive-categories">` / `<div class="archive-notes">` are present, as a stable pair of blocks a project's CSS can lay out side by side on wide viewports (see [Archive column layout](#archive-column-layout)). It's included whenever either is shown, and omitted entirely when neither is.
 - The `<h2>Categories</h2>` heading and its `<ul>`, together in `<div class="archive-categories">`, are only included if `categories` is configured and at least one configured category has a matching post. Each `<li>` links to the corresponding category page (see [Categories](#categories)) and includes the number of posts `(N)` in that category. Categories are listed in descending order of post count; categories with no matching posts are omitted.
 - The `<h2>Short notes</h2>` heading and its `<ul>`, together in `<div class="archive-notes">`, are only included when at least one Note exists.
-- The `<h2>Photo archive</h2>` heading and its `<ul>` are only included when at least one photo qualifies for the gallery (see [Gallery page](#gallery-page)) — the same condition that decides whether `gallery.html` itself is generated. It shares `<div class="archive-notes">` with the short notes block rather than getting its own column, and always comes after it when both are present.
+- The `<h2>Photo archive</h2>` heading, its `<ol class="archive-gallery-preview">`, and the `<p class="archive-gallery-count">` after it are only included when at least one photo qualifies for the gallery (see [Gallery page](#gallery-page)) — the same condition that decides whether `gallery.html` itself is generated. It shares `<div class="archive-notes">` with the short notes block rather than getting its own column, and always comes after it when both are present.
+- `<ol class="archive-gallery-preview">` shows the most recent photos first (the same order as [the gallery page](#gallery-page)), as up to 5 `<li>` thumbnails. Fewer than 5 appear if fewer than 5 photos exist in total. Each thumbnail's `<a>` links to `POST_URL` — the post that photo belongs to, same as on [the gallery page](#gallery-page) — not to `gallery.html` itself. `THUMB`, `ALT_TEXT`, `W`, and `H` are the same thumbnail file, alt text, and pixel dimensions used for that photo on the gallery page.
+- `<p class="archive-gallery-count">` is a single link to `gallery.html`, always present whenever the photo archive section is shown: `<span>N</span> photos in the archive`, where `N` (wrapped in its own `<span>` for numeric styling, the same convention as the contribution calendar's counts — see [Contribution calendar](#contribution-calendar)) is the total count of qualifying photos across the whole site, not just those shown as thumbnails. Magnetizer emits no icon markup here — like `favourite` (see [Favourite posts](#favourite-posts)), any icon is purely a project CSS concern, added via its own selector rather than baked into the generated HTML.
 - The `<h2>Blog Posts</h2>` heading is only included when the categories list, the notes section, the photo archive section, or any combination of the three, is shown.
 - `<div class="archive-months">` wraps every month `<section>`, so a project's CSS can flow them across multiple columns on wide viewports (see [Archive column layout](#archive-column-layout)). It's included whenever at least one dated blog post exists, and omitted when there are none (e.g. a blog with only Notes).
 - Each month heading is an `<h3>` — one level below `<h2>Blog Posts</h2>` — since it's a subsection of the monthly list, not a sibling of it.
@@ -1560,7 +1565,7 @@ Every full build generates `dist/search.html`, plus a [Pagefind](https://pagefin
 <form role="search" id="search-form">
 <label for="search-input" class="visually-hidden">Search</label>
 <input id="search-input" name="q" type="search" placeholder="Search…" autocomplete="off">
-<button type="submit" aria-label="Search">SEARCH_ICON_SVG</button>
+<button type="submit" aria-label="Search"></button>
 <button type="button" id="search-clear" class="search-clear" aria-label="Clear search" hidden>×</button>
 </form>
 <p id="search-status" class="search-status" aria-live="polite"></p>
@@ -1572,7 +1577,7 @@ Notes:
 
 - `search.html` is generated under the same conditions as `archive.html` — on full builds, not on single-file preview builds.
 - The page title is `Search - {site_name}`.
-- `SEARCH_ICON_SVG` is a fixed magnifying-glass icon Magnetizer embeds directly (not project-configurable), reused so the submit control inside the form matches whatever icon a project's own template uses for the search link in its header nav.
+- The submit button has no icon markup of its own — like `favourite`'s star and the archive page's camera icon (see [Archive page](#archive-page)), Magnetizer never embeds decorative `<svg>`/`<img>` markup; any icon on the button is purely a project CSS concern (e.g. a `::before` on `#search-form button[type="submit"]`), free to match whatever icon the project's own template uses for the search link in its header nav.
 - The clear button (`#search-clear`) is always present but `hidden` in the generated markup — a project's `search.js` is responsible for un-hiding it once the input has text, and for wiring its click to clear the query and return to the initial state.
 - `#search-results` and `#search-status` start empty; `search.js` populates them after reading `location.search` and querying Pagefind's index at `/pagefind/pagefind.js`.
 - `search.html` is not part of `MAGNETIZER_NAVIGATION` — it isn't a `navigation` config entry, since a search icon in the header (as opposed to a text nav link) is a project template concern, not something Magnetizer generates.

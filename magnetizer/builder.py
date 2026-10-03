@@ -772,7 +772,7 @@ def _write_generated_pages(published_posts_sorted_desc, dist_dir, config, templa
         content=render_archive_page_content(
             published_posts_sorted_desc, categories=config["categories"],
             build_date=build_date, build_datetime=build_datetime, posts_per_page=config["posts_per_page"],
-            has_photos=bool(photos),
+            photos=photos,
         ),
         canonical=canonical_url(config["site_url"], "archive.html"),
         meta_description=_metadata_description(metadata, "archive"),

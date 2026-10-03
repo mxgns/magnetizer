@@ -8,15 +8,6 @@ from magnetizer.dynamic import format_now
 
 _DEFAULT_AI_DISCLOSURE_TEXT = 'The contents of this post have been entirely or partially created using AI.'
 
-_SEARCH_ICON_SVG = (
-    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640">'
-    '<path d="M480 272C480 317.9 465.1 360.3 440 394.7L566.6 521.4C579.1 533.9 579.1 554.2 566.6 566.7'
-    'C554.1 579.2 533.8 579.2 521.3 566.7L394.7 440C360.3 465.1 317.9 480 272 480C157.1 480 64 386.9 64 272'
-    'C64 157.1 157.1 64 272 64C386.9 64 480 157.1 480 272zM272 416C351.5 416 416 351.5 416 272'
-    'C416 192.5 351.5 128 272 128C192.5 128 128 192.5 128 272C128 351.5 192.5 416 272 416z"/></svg>'
-)
-
-
 def _render_ai_disclosure(ai_disclosure_html):
     text = ai_disclosure_html or _DEFAULT_AI_DISCLOSURE_TEXT
     return (
@@ -300,7 +291,7 @@ def render_search_page_content():
         '<form role="search" id="search-form">\n'
         '<label for="search-input" class="visually-hidden">Search</label>\n'
         '<input id="search-input" name="q" type="search" placeholder="Search…" autocomplete="off">\n'
-        f'<button type="submit" aria-label="Search">{_SEARCH_ICON_SVG}</button>\n'
+        '<button type="submit" aria-label="Search"></button>\n'
         '<button type="button" id="search-clear" class="search-clear" aria-label="Clear search" hidden>×</button>\n'
         '</form>\n'
         '<p id="search-status" class="search-status" aria-live="polite"></p>\n'
@@ -538,7 +529,7 @@ def _render_contribution_calendar(posts, build_date, posts_per_page, last_update
     return '\n'.join(parts)
 
 
-def render_archive_page_content(posts, categories=None, build_date=None, build_datetime=None, posts_per_page=12, has_photos=False):
+def render_archive_page_content(posts, categories=None, build_date=None, build_datetime=None, posts_per_page=12, photos=None):
     blog_posts = [p for p in posts if p.date and p.post_type != "note"]
 
     months = {}
@@ -578,12 +569,22 @@ def render_archive_page_content(posts, categories=None, build_date=None, build_d
         ]
 
     photos_block = []
-    if has_photos:
+    if photos:
+        preview_items = []
+        for photo in photos[:5]:
+            alt = _escape(photo["alt"], quote=True)
+            preview_items.append(
+                f'<li><a href="{photo["post_url"]}">'
+                f'<img src="{photo["thumb"]}" alt="{alt}" width="{photo["width"]}" height="{photo["height"]}" loading="lazy">'
+                f'</a></li>'
+            )
         photos_block = [
             '<h2>Photo archive</h2>',
-            '<ul>',
-            '<li><a href="gallery.html">All photos</a></li>',
-            '</ul>',
+            '<ol class="archive-gallery-preview">',
+            *preview_items,
+            '</ol>',
+            f'<p class="archive-gallery-count"><a href="gallery.html">'
+            f'<span>{len(photos)}</span> photos in the archive</a></p>',
         ]
 
     has_sections = bool(category_block) or bool(notes_block) or bool(photos_block)
