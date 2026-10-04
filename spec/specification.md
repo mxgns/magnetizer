@@ -1393,16 +1393,20 @@ The manifest has the following structure:
 
 ```json
 {
+  "_version": 2,
   "1.md": {
+    "sha256": "7a4649f4e97d0e5bdc3f80578996212d1990b83afaaccf30bd01050308d0c9b5",
+    "size": 128,
     "mtime": 1748123456.0
   },
   "1-image-01.jpg": {
+    "sha256": "51112241ade26e15580eaad26758fad2f785ae70894a023763dab9666b09bfec",
+    "size": 204800,
     "mtime": 1748123456.0
   },
-  "2.md": {
-    "mtime": 1748123789.0
-  },
   "resources/style.css": {
+    "sha256": "eba8d3a14e588bea7bef61da1718e7a129b807b3d52c2b50c25fd1167be4618b",
+    "size": 2048,
     "mtime": 1748123456.0
   },
   "pages": {
@@ -1418,9 +1422,11 @@ The manifest has the following structure:
 
 Where:
 
+- `_version` is `2`. A manifest file without this key (the earlier mtime-only format, or anything else unrecognised) is treated the same as a missing manifest — full build, never a crash.
 - Keys without a prefix are filenames from `content/`
 - Keys with a `resources/` prefix are filenames from `resources/`
-- `mtime` is the file's last modified time as a Unix timestamp, recorded at the time of the last successful build
+- `sha256` is the authoritative record of the file's content at the time of the last successful build. A file has changed if and only if it is new, has been removed, or its `sha256` no longer matches.
+- `size` and `mtime` are a fast path only: if a file's current size and mtime both match the manifest, its stored `sha256` is reused without re-reading the file. If either differs (including a fresh checkout, where every file's mtime is new), the file is re-hashed and compared — a file that was only touched, or checked out fresh with unchanged content, re-hashes to the same value and is correctly treated as unchanged, so its manifest entry is refreshed (new `size`/`mtime`, same `sha256`) without counting as a content change.
 - `pages` is a map of generated page filename (a post's or special page's own `.html` output, not index/category/notes/archive pages) to `{"dynamic": bool}` — see [Dynamic values](#dynamic-values) for how this flag is used to decide what gets rebuilt
 
 The manifest is:
@@ -1428,6 +1434,7 @@ The manifest is:
 - Updated at the end of every successful incremental build or `--flush` build
 - Deleted and recreated from scratch when `--flush` is used
 - Absent on the first ever build, in which case all files in `content/` are treated as new and a new manifest is created
+- Treated as absent (triggering a full build) if it exists but lacks `"_version": 2`
 - Written atomically (a uniquely-named temp file in the same directory, then renamed over the existing manifest), so a crash mid-build cannot corrupt it
 
 When a single `FILENAME` is specified (preview builds), the manifest is *not* rescanned or rewritten wholesale — but the `pages` entry for that one file's page is still updated with its freshly re-derived `dynamic` flag, and every other manifest entry is left exactly as it was.

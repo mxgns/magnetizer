@@ -21,6 +21,7 @@ from magnetizer.image import image_dimensions, resize_image
 from magnetizer.manifest import (
     get_changed_post_ids,
     get_changed_resource_filenames,
+    is_file_changed,
     load_manifest,
     save_manifest,
     update_page_dynamic_flag,
@@ -466,11 +467,7 @@ def _special_page_changed(content_dir, manifest, md_name, patterns=()):
             if pattern.match(name):
                 relevant.add(name)
     for name in relevant:
-        f = content_dir / name
-        if f.exists():
-            if name not in manifest or manifest[name]["mtime"] != f.stat().st_mtime:
-                return True
-        elif name in manifest:
+        if is_file_changed(manifest, name, content_dir / name):
             return True
     return False
 
@@ -1062,11 +1059,13 @@ def build(cwd, filename=None, flush=False, resources=False, refresh=False, on_pr
     if not filename:
         warnings.extend(check_internal_links(dist_dir, config["site_url"]))
 
-        any_change = bool(post_ids_to_build) or specials_rebuilt or bool(copied) or bool(deleted_resources) or refresh
-        if any_change:
-            final_pages = {**prev_pages, **pages_dynamic_updates}
-            for page_filename in deleted_page_filenames:
-                final_pages.pop(page_filename, None)
-            save_manifest(content_dir, manifest_path, resources_dir=resources_dir, pages=final_pages)
+        # Always save, even when nothing changed enough to rebuild anything: a
+        # touched-but-unedited file still needs its manifest entry's size/mtime
+        # refreshed (its sha256 is unchanged), or the fast path can never engage
+        # for it again and every future build re-hashes it from scratch.
+        final_pages = {**prev_pages, **pages_dynamic_updates}
+        for page_filename in deleted_page_filenames:
+            final_pages.pop(page_filename, None)
+        save_manifest(content_dir, manifest_path, resources_dir=resources_dir, pages=final_pages, prev_manifest=manifest)
 
     return {"created": created, "updated": updated, "deleted": deleted, "log": log, "warnings": warnings}

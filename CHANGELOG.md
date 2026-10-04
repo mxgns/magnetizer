@@ -9,6 +9,7 @@
 
 - Archive page now ends with a "Browse all posts by page" index-page link list
 - Added restore_mtimes.py and check_gps.py for CI builds
+- Manifest now tracks file content hashes, not just mtimes
 
 ### 3/10/26
 
