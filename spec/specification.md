@@ -27,9 +27,13 @@ The `magnetizer` application directory includes the following:
 ```
 new-post.py
 build.py
+restore_mtimes.py
+check_gps.py
 magnetizer/    -- Python modules required by the above
 tests/         -- Pytest tests
 spec/          -- specification.md (this file) and other specifications
+requirements.txt      -- pinned runtime dependencies
+requirements-dev.txt  -- requirements.txt plus pytest
 ```
 
 The `magnetizer` application directory should be added to the PATH so it can be conveniently run from any project directory.
@@ -1616,3 +1620,23 @@ When `--push` is specified and the build completes without errors, `build.py` wi
 If there are no changes to commit, skip the commit and push and output: `Nothing to publish — no changes since last build.`
 
 `--push` cannot be combined with `--refresh`. `--push` stages and commits whatever is currently in `dist/` regardless of how it got there, so this isn't a staleness check — `--flush` wouldn't make a `--refresh`'d `dist/` any more "real," since both would use the exact same (possibly still-being-edited) generator code. The actual risk is publishing output from generator code that was only ever meant for local iteration; blocking the combination forces a separate, deliberate build once that code is finished, rather than relying on a warning that's easy to miss in a fast test loop.
+
+## restore_mtimes.py
+
+A CI-oriented tool. A CI checkout resets every file's mtime to checkout time, which would make the sitemap's `<lastmod>` (derived from file mtimes — see [Sitemap](#sitemap)) say "just now" for every post instead of when it last actually changed. `restore_mtimes.py` fixes this by setting each tracked file's mtime back to the commit time of the most recent commit that touched it.
+
+Usage: `restore_mtimes.py [DIRECTORY...]`
+
+Must be run from the root of a git repository with full history available (a shallow checkout only has one commit, so every file would resolve to that single commit's time — defeating the purpose). Defaults to `content resources` if no directories are given.
+
+Algorithm: a single `git log --name-only` pass over the whole repository's history, newest commit first, recording each path's timestamp the first time that path is seen. Because `git log`'s default order is newest-first, the first commit in which a path appears during that walk is the most recent commit that touched it. This is a single pass regardless of file or commit count, unlike invoking `git log` once per file.
+
+Only files that exist on disk under the given directories, and are tracked by git with at least one commit, have their mtime set (both atime and mtime, to the commit's timestamp). Untracked files (e.g. a freshly added, not-yet-committed file) are left untouched.
+
+## check_gps.py
+
+A one-off privacy check, meant to be run against real build output (not just the unit tests covering the EXIF-stripping code path in isolation) — because the Pages repo is public, and a code path can pass synthetic fixtures while something about real-world source photos still slips through.
+
+Usage: `check_gps.py [DIRECTORY]` (default: `dist`)
+
+Scans every `.jpg`, `.jpeg` and `.png` file under `DIRECTORY` (case-insensitive extension match) for a GPS IFD pointer in its EXIF data. Prints two counts only — images scanned, and how many carry GPS data — and never a filename or coordinate value. Exits non-zero if any image carries GPS data, zero otherwise.
