@@ -27,6 +27,7 @@ The `magnetizer` application directory includes the following:
 ```
 new-post.py
 build.py
+publish.py
 restore_mtimes.py
 check_gps.py
 magnetizer/    -- Python modules required by the above
@@ -1647,3 +1648,18 @@ A one-off privacy check, meant to be run against real build output (not just the
 Usage: `check_gps.py [DIRECTORY]` (default: `dist`)
 
 Scans every `.jpg`, `.jpeg` and `.png` file under `DIRECTORY` (case-insensitive extension match) for a GPS IFD pointer in its EXIF data. Prints two counts only — images scanned, and how many carry GPS data — and never a filename or coordinate value. Exits non-zero if any image carries GPS data, zero otherwise.
+
+## publish.py
+
+Publishes the project's *source* — `content/`, `resources/`, and any other tracked file in the project directory — to `origin main`. Distinct from `build.py --push`, which publishes `dist/` (the generated output) to the Pages repo; `publish.py` is the Mac/CI-era equivalent for the project itself, so day-to-day posting doesn't need raw `git` commands.
+
+Usage: `publish.py [MESSAGE]`
+
+Must be run from the project root (same convention as `build.py`/`new-post.py`).
+
+1. Run `build.py` (no flags) as a sanity check. If it fails, stop — nothing is staged, committed, or pushed, and the failure is reported exactly as `build.py` itself would report it.
+2. Stage everything in the project directory (`git add -A`).
+3. If nothing is staged, print `Nothing to publish — no changes to commit.` and exit 0.
+4. Otherwise, commit with `MESSAGE` if given, or `Update {timestamp}` (same timestamp format as `build.py --push`'s `Build {timestamp}` commit message) if not, then push to `origin main`.
+
+A git failure at any step raises an error and stops; nothing partially staged or committed is pushed.
