@@ -8,6 +8,8 @@
 ### 4/10/26
 
 - Archive page now ends with a "Browse all posts by page" index-page link list
+- Added restore_mtimes.py and check_gps.py for CI builds
+- Manifest now tracks file content hashes, not just mtimes
 - Bug fix: deleting the newest/oldest post could skip its real neighbor
 
 ### 3/10/26

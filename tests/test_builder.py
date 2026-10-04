@@ -87,6 +87,23 @@ class TestBasicBuild:
         data = json.loads((p / "manifest.json").read_text())
         assert "resources/style.css" in data
 
+    def test_manifest_is_written_with_version_2(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD})
+        build(p)
+        data = json.loads((p / "manifest.json").read_text())
+        assert data["_version"] == 2
+
+    def test_old_format_manifest_triggers_full_rebuild_not_a_crash(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD, 2: MINIMAL_MD})
+        # The pre-upgrade mtime-only format, with no "_version" key at all.
+        (p / "manifest.json").write_text(json.dumps({"1.md": {"mtime": 1748123456.0}}))
+        outcome = build(p)
+        assert (p / "dist" / "1.html").exists()
+        assert (p / "dist" / "2.html").exists()
+        assert outcome["updated"] + outcome["created"] == 2
+        data = json.loads((p / "manifest.json").read_text())
+        assert data["_version"] == 2
+
 
 # ---------------------------------------------------------------------------
 # Image processing
@@ -1010,12 +1027,31 @@ class TestSitemap:
         os.utime(p / "content" / "1-image-01.jpg", (img_mtime_old, img_mtime_old))
         build(p)
         sitemap_before = (p / "dist" / "sitemap.xml").read_text()
-        # Move image forward to 2022-01-01 — newer than .md, so category lastmod must change
+        # Genuinely re-encode the image (not just touch it) and move its mtime
+        # forward to 2022-01-01 — newer than .md, so category lastmod must change.
+        # A same-content touch must NOT trigger this (content-hash manifest).
+        make_jpg(p / "content" / "1-image-01.jpg", width=801, height=601)
         img_mtime_new = 1640995200.0  # 2022-01-01
         os.utime(p / "content" / "1-image-01.jpg", (img_mtime_new, img_mtime_new))
         build(p)
         sitemap_after = (p / "dist" / "sitemap.xml").read_text()
         assert sitemap_before != sitemap_after
+
+    def test_sitemap_category_lastmod_unchanged_when_file_only_touched(self, tmp_path):
+        import os
+        p = make_project(tmp_path, posts={1: _CATEGORY_MD}, config=_CATEGORIES_CONFIG)
+        make_jpg(p / "content" / "1-image-01.jpg")
+        md_mtime = 1609459200.0  # 2021-01-01
+        os.utime(p / "content" / "1.md", (md_mtime, md_mtime))
+        os.utime(p / "content" / "1-image-01.jpg", (md_mtime, md_mtime))
+        build(p)
+        sitemap_before = (p / "dist" / "sitemap.xml").read_text()
+        # Touch the image (mtime forward, content identical) -- a fresh checkout
+        # does this to every file. Must not be mistaken for a real change.
+        os.utime(p / "content" / "1-image-01.jpg", (1640995200.0, 1640995200.0))  # 2022-01-01
+        build(p)
+        sitemap_after = (p / "dist" / "sitemap.xml").read_text()
+        assert sitemap_before == sitemap_after
 
     def test_sitemap_contains_gallery_url(self, tmp_path):
         p = make_project(tmp_path, posts={1: MINIMAL_MD})
@@ -3516,6 +3552,27 @@ class TestDynamicForcedRebuild:
         outcome = build(p)
         assert outcome["log"] == []
         assert (p / "dist" / "1.html").stat().st_mtime == original_mtime
+
+    def test_touched_file_mtime_is_refreshed_even_without_other_changes(self, tmp_path):
+        import os
+        import time
+        p = make_project(tmp_path, posts={1: MINIMAL_MD})
+        build(p)
+        manifest_before = json.loads((p / "manifest.json").read_text())
+        old_mtime = manifest_before["1.md"]["mtime"]
+
+        time.sleep(0.01)
+        os.utime(p / "content" / "1.md", None)  # touch: bump mtime, identical content
+        new_mtime = (p / "content" / "1.md").stat().st_mtime
+
+        outcome = build(p)
+        assert outcome["log"] == []  # no real rebuild -- content genuinely unchanged
+        manifest_after = json.loads((p / "manifest.json").read_text())
+        # The stale mtime must be refreshed so the fast path can engage again next
+        # time -- otherwise every future build re-hashes this file forever.
+        assert manifest_after["1.md"]["mtime"] == new_mtime
+        assert manifest_after["1.md"]["mtime"] != old_mtime
+        assert manifest_after["1.md"]["sha256"] == manifest_before["1.md"]["sha256"]
 
     def test_no_changes_anywhere_leaves_manifest_untouched(self, tmp_path):
         p = make_project(tmp_path, posts={
