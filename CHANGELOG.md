@@ -8,6 +8,7 @@
 ### 4/10/26
 
 - Archive page now ends with a "Browse all posts by page" index-page link list
+- Added restore_mtimes.py and check_gps.py for CI builds
 
 ### 3/10/26
 
