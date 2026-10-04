@@ -5,6 +5,10 @@
 
 ## Released changes
 
+### 4/10/26
+
+- Archive page now ends with a "Browse by page" index-page link list
+
 ### 3/10/26
 
 - Thumbnails now round scaled dimensions instead of truncating

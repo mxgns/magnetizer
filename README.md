@@ -478,6 +478,15 @@ Each thumbnail uses the same thumbnail file, alt text, and dimensions as on the 
 
 `archive-categories` and `archive-notes` sit side by side inside `archive-columns` — whichever of the two exist; if only one does, it's the sole child. Like `archive-months`, this is bare structure for a project's CSS to lay out on wide viewports (e.g. a two-column flex row); Magnetizer ships no default column CSS or breakpoint of its own.
 
+The page always ends with a `<h2>Browse by page</h2>` section linking to every paginated index page by number, middle-dot separated:
+
+```html
+<h2>Browse by page</h2>
+<p class="archive-index-pages"><a href="index.html">1</a> · <a href="index-2.html">2</a> · <a href="index-3.html">3</a></p>
+```
+
+Unlike the index pages' own "Newer/Older" nav, this always lists every page and never omits or marks the current one — the archive isn't itself one of the paginated pages, so there's no "current page" to skip. It's always shown, even when there's only a single index page (just a lone `1`), and the page count is driven by `posts_per_page`, counting every published post the same way the index pages themselves do (Notes included).
+
 ## Gallery page
 
 Every raster image on the blog — top-level or placed inline via `{{ image N }}`, on any post, including `noindex` ones — gets a second derivative alongside its full-size `-resized` version: a `{post-id}-image-{nn}-thumb.{ext}` thumbnail, capped at `thumbnail_max_dimension`/`thumbnail_quality` from config. SVGs are never thumbnailed, since they're never resized either. A special page's images are resized and thumbnailed the same way, but never appear in the gallery itself.

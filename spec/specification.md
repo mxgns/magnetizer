@@ -1114,6 +1114,8 @@ The `MAGNETIZER_CONTENT` has the following structure:
   </section>
   ...
 </div>
+<h2>Browse by page</h2>
+<p class="archive-index-pages"><a href="index.html">1</a> · <a href="index-2.html">2</a> · <a href="index-3.html">3</a></p>
 </main>
 <nav><a href="index.html">Blog home</a></nav>
 ```
@@ -1137,6 +1139,8 @@ Where:
     2. `name`, if set
     3. The post's first `<p>` element, converted to plaintext with tags stripped, if it has any non-whitespace content — truncated to 40 characters after the last full word, with a trailing `…`, if longer than 40
     4. Otherwise, the same generated fallback text used for the heading and meta title (see [Post types](#post-types)): `Photo posted {date}` or `Photos posted {date}` (an Image post always has at least one top-level image, so `Note posted {date}` is never reached here in practice — it only appears for a Note, which isn't listed in the archive at all)
+- `<h2>Browse by page</h2>` and the `<p class="archive-index-pages">` after it are always present, as the last thing in `<main>`, regardless of whether any other optional section above is shown. Unlike `<h2>Blog Posts</h2>`, this section's presence is unconditional.
+- `<p class="archive-index-pages">` holds one `<a>` per paginated index page (see [Index pages](#index-pages)), in ascending order, link text `1`, `2`, `3`... matching the page number, each `·`-separated (a literal middle dot plus surrounding spaces between consecutive `<a>` tags, not inside them). The page count is `ceil(total published posts / posts_per_page)`, counting every published post the same way the index pages themselves are paginated — Notes included, same as the contribution calendar above but unlike the monthly list. There's always at least one link (`1`, pointing at `index.html`) even with zero posts, and the section is shown even when there's only one page — unlike the index pages' own prev/next nav, there's no "current page" to omit here, since the archive page is never itself one of the paginated pages.
 
 ### Archive column layout
 
