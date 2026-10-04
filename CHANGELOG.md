@@ -8,6 +8,7 @@
 ### 4/10/26
 
 - Archive page now ends with a "Browse all posts by page" index-page link list
+- Bug fix: deleting the newest/oldest post could skip its real neighbor
 
 ### 3/10/26
 
