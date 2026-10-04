@@ -180,9 +180,13 @@ def _neighbor_post_ids(post_id, all_post_ids_sorted_desc):
             neighbors.append(all_post_ids_sorted_desc[pos + 1])
         return neighbors
     else:
-        # Deleted post: find neighbors by value in the remaining list
-        newer = next((p for p in all_post_ids_sorted_desc if p > post_id), None)
-        older = next((p for p in reversed(all_post_ids_sorted_desc) if p < post_id), None)
+        # Deleted post: find its closest neighbors by value in the remaining list.
+        # all_post_ids_sorted_desc is descending, so the first id found scanning in
+        # that order that's below post_id is the *largest* such id -- the closest
+        # one -- and symmetrically the first found scanning in reverse (ascending)
+        # that's above post_id is the *smallest* such id, again the closest one.
+        newer = next((p for p in reversed(all_post_ids_sorted_desc) if p > post_id), None)
+        older = next((p for p in all_post_ids_sorted_desc if p < post_id), None)
         return [p for p in [newer, older] if p is not None]
 
 
