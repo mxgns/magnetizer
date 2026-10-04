@@ -1657,9 +1657,10 @@ Usage: `publish.py [MESSAGE]`
 
 Must be run from the project root (same convention as `build.py`/`new-post.py`).
 
-1. Run `build.py` (no flags) as a sanity check. If it fails, stop — nothing is staged, committed, or pushed, and the failure is reported exactly as `build.py` itself would report it.
-2. Stage everything in the project directory (`git add -A`).
-3. If nothing is staged, print `Nothing to publish — no changes to commit.` and exit 0.
-4. Otherwise, commit with `MESSAGE` if given, or `Update {timestamp}` (same timestamp format as `build.py --push`'s `Build {timestamp}` commit message) if not, then push to `origin main`.
+1. Run `build.py` (no flags) as a sanity check, with a 600-second timeout. If it fails or times out, stop — nothing is staged, committed, or pushed.
+2. Refuse to continue if the current branch isn't `main` — pushing a commit made on another branch to `origin main` would silently push whatever `main` already was, not the new commit, while still reporting success.
+3. Stage everything in the project directory (`git add -A`), then unstage `dist/` and `manifest.json` if either ended up staged. This is defensive, independent of `.gitignore`: `dist/` is a clone of the Pages repo (a nested git repository), and `git add -A` would otherwise commit it as a bare gitlink if a project ever forgot to ignore it. Both are also unstaged in the normal case, where `.gitignore` already excludes them and this is a no-op.
+4. If nothing is staged, print `Nothing to publish — no changes to commit.` and exit 0.
+5. Otherwise, commit with `MESSAGE` if given, or `Update {timestamp}` (same timestamp format as `build.py --push`'s `Build {timestamp}` commit message) if not, then push to `origin main`.
 
 A git failure at any step raises an error and stops; nothing partially staged or committed is pushed.

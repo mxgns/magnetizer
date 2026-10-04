@@ -1,12 +1,11 @@
 #!/usr/bin/env python3
 import argparse
-import subprocess
 import sys
 from datetime import datetime
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
-from magnetizer.source_publisher import publish_source
+from magnetizer.source_publisher import publish_source, run_build
 
 _BUILD_SCRIPT = Path(__file__).parent / "build.py"
 
@@ -29,8 +28,12 @@ def main():
     )
     args = parser.parse_args()
 
-    result = subprocess.run([sys.executable, str(_BUILD_SCRIPT)])
-    if result.returncode != 0:
+    try:
+        build_ok = run_build(_BUILD_SCRIPT, Path.cwd())
+    except RuntimeError as e:
+        print(f"  {e}", file=sys.stderr)
+        sys.exit(1)
+    if not build_ok:
         print("Build failed — not publishing.", file=sys.stderr)
         sys.exit(1)
 

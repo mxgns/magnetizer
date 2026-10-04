@@ -110,14 +110,18 @@ class TestBuildFailureAbortsPublish:
 
         result = run_publish(["Should not land"], cwd=project)
 
-        assert result.returncode != 0
+        assert result.returncode == 1
+        assert "Build failed" in result.stderr
         assert remote_log(remote) == before
 
     def test_working_tree_left_uncommitted_on_build_failure(self, tmp_path):
         project, remote = make_published_project(tmp_path)
         (project / "content" / "99-image-01.jpg").write_bytes(b"not a real image")
 
-        run_publish(["Should not land"], cwd=project)
+        result = run_publish(["Should not land"], cwd=project)
+
+        assert result.returncode == 1
+        assert "Build failed" in result.stderr
 
         status = subprocess.run(
             ["git", "status", "--short"], cwd=project,
