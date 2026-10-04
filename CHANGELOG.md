@@ -7,7 +7,7 @@
 
 ### 4/10/26
 
-- Archive page now ends with a "Browse by page" index-page link list
+- Archive page now ends with a "Browse all posts by page" index-page link list
 
 ### 3/10/26
 

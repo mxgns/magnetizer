@@ -627,7 +627,7 @@ def render_archive_page_content(posts, categories=None, build_date=None, build_d
     index_links = ' · '.join(
         f'<a href="{index_page_url(n)}">{n}</a>' for n in range(1, total_index_pages + 1)
     )
-    parts.append('<h2>Browse by page</h2>')
+    parts.append('<h2>Browse all posts by page</h2>')
     parts.append(f'<p class="archive-index-pages">{index_links}</p>')
 
     parts.append('</main>')

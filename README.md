@@ -478,10 +478,10 @@ Each thumbnail uses the same thumbnail file, alt text, and dimensions as on the 
 
 `archive-categories` and `archive-notes` sit side by side inside `archive-columns` — whichever of the two exist; if only one does, it's the sole child. Like `archive-months`, this is bare structure for a project's CSS to lay out on wide viewports (e.g. a two-column flex row); Magnetizer ships no default column CSS or breakpoint of its own.
 
-The page always ends with a `<h2>Browse by page</h2>` section linking to every paginated index page by number, middle-dot separated:
+The page always ends with a `<h2>Browse all posts by page</h2>` section linking to every paginated index page by number, middle-dot separated:
 
 ```html
-<h2>Browse by page</h2>
+<h2>Browse all posts by page</h2>
 <p class="archive-index-pages"><a href="index.html">1</a> · <a href="index-2.html">2</a> · <a href="index-3.html">3</a></p>
 ```
 

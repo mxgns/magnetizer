@@ -1956,7 +1956,7 @@ class TestArchiveColumnsLayout:
     def test_month_sections_wrapped_in_archive_months_div(self):
         html = render_archive_page_content([make_dated_post(1, "2026-05-24")])
         assert '<div class="archive-months">\n<section>' in html
-        assert html.index('</section>\n</div>\n<h2>Browse by page</h2>') > 0
+        assert html.index('</section>\n</div>\n<h2>Browse all posts by page</h2>') > 0
 
     def test_archive_months_div_after_blog_posts_heading(self):
         post = make_dated_post(1, "2026-05-24", category="photography")
@@ -1971,7 +1971,7 @@ class TestArchiveColumnsLayout:
 
 
 # ---------------------------------------------------------------------------
-# render_archive_page_content — "Browse by page" index-page links, at the
+# render_archive_page_content — "Browse all posts by page" index-page links, at the
 # foot of the archive (always shown, even with a single page — there's no
 # "current page" to omit here, unlike on the index pages themselves)
 # ---------------------------------------------------------------------------
@@ -1980,7 +1980,7 @@ class TestArchiveBrowseByPage:
 
     def test_has_browse_by_page_heading(self):
         html = render_archive_page_content([make_dated_post(1, "2026-05-24")])
-        assert "<h2>Browse by page</h2>" in html
+        assert "<h2>Browse all posts by page</h2>" in html
 
     def test_shown_with_a_single_page(self):
         html = render_archive_page_content([make_dated_post(1, "2026-05-24")], posts_per_page=12)
@@ -1988,7 +1988,7 @@ class TestArchiveBrowseByPage:
 
     def test_shown_with_zero_posts(self):
         html = render_archive_page_content([])
-        assert "<h2>Browse by page</h2>" in html
+        assert "<h2>Browse all posts by page</h2>" in html
         assert '<a href="index.html">1</a>' in html
 
     def test_links_to_every_index_page(self):
