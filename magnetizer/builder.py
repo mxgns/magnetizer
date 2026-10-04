@@ -1059,11 +1059,13 @@ def build(cwd, filename=None, flush=False, resources=False, refresh=False, on_pr
     if not filename:
         warnings.extend(check_internal_links(dist_dir, config["site_url"]))
 
-        any_change = bool(post_ids_to_build) or specials_rebuilt or bool(copied) or bool(deleted_resources) or refresh
-        if any_change:
-            final_pages = {**prev_pages, **pages_dynamic_updates}
-            for page_filename in deleted_page_filenames:
-                final_pages.pop(page_filename, None)
-            save_manifest(content_dir, manifest_path, resources_dir=resources_dir, pages=final_pages, prev_manifest=manifest)
+        # Always save, even when nothing changed enough to rebuild anything: a
+        # touched-but-unedited file still needs its manifest entry's size/mtime
+        # refreshed (its sha256 is unchanged), or the fast path can never engage
+        # for it again and every future build re-hashes it from scratch.
+        final_pages = {**prev_pages, **pages_dynamic_updates}
+        for page_filename in deleted_page_filenames:
+            final_pages.pop(page_filename, None)
+        save_manifest(content_dir, manifest_path, resources_dir=resources_dir, pages=final_pages, prev_manifest=manifest)
 
     return {"created": created, "updated": updated, "deleted": deleted, "log": log, "warnings": warnings}

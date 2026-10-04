@@ -1391,17 +1391,17 @@ The manifest has the following structure:
 {
   "_version": 2,
   "1.md": {
-    "sha256": "4b825dc642cb6eb9a060e54bf8d69288fbee4904",
+    "sha256": "7a4649f4e97d0e5bdc3f80578996212d1990b83afaaccf30bd01050308d0c9b5",
     "size": 128,
     "mtime": 1748123456.0
   },
   "1-image-01.jpg": {
-    "sha256": "da39a3ee5e6b4b0d3255bfef95601890afd80709",
+    "sha256": "51112241ade26e15580eaad26758fad2f785ae70894a023763dab9666b09bfec",
     "size": 204800,
     "mtime": 1748123456.0
   },
   "resources/style.css": {
-    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4",
+    "sha256": "eba8d3a14e588bea7bef61da1718e7a129b807b3d52c2b50c25fd1167be4618b",
     "size": 2048,
     "mtime": 1748123456.0
   },

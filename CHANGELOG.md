@@ -8,6 +8,7 @@
 ### 4/10/26
 
 - Archive page now ends with a "Browse all posts by page" index-page link list
+- Manifest now tracks file content hashes, not just mtimes
 
 ### 3/10/26
 

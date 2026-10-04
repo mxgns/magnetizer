@@ -3533,6 +3533,27 @@ class TestDynamicForcedRebuild:
         assert outcome["log"] == []
         assert (p / "dist" / "1.html").stat().st_mtime == original_mtime
 
+    def test_touched_file_mtime_is_refreshed_even_without_other_changes(self, tmp_path):
+        import os
+        import time
+        p = make_project(tmp_path, posts={1: MINIMAL_MD})
+        build(p)
+        manifest_before = json.loads((p / "manifest.json").read_text())
+        old_mtime = manifest_before["1.md"]["mtime"]
+
+        time.sleep(0.01)
+        os.utime(p / "content" / "1.md", None)  # touch: bump mtime, identical content
+        new_mtime = (p / "content" / "1.md").stat().st_mtime
+
+        outcome = build(p)
+        assert outcome["log"] == []  # no real rebuild -- content genuinely unchanged
+        manifest_after = json.loads((p / "manifest.json").read_text())
+        # The stale mtime must be refreshed so the fast path can engage again next
+        # time -- otherwise every future build re-hashes this file forever.
+        assert manifest_after["1.md"]["mtime"] == new_mtime
+        assert manifest_after["1.md"]["mtime"] != old_mtime
+        assert manifest_after["1.md"]["sha256"] == manifest_before["1.md"]["sha256"]
+
     def test_no_changes_anywhere_leaves_manifest_untouched(self, tmp_path):
         p = make_project(tmp_path, posts={
             1: "---\ndate: 2026-05-24\n---\n\nWe have {{ post_count }} posts.\n",
