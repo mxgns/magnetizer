@@ -2,6 +2,16 @@
 
 A static site generator for a photo blog. Takes Markdown and image files as input and outputs a ready-to-publish HTML site.
 
+## Requirements
+
+Python 3.14, plus Node (for `npx pagefind`). Dependency versions are pinned in `requirements.txt` — Pillow's output is not byte-identical across versions, and this project's own build pipeline (and the git history of its Pages repo) depends on that pin staying put.
+
+```
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements-dev.txt   # or requirements.txt without the dev tools
+```
+
 ## Project structure
 
 Your blog lives in its own directory with the following layout:
@@ -522,3 +532,9 @@ To avoid indexing the same article twice (once on its own page, once again embed
 Set up `dist/` as a clone of your GitHub Pages repository before using `--push`. Magnetizer stages, commits, and pushes all changes automatically.
 
 If the push is rejected because the remote has changes you don't have locally (e.g. a `CNAME` file added by GitHub), run `git pull --rebase origin main` inside `dist/` first.
+
+## Running in CI
+
+A fresh CI checkout resets every file's mtime, which breaks the sitemap's `<lastmod>` (derived from file mtimes). Run `restore_mtimes.py` on `content/` and `resources/` — from a checkout with full history (`fetch-depth: 0`, not shallow) — before building.
+
+After a build, `check_gps.py [DIRECTORY]` (default `dist`) scans real output for GPS EXIF data and reports counts only. The unit tests already cover the EXIF-stripping code path against fixtures; this checks the actual published files, which matters more once they're going to a public repo.
