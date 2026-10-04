@@ -623,6 +623,13 @@ def render_archive_page_content(posts, categories=None, build_date=None, build_d
         parts.extend(month_blocks)
         parts.append('</div>')
 
+    total_index_pages = max(1, (len(posts) + posts_per_page - 1) // posts_per_page)
+    index_links = ' · '.join(
+        f'<a href="{index_page_url(n)}">{n}</a>' for n in range(1, total_index_pages + 1)
+    )
+    parts.append('<h2>Browse all posts by page</h2>')
+    parts.append(f'<p class="archive-index-pages">{index_links}</p>')
+
     parts.append('</main>')
     parts.append('<nav><a href="index.html">Blog home</a></nav>')
 

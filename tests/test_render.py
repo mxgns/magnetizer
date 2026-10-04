@@ -1956,7 +1956,7 @@ class TestArchiveColumnsLayout:
     def test_month_sections_wrapped_in_archive_months_div(self):
         html = render_archive_page_content([make_dated_post(1, "2026-05-24")])
         assert '<div class="archive-months">\n<section>' in html
-        assert html.index('</section>\n</div>\n</main>') > 0
+        assert html.index('</section>\n</div>\n<h2>Browse all posts by page</h2>') > 0
 
     def test_archive_months_div_after_blog_posts_heading(self):
         post = make_dated_post(1, "2026-05-24", category="photography")
@@ -1968,6 +1968,58 @@ class TestArchiveColumnsLayout:
         # so there's nothing to wrap.
         html = render_archive_page_content([make_dated_post(1, "2026-05-24", post_type="note")])
         assert "archive-months" not in html
+
+
+# ---------------------------------------------------------------------------
+# render_archive_page_content — "Browse all posts by page" index-page links, at the
+# foot of the archive (always shown, even with a single page — there's no
+# "current page" to omit here, unlike on the index pages themselves)
+# ---------------------------------------------------------------------------
+
+class TestArchiveBrowseByPage:
+
+    def test_has_browse_by_page_heading(self):
+        html = render_archive_page_content([make_dated_post(1, "2026-05-24")])
+        assert "<h2>Browse all posts by page</h2>" in html
+
+    def test_shown_with_a_single_page(self):
+        html = render_archive_page_content([make_dated_post(1, "2026-05-24")], posts_per_page=12)
+        assert '<a href="index.html">1</a>' in html
+
+    def test_shown_with_zero_posts(self):
+        html = render_archive_page_content([])
+        assert "<h2>Browse all posts by page</h2>" in html
+        assert '<a href="index.html">1</a>' in html
+
+    def test_links_to_every_index_page(self):
+        posts = [make_dated_post(n, "2026-05-24") for n in range(1, 4)]
+        html = render_archive_page_content(posts, posts_per_page=1)
+        assert '<a href="index.html">1</a>' in html
+        assert '<a href="index-2.html">2</a>' in html
+        assert '<a href="index-3.html">3</a>' in html
+
+    def test_page_count_respects_posts_per_page(self):
+        posts = [make_dated_post(n, "2026-05-24") for n in range(1, 26)]
+        html = render_archive_page_content(posts, posts_per_page=10)
+        assert '<a href="index-3.html">3</a>' in html
+        assert "index-4.html" not in html
+
+    def test_counts_notes_too_same_as_index_pages_do(self):
+        # Index pages paginate over every published post, notes included —
+        # this section must count pages the same way, not just dated posts.
+        posts = [make_dated_post(1, "2026-05-24", post_type="note"),
+                 make_dated_post(2, "2026-05-23", post_type="note")]
+        html = render_archive_page_content(posts, posts_per_page=1)
+        assert '<a href="index-2.html">2</a>' in html
+
+    def test_links_separated_by_middle_dot(self):
+        posts = [make_dated_post(n, "2026-05-24") for n in range(1, 3)]
+        html = render_archive_page_content(posts, posts_per_page=1)
+        assert '<a href="index.html">1</a> · <a href="index-2.html">2</a>' in html
+
+    def test_section_is_last_thing_in_main(self):
+        html = render_archive_page_content([make_dated_post(1, "2026-05-24")], posts_per_page=1)
+        assert '</p>\n</main>' in html
 
 
 # ---------------------------------------------------------------------------
