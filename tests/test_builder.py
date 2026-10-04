@@ -1256,6 +1256,26 @@ class TestPostNavigation:
         assert "2.html" not in (p / "dist" / "1.html").read_text()
         assert "2.html" not in (p / "dist" / "3.html").read_text()
 
+    def test_closest_not_farthest_older_neighbor_updated_when_highest_post_deleted(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD, 10: MINIMAL_MD, 20: MINIMAL_MD, 30: MINIMAL_MD})
+        build(p)
+        assert "30.html" in (p / "dist" / "20.html").read_text()
+        (p / "content" / "30.md").unlink()
+        build(p)
+        # 20 is the closest remaining post below the deleted 30 and must be
+        # rebuilt to drop the stale link -- not 1 or 10, which are farther away.
+        assert "30.html" not in (p / "dist" / "20.html").read_text()
+
+    def test_closest_not_farthest_newer_neighbor_updated_when_lowest_post_deleted(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD, 10: MINIMAL_MD, 20: MINIMAL_MD, 30: MINIMAL_MD})
+        build(p)
+        assert "1.html" in (p / "dist" / "10.html").read_text()
+        (p / "content" / "1.md").unlink()
+        build(p)
+        # 10 is the closest remaining post above the deleted 1 and must be
+        # rebuilt to drop the stale link -- not 20 or 30, which are farther away.
+        assert "1.html" not in (p / "dist" / "10.html").read_text()
+
     def test_neighbor_rebuild_not_counted_in_outcome(self, tmp_path):
         import time
         p = make_project(tmp_path, posts={1: MINIMAL_MD, 2: MINIMAL_MD})
