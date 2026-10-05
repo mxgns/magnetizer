@@ -533,6 +533,8 @@ Set up `dist/` as a clone of your GitHub Pages repository before using `--push`.
 
 If the push is rejected because the remote has changes you don't have locally (e.g. a `CNAME` file added by GitHub), run `git pull --rebase origin main` inside `dist/` first.
 
+To publish the project's own source (`content/`, `resources/`, etc.) rather than the generated `dist/` output, use `publish.py [MESSAGE]` instead — it builds locally first as a sanity check, then commits and pushes to `origin main`. Prints `Nothing to publish` and exits cleanly if there's nothing to commit.
+
 ## Running in CI
 
 A fresh CI checkout resets every file's mtime, which breaks the sitemap's `<lastmod>` (derived from file mtimes). Run `restore_mtimes.py` on `content/` and `resources/` — from a checkout with full history (`fetch-depth: 0`, not shallow) — before building.
