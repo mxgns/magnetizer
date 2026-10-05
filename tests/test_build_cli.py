@@ -324,6 +324,17 @@ class TestCLIVerbose:
         result = run_build(["--verbose"], cwd=p)
         assert "[1 img]" in result.stdout
 
+    def test_verbose_shows_draft_label(self, tmp_path):
+        md = "---\ndate: 2026-05-24\ndraft: true\n---\n\nDraft content\n"
+        p = make_project(tmp_path, posts={1: md, 2: MINIMAL_MD})
+        result = run_build(["--verbose"], cwd=p)
+        assert "[draft]" in result.stdout
+
+    def test_verbose_omits_draft_label_for_non_draft_post(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD})
+        result = run_build(["--verbose"], cwd=p)
+        assert "[draft]" not in result.stdout
+
     def test_verbose_compatible_with_single_file(self, tmp_path):
         p = make_project(tmp_path, posts={1: MINIMAL_MD, 2: MINIMAL_MD})
         result = run_build(["1.md", "--verbose"], cwd=p)

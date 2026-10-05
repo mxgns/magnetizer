@@ -144,13 +144,15 @@ def _print_output(outcome, config, dist_path, verbose):
 
             for entry in sorted(posts, key=_post_id):
                 pid = _post_id(entry)
-                _, name, _, _, n_imgs = entry
+                _, name, _, _, n_imgs, is_draft = entry
                 post_warns = warns_by_file.get(name, [])
 
                 line = f"  {pid:0{id_w}d}   {name:<{name_w}}"
                 if n_imgs:
                     img_label = f"[{n_imgs} img{'s' if n_imgs > 1 else ''}]"
                     line += f"   {img_label}"
+                if is_draft:
+                    line += "   [draft]"
                 if post_warns:
                     line += f"   ⚠ {', '.join(post_warns)}"
                     print(_c(_YELLOW, line.rstrip()))

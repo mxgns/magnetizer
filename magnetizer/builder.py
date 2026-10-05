@@ -259,7 +259,7 @@ def _write_post_html(post, dist_dir, config, template, newer_url=None, older_url
                            canonical=canonical_url(config["site_url"], filename),
                            meta_description=post.meta_description,
                            navigation=render_navigation(config["navigation"], filename),
-                           is_noindex=post.is_noindex, page_id=_page_id(filename))
+                           is_noindex=(post.is_noindex or post.is_draft), page_id=_page_id(filename))
     (dist_dir / filename).write_text(html)
 
 
@@ -411,7 +411,12 @@ def _load_special_page_post(content_dir, name, site_url=""):
     md_text = (content_dir / f"{name}.md").read_text()
     images = _special_page_image_filenames(content_dir, name)
     comments = _load_comments(content_dir, _special_page_comment_filenames(content_dir, name), site_url)
-    return parse_post(md_text, name, images, site_url, comments=comments)
+    post = parse_post(md_text, name, images, site_url, comments=comments)
+    # draft only applies to regular posts -- parse_post doesn't know the
+    # difference, so force it off here rather than leave a stray `draft: true`
+    # in a special page's frontmatter silently doing something.
+    post.is_draft = False
+    return post
 
 
 def _build_special_page(name, content_dir, dist_dir, config, template, values, warn, output_filename=None, skip_images=False):
@@ -521,9 +526,21 @@ def _load_content(content_dir, config):
         if (content_dir / f"{pid}.md").exists():
             posts_cache[pid] = _load_post(content_dir, pid, config["site_url"])
 
-    published_post_ids_sorted_desc = [
+    # Every post that has a real .md file, draft or not -- build mechanics (the
+    # invalid-post check, orphan-comment matching, --refresh's scope) treat a
+    # draft as a completely normal post.
+    buildable_post_ids_sorted_desc = [
         pid for pid in all_post_ids_sorted_desc
         if pid in posts_cache
+    ]
+    buildable_posts_sorted_desc = [posts_cache[pid] for pid in buildable_post_ids_sorted_desc]
+
+    # Narrows buildable to exclude drafts -- every public-facing listing (index,
+    # category, notes, feed, gallery, sitemap, archive, posts.json, dynamic
+    # counts) and next/previous navigation are scoped to this list instead.
+    published_post_ids_sorted_desc = [
+        pid for pid in buildable_post_ids_sorted_desc
+        if not posts_cache[pid].is_draft
     ]
     published_posts_sorted_desc = [posts_cache[pid] for pid in published_post_ids_sorted_desc]
 
@@ -544,6 +561,7 @@ def _load_content(content_dir, config):
 
     return (
         all_post_ids_sorted_desc, posts_cache,
+        buildable_post_ids_sorted_desc, buildable_posts_sorted_desc,
         published_post_ids_sorted_desc, published_posts_sorted_desc,
         special_page_posts, special_page_posts_by_name, not_found_post,
     )
@@ -676,9 +694,11 @@ def _build_changed_posts(post_ids_to_build, changed_post_ids, posts_cache, manif
                 thumb_name = f"{stem}-thumb.{ext}"
                 thumb_size = (dist_dir / thumb_name).stat().st_size
                 log(("THUMBNAIL", thumb_name, src_sizes[image.filename], thumb_size))
-        newer_url, older_url = _adjacent_post_urls(post_id, published_post_ids_sorted_desc)
+        # A draft has no prev/next nav -- it isn't in published_post_ids_sorted_desc
+        # at all, so _adjacent_post_urls' plain .index() lookup would raise.
+        newer_url, older_url = (None, None) if post.is_draft else _adjacent_post_urls(post_id, published_post_ids_sorted_desc)
         _write_post_html(post, dist_dir, config, template, newer_url=newer_url, older_url=older_url, categories=config["categories"])
-        log((action, f"{post_id}.html", post.char_count, post.post_type == "note", len(post.images)))
+        log((action, f"{post_id}.html", post.char_count, post.post_type == "note", len(post.images), post.is_draft))
 
     return created, updated, deleted
 
@@ -692,9 +712,9 @@ def _refresh_posts(post_ids_to_refresh, posts_cache, published_post_ids_sorted_d
         page_filename = f"{post_id}.html"
         _prepare_post_for_render(post, page_filename, config, values, pages_dynamic_updates, warnings)
 
-        newer_url, older_url = _adjacent_post_urls(post_id, published_post_ids_sorted_desc)
+        newer_url, older_url = (None, None) if post.is_draft else _adjacent_post_urls(post_id, published_post_ids_sorted_desc)
         _write_post_html(post, dist_dir, config, template, newer_url=newer_url, older_url=older_url, categories=config["categories"])
-        log(("UPDATED", f"{post_id}.html", post.char_count, post.post_type == "note", len(post.images)))
+        log(("UPDATED", f"{post_id}.html", post.char_count, post.post_type == "note", len(post.images), post.is_draft))
 
 
 def _rebuild_stale_special_pages(config, content_dir, dist_dir, template, values, manifest, prev_pages, any_relevant_change, pages_dynamic_updates, warnings, log, force=False):
@@ -936,12 +956,13 @@ def build(cwd, filename=None, flush=False, resources=False, refresh=False, on_pr
 
     (
         all_post_ids_sorted_desc, posts_cache,
+        buildable_post_ids_sorted_desc, buildable_posts_sorted_desc,
         published_post_ids_sorted_desc, published_posts_sorted_desc,
         special_page_posts, special_page_posts_by_name, not_found_post,
     ) = _load_content(content_dir, config)
 
-    _check_no_invalid_posts(published_posts_sorted_desc, special_page_posts, not_found_post)
-    warnings.extend(_orphan_comment_warnings(content_dir, set(published_post_ids_sorted_desc)))
+    _check_no_invalid_posts(buildable_posts_sorted_desc, special_page_posts, not_found_post)
+    warnings.extend(_orphan_comment_warnings(content_dir, set(buildable_post_ids_sorted_desc)))
 
     build_datetime = _datetime.now()
     build_date = build_datetime.date()
@@ -993,10 +1014,12 @@ def build(cwd, filename=None, flush=False, resources=False, refresh=False, on_pr
         # Anything already in post_ids_to_build is getting a real (image-processing)
         # rebuild this run regardless -- refresh only needs to cover the rest, reusing
         # whatever's already resized in dist/ from an earlier build. Iterate
-        # published_post_ids_sorted_desc, not all_post_ids_sorted_desc -- the latter
+        # buildable_post_ids_sorted_desc, not all_post_ids_sorted_desc -- the latter
         # also contains ids that only exist because of an orphan comment file (no
-        # matching {id}.md, so no posts_cache entry to render).
-        refresh_ids = [pid for pid in published_post_ids_sorted_desc if pid not in post_ids_to_build]
+        # matching {id}.md, so no posts_cache entry to render). Using buildable
+        # rather than published here matters: a draft still needs refreshing like
+        # any other real post, even though it's excluded from published listings.
+        refresh_ids = [pid for pid in buildable_post_ids_sorted_desc if pid not in post_ids_to_build]
         _refresh_posts(
             refresh_ids, posts_cache, published_post_ids_sorted_desc,
             dist_dir, config, template, values, pages_dynamic_updates, warnings, _log,
