@@ -411,7 +411,12 @@ def _load_special_page_post(content_dir, name, site_url=""):
     md_text = (content_dir / f"{name}.md").read_text()
     images = _special_page_image_filenames(content_dir, name)
     comments = _load_comments(content_dir, _special_page_comment_filenames(content_dir, name), site_url)
-    return parse_post(md_text, name, images, site_url, comments=comments)
+    post = parse_post(md_text, name, images, site_url, comments=comments)
+    # draft only applies to regular posts -- parse_post doesn't know the
+    # difference, so force it off here rather than leave a stray `draft: true`
+    # in a special page's frontmatter silently doing something.
+    post.is_draft = False
+    return post
 
 
 def _build_special_page(name, content_dir, dist_dir, config, template, values, warn, output_filename=None, skip_images=False):

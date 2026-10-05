@@ -3239,6 +3239,20 @@ class TestDraftPosts:
         build(p)
         assert 'name="robots"' not in (p / "dist" / "1.html").read_text()
 
+    def test_draft_on_special_page_has_no_effect_on_pagefind(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD}, config=_ABOUT_CONFIG)
+        md = "---\ndate: 2026-05-24\ntitle: About\ndraft: true\n---\n\nAbout content\n"
+        (p / "content" / "about.md").write_text(md)
+        build(p)
+        assert "data-pagefind-ignore" not in (p / "dist" / "about.html").read_text()
+
+    def test_draft_on_special_page_has_no_effect_on_robots_tag(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD}, config=_ABOUT_CONFIG)
+        md = "---\ndate: 2026-05-24\ntitle: About\ndraft: true\n---\n\nAbout content\n"
+        (p / "content" / "about.md").write_text(md)
+        build(p)
+        assert 'name="robots"' not in (p / "dist" / "about.html").read_text()
+
 
 # ---------------------------------------------------------------------------
 # Warnings
