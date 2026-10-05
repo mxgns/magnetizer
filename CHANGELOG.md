@@ -5,6 +5,10 @@
 
 ## Released changes
 
+### 5/10/26
+
+- Reintroduced draft posts (draft: true), now excluded everywhere
+
 ### 4/10/26
 
 - Archive page now ends with a "Browse all posts by page" index-page link list

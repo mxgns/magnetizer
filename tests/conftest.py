@@ -62,6 +62,7 @@ def make_post(
     excerpt_inline_image_filenames=frozenset(),
     comments=None,
     is_noindex: bool = False,
+    is_draft: bool = False,
 ):
     image_objects = [
         img if isinstance(img, Image) else Image(filename=img, alt="")
@@ -90,6 +91,7 @@ def make_post(
         excerpt_inline_image_filenames=frozenset(excerpt_inline_image_filenames),
         comments=comments or [],
         is_noindex=is_noindex,
+        is_draft=is_draft,
     )
 
 

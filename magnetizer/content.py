@@ -19,7 +19,7 @@ def special_page_image_pattern(name):
 def special_page_comment_pattern(name):
     return re.compile(rf'^{re.escape(name)}-comment-(\d{{2}})\.md$')
 
-_ALLOWED_FRONTMATTER_KEYS = frozenset({'date', 'title', 'name', 'images', 'favourite', 'category', 'ai_assisted', 'noindex', 'description'})
+_ALLOWED_FRONTMATTER_KEYS = frozenset({'date', 'title', 'name', 'images', 'favourite', 'category', 'ai_assisted', 'noindex', 'draft', 'description'})
 _MARKDOWN_EXTENSIONS = ['pymdownx.mark', 'smarty', 'tables', 'footnotes', 'magnetizer.containers']
 _COMMENT_ALLOWED_FRONTMATTER_KEYS = frozenset({'date', 'author'})
 _COMMENT_MARKDOWN_EXTENSIONS = ['pymdownx.mark', 'smarty']
@@ -76,6 +76,7 @@ class Post:
     is_favourite: bool = False
     is_ai_assisted: bool = False
     is_noindex: bool = False
+    is_draft: bool = False
     category: str | None = None
     meta_description: str | None = None
     char_count: int = 0
@@ -358,6 +359,8 @@ def parse_post(md_text, post_id, image_filenames, site_url="", comments=None):
     is_ai_assisted = isinstance(ai_assisted_raw, str) and ai_assisted_raw.lower() == 'true'
     noindex_raw = fm.get('noindex', 'false')
     is_noindex = isinstance(noindex_raw, str) and noindex_raw.lower() == 'true'
+    draft_raw = fm.get('draft', 'false')
+    is_draft = isinstance(draft_raw, str) and draft_raw.lower() == 'true'
     category_raw = fm.get('category', '')
     category = (category_raw.lower().strip() if isinstance(category_raw, str) else '') or None
     description = fm.get('description') or None
@@ -422,6 +425,7 @@ def parse_post(md_text, post_id, image_filenames, site_url="", comments=None):
         is_favourite=is_favourite,
         is_ai_assisted=is_ai_assisted,
         is_noindex=is_noindex,
+        is_draft=is_draft,
         category=category,
         meta_description=meta_description,
         char_count=char_count,

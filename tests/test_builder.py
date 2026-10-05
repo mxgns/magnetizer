@@ -3123,6 +3123,124 @@ class TestNoindexPosts:
 
 
 # ---------------------------------------------------------------------------
+# Draft posts
+# ---------------------------------------------------------------------------
+
+_DRAFT_MD = "---\ndate: 2026-05-24\ntitle: Draft Post\ndraft: true\n---\n\nDraft content\n"
+
+
+class TestDraftPosts:
+
+    def test_draft_post_html_is_still_built(self, tmp_path):
+        p = make_project(tmp_path, posts={1: _DRAFT_MD})
+        build(p)
+        assert (p / "dist" / "1.html").exists()
+
+    def test_draft_post_excluded_from_index_page(self, tmp_path):
+        p = make_project(tmp_path, posts={1: _DRAFT_MD, 2: MINIMAL_MD})
+        build(p)
+        assert "Draft content" not in (p / "dist" / "index.html").read_text()
+
+    def test_draft_post_excluded_from_category_page(self, tmp_path):
+        md = "---\ndate: 2026-05-24\ntitle: Draft Post\ndraft: true\ncategory: photography\n---\n\nDraft content\n"
+        p = make_project(tmp_path, posts={1: md}, config=_CATEGORIES_CONFIG)
+        build(p)
+        assert not (p / "dist" / "photography.html").exists()
+
+    def test_draft_post_excluded_from_notes_page(self, tmp_path):
+        draft_note = "---\ndate: 2026-05-24\ndraft: true\n---\n\nA draft note.\n"
+        p = make_project(tmp_path, posts={1: draft_note, 2: "---\ndate: 2026-05-24\n---\n\nA real note.\n"})
+        build(p)
+        assert "A draft note" not in (p / "dist" / "notes.html").read_text()
+
+    def test_draft_post_excluded_from_gallery(self, tmp_path):
+        p = make_project(tmp_path, posts={1: _DRAFT_MD})
+        make_jpg(p / "content" / "1-image-01.jpg")
+        build(p)
+        assert not (p / "dist" / "gallery.html").exists()
+
+    def test_draft_post_excluded_from_feed(self, tmp_path):
+        p = make_project(tmp_path, posts={1: _DRAFT_MD, 2: MINIMAL_MD})
+        build(p)
+        assert "Draft content" not in (p / "dist" / "feed.xml").read_text()
+
+    def test_draft_post_excluded_from_archive(self, tmp_path):
+        p = make_project(tmp_path, posts={1: _DRAFT_MD, 2: MINIMAL_MD})
+        build(p)
+        assert "Draft Post" not in (p / "dist" / "archive.html").read_text()
+
+    def test_draft_post_excluded_from_sitemap(self, tmp_path):
+        p = make_project(tmp_path, posts={1: _DRAFT_MD, 2: MINIMAL_MD})
+        build(p)
+        assert "1.html" not in (p / "dist" / "sitemap.xml").read_text()
+
+    def test_draft_post_excluded_from_posts_json(self, tmp_path):
+        p = make_project(tmp_path, posts={1: _DRAFT_MD, 2: MINIMAL_MD})
+        build(p)
+        data = json.loads((p / "dist" / "posts.json").read_text())
+        assert "1" not in data
+
+    def test_draft_post_excluded_from_post_count(self, tmp_path):
+        p = make_project(tmp_path, posts={
+            1: _DRAFT_MD,
+            2: "---\ndate: 2026-05-24\n---\n\nWe have {{ post_count }} posts.\n",
+        })
+        build(p)
+        html = (p / "dist" / "2.html").read_text()
+        assert '<span class="post-count">1</span>' in html
+
+    def test_draft_post_has_robots_meta_tag(self, tmp_path):
+        p = make_project(tmp_path, posts={1: _DRAFT_MD})
+        build(p)
+        assert '<meta name="robots" content="noindex">' in (p / "dist" / "1.html").read_text()
+
+    def test_draft_post_excluded_from_pagefind(self, tmp_path):
+        p = make_project(tmp_path, posts={1: _DRAFT_MD})
+        build(p)
+        assert "<main data-pagefind-ignore>" in (p / "dist" / "1.html").read_text()
+
+    def test_draft_post_has_no_prev_next_nav(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD, 2: _DRAFT_MD, 3: MINIMAL_MD})
+        build(p)
+        html = (p / "dist" / "2.html").read_text()
+        assert "Newer post" not in html
+        assert "Older post" not in html
+
+    def test_published_neighbors_skip_over_adjacent_draft(self, tmp_path):
+        p = make_project(tmp_path, posts={10: MINIMAL_MD, 11: _DRAFT_MD, 12: MINIMAL_MD})
+        build(p)
+        # 10's "newer" neighbour should be 12, skipping over draft 11 entirely.
+        assert 'href="12.html"' in (p / "dist" / "10.html").read_text()
+        # 12's "older" neighbour should be 10, for the same reason.
+        assert 'href="10.html"' in (p / "dist" / "12.html").read_text()
+
+    def test_draft_post_still_errors_when_empty(self, tmp_path):
+        md = "---\ndate: 2026-05-24\ndraft: true\n---\n"
+        p = make_project(tmp_path, posts={1: md})
+        with pytest.raises(SystemExit):
+            build(p)
+
+    def test_refresh_still_rewrites_draft_page_with_no_content_change(self, tmp_path):
+        p = make_project(tmp_path, posts={1: _DRAFT_MD})
+        build(p)
+        outcome = build(p, refresh=True)
+        touched = {entry[1] for entry in outcome["log"]}
+        assert "1.html" in touched
+
+    def test_non_draft_post_not_excluded_from_index_page(self, tmp_path):
+        md = "---\ndate: 2026-05-24\ntitle: Published\ndraft: false\n---\n\nPublished content\n"
+        p = make_project(tmp_path, posts={1: md})
+        build(p)
+        assert "Published content" in (p / "dist" / "index.html").read_text()
+
+    def test_non_draft_post_has_no_robots_meta_tag(self, tmp_path):
+        md = "---\ndate: 2026-05-24\ntitle: Published\ndraft: false\n---\n\nPublished content\n"
+        p = make_project(tmp_path, posts={1: md})
+        build(p)
+        assert 'name="robots"' not in (p / "dist" / "1.html").read_text()
+
+
+# ---------------------------------------------------------------------------
 # Warnings
 # ---------------------------------------------------------------------------
 

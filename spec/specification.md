@@ -277,6 +277,7 @@ Examples:
       002   2.html    [2 imgs]   ⚠ Title and name both set
       003   3.html    [1 img]
       026   26.html   [7 imgs]
+      027   27.html   [draft]
 
     30 created · 0 updated · 0 deleted
     ⚠ 1 warning: 2.html
@@ -287,7 +288,7 @@ Examples:
     DONE with warnings
     ```
 
-    The final status line is `DONE` (green) on success, `DONE with warnings` (yellow, `DONE` in colour) when warnings were raised, or `ERROR` (red) if the build failed. Warnings are collected and shown in-line — per post, or on their own `{page}.html   ⚠ {message}` line for a special page or a sitewide (non-page) issue — and never interrupt the build. Deleted posts are counted in the totals line but never appear in the pages summary. Category pages are summarised as `categories(N)` — the total number of category pages built across every category, not listed individually — the same way paginated index pages are summarised as `index(+N)`. Gallery pages are summarised as `gallery(+N)` in the pages-updated line, the same way paginated index pages are summarised as `index(+N)`. The `Generating {site_name} → dist/` header line is only printed in verbose mode.
+    The final status line is `DONE` (green) on success, `DONE with warnings` (yellow, `DONE` in colour) when warnings were raised, or `ERROR` (red) if the build failed. Warnings are collected and shown in-line — per post, or on their own `{page}.html   ⚠ {message}` line for a special page or a sitewide (non-page) issue — and never interrupt the build. Deleted posts are counted in the totals line but never appear in the pages summary. Category pages are summarised as `categories(N)` — the total number of category pages built across every category, not listed individually — the same way paginated index pages are summarised as `index(+N)`. Gallery pages are summarised as `gallery(+N)` in the pages-updated line, the same way paginated index pages are summarised as `index(+N)`. The `Generating {site_name} → dist/` header line is only printed in verbose mode. A draft post's line gets a `[draft]` label in verbose output, the same way an image count gets a `[N imgs]` label (see [Draft posts](#draft-posts)).
 
 ### Configuration
 
@@ -384,7 +385,7 @@ Magnetizer does not enforce any structure beyond the presence of the placeholder
   - `post_heading - site_name` (individual post page — `post_heading` follows the title/name/date-fallback priority order described in [Post types](#post-types))
 - `<meta name="description">` appears on the index, archive, search, notes, gallery and category pages using that page's `description` from `metadata.yaml`, if set (see [Page metadata overrides](#page-metadata-overrides)) — for a page family that paginates (index, notes, gallery, category), page 1 uses it verbatim and page 2 and beyond append ` (Page N)`, so paginated pages don't all carry an identical description. On an individual post or special page it appears whenever a description is available — see [Meta descriptions](#meta-descriptions) — independently of `metadata.yaml`, which only ever applies to pages with no `content/` file of their own.
 - `<link rel="canonical">` appears on every generated page, derived from `site_url` in config. For `index.html` this is the root URL (e.g. `https://example.github.io/`); for all other pages it is `site_url` + `/` + filename (e.g. `https://example.github.io/1.html`).
-- `<meta name="robots" content="noindex">` appears only for posts or special pages with `noindex: true` in frontmatter — see [Noindex posts](#noindex-posts).
+- `<meta name="robots" content="noindex">` appears for posts or special pages with `noindex: true` in frontmatter — see [Noindex posts](#noindex-posts) — and for posts with `draft: true` — see [Draft posts](#draft-posts).
 
 ### Navigation
 
@@ -603,6 +604,7 @@ This is the single overview of every frontmatter key a post or special page can 
 | `favourite` | Posts | `true` / `false` | `false` | [Favourite posts](#favourite-posts) |
 | `ai_assisted` | Posts, special pages | `true` / `false` | `false` | [AI-assisted disclosure](#ai-assisted-disclosure) |
 | `noindex` | Posts, special pages | `true` / `false` | `false` | [Noindex posts](#noindex-posts) |
+| `draft` | Posts | `true` / `false` | `false` | [Draft posts](#draft-posts) |
 | `description` | Posts, special pages | Plain text | Not set | [Meta descriptions](#meta-descriptions) |
 
 ### Favourite posts
@@ -678,6 +680,29 @@ A noindex post is excluded from `sitemap.xml`, and its own page gets a `<meta na
 `noindex` works the same way on special pages (see [Special pages](#special-pages)) as on regular posts.
 
 If `noindex` is absent or set to `false`, the post is indexed normally.
+
+### Draft posts
+
+A post can be marked as a draft by setting `draft: true` in its frontmatter:
+
+```yaml
+---
+date: 2026-05-21
+draft: true
+---
+```
+
+Unlike `noindex` (which only affects search engines, and leaves a post fully visible everywhere else), a draft post is excluded from index pages, category pages, notes pages, the Atom feed, the gallery, the archive, `sitemap.xml`, `posts.json`, next/previous post navigation, and the dynamic `{{ post_count }}`, `{{ word_count }}`, `{{ image_count }}`, and `{{ ai_post_list }}` values. It also gets `data-pagefind-ignore` and a `<meta name="robots" content="noindex">` tag, the same as a `noindex` post — a draft doesn't need its own separate `noindex: true` to get that treatment.
+
+A draft post's own page is still generated on every build, at its normal URL (`{post-id}.html`), and still gets rebuilt when its content changes, re-rendered on `--refresh`, and checked by the invalid-post error (no title, no images, no content) — it's a completely normal post in every respect except for being excluded from the listing surfaces above. It is reachable only by navigating directly to its URL; nothing generated links to it. Its own page has no next/previous post navigation (there's nothing in the published sequence to link to or from).
+
+A non-draft post's next/previous navigation correctly skips over any adjacent draft, the same way it already skips over a deleted post.
+
+In verbose build output (`build.py --verbose`), a draft post's line gets a `[draft]` label, the same way an image count gets a `[N imgs]` label — so it's always visible which posts in a build were drafts.
+
+`draft` is only meaningful on regular posts. Special pages aren't part of any of the listing surfaces it affects, so setting it there has no effect.
+
+If `draft` is absent or set to `false`, the post is treated as published, exactly as today.
 
 ### Meta descriptions
 
@@ -1247,12 +1272,14 @@ The generated page is complete and usable without JavaScript — it is ordinary 
 | SVG images | No |
 | Images belonging to a special page (e.g. `about-image-01.jpg`) | No |
 | Images on a post with `noindex: true` | Yes |
+| Images on a post with `draft: true` | No |
 
 - Only raster images (`.jpg`, `.jpeg`, `.png`) appear, because only raster images get a thumbnail — see [Image processing](#image-processing). An SVG is a diagram or an icon rather than a photo, and is never resized, so it has no thumbnail to show.
 - The distinction between top-level and inline images, which matters for [Post types](#post-types) and the top-of-post image strip, does not apply here: a photo is a photo wherever it appears in the post. A Note with inline images therefore contributes those images to the gallery, even though Notes are excluded from the archive.
 - Special page images (including the [404 page](#404-page)'s, which behaves like a special page) are excluded, even though they're resized and thumbnailed like any other raster image — see [Image processing](#image-processing).
 - `images_per_post` (see [Configuration](#configuration)) never limits the gallery — it governs multi-post pages only. Every qualifying photo appears exactly once.
 - Images on posts with `noindex: true` are included, consistent with those posts appearing on index pages, category pages, the archive, and the feed — see [Noindex posts](#noindex-posts).
+- Images on posts with `draft: true` are excluded, consistent with those posts being excluded everywhere except their own URL — see [Draft posts](#draft-posts).
 
 #### Order
 
@@ -1487,7 +1514,7 @@ Magnetizer generates an XML sitemap at `dist/sitemap.xml` and a `dist/robots.txt
 
 | Page | Condition |
 | --- | --- |
-| `{post-id}.html` | All published posts, in reverse chronological order, excluding posts with `noindex: true` |
+| `{post-id}.html` | All published posts, in reverse chronological order, excluding posts with `noindex: true` or `draft: true` |
 | `index.html`, `index-2.html`, … | All index pages |
 | `{slug}.html`, `{slug}-2.html`, … | All pages for each category that has at least one matching post |
 | `notes.html`, `notes-2.html`, … | All notes pages, if at least one Note exists |
@@ -1527,7 +1554,7 @@ Sitemap: https://example.github.io/sitemap.xml
 
 ## Posts index
 
-Magnetizer generates `dist/posts.json` on every full build (incremental or `--flush`). Single-file preview builds (`build.py 1.md`) do not update it. It's a lookup table from a page's `page_id` (the value templates get via `MAGNETIZER_PAGE_ID` — see [Templates](#templates)) to a human-readable representation, so an external consumer — e.g. the Magnalytics analytics UI, which only ever sees raw `page_id` values — can show what a given page actually is without fetching the page itself.
+Magnetizer generates `dist/posts.json` on every full build (incremental or `--flush`). Single-file preview builds (`build.py 1.md`) do not update it. It's a lookup table from a page's `page_id` (the value templates get via `MAGNETIZER_PAGE_ID` — see [Templates](#templates)) to a human-readable representation, so an external consumer — e.g. the Magnalytics analytics UI, which only ever sees raw `page_id` values — can show what a given page actually is without fetching the page itself. Draft posts (see [Draft posts](#draft-posts)) are not included.
 
 ### Format
 
@@ -1550,7 +1577,7 @@ An object keyed by `page_id`, rather than an array, so a consumer can look up a 
 
 | Page | `page_id` | Condition |
 | --- | --- | --- |
-| Posts | `{post-id}` | All published posts, including those with `noindex: true` |
+| Posts | `{post-id}` | All published posts, including those with `noindex: true`, excluding those with `draft: true` |
 | Index pages | `index`, `index-2`, … | All index pages |
 | Category pages | `{slug}`, `{slug}-2`, … | Each category page (see [Sitemap](#sitemap) for the pagination rule) |
 | Notes pages | `notes`, `notes-2`, … | If at least one Note exists |
@@ -1559,7 +1586,7 @@ An object keyed by `page_id`, rather than an array, so a consumer can look up a 
 | Special pages | `{name}` | For each name in `special_pages`, including those with `noindex: true` |
 | 404 page | derived from `404-page-output-filename` | If configured |
 
-This deliberately diverges from `sitemap.xml`, which excludes `noindex` pages and the 404 page — those exclusions exist for search-engine indexing reasons that don't apply here. `posts.json` exists to identify *any* page that can receive real traffic, so it covers every `page_id` a template can ever embed via `MAGNETIZER_PAGE_ID`, with no exceptions.
+This deliberately diverges from `sitemap.xml`, which excludes `noindex` pages and the 404 page — those exclusions exist for search-engine indexing reasons that don't apply here. `posts.json` exists to identify *any* page that can receive real traffic, so it covers every `page_id` a template can ever embed via `MAGNETIZER_PAGE_ID`, with one exception: draft posts. A `noindex` page is still meant to be found and visited, just not by a search engine; a draft post is deliberately not meant to be found or shared at all, so even if its URL leaks into analytics some other way, `posts.json` doesn't dignify it with a label.
 
 <a id="posts-index-titles"></a>
 ### Titles
@@ -1602,7 +1629,7 @@ Notes:
 
 After every build — full or single-file preview — Magnetizer runs `npx --yes pagefind@1.5.2 --site dist/` (a pinned version, so a bare `npx pagefind` can't silently pick up a newer release and change the generated index's format/behaviour between builds), writing `dist/pagefind/`. This requires Node and, on first run on a machine, network access to resolve the `pagefind` npm package. A nonzero exit, a timeout, or a missing `npx` binary aborts the build with a red `ERROR`, the same as a failed `--push`; there is no flag to skip or downgrade this to a warning.
 
-To avoid indexing the same article twice — once on its own canonical page, once again embedded in an index/category/notes/archive/gallery listing — Magnetizer marks the `<main>` of every multi-post listing page (`render_index_page_content`, `render_category_page_content`, `render_notes_page_content`, `render_archive_page_content`, `render_gallery_page_content`) with `data-pagefind-ignore`. `render_post_page_content`'s `<main>` (an individual post's, special page's, or the 404 page's own page — all three share this render path) is left unmarked, so Pagefind indexes each one exactly once, at its canonical URL — unless the post is `noindex: true`, in which case `render_post_page_content` marks its own `<main>` too, consistent with that page already being excluded from `sitemap.xml`: a page search engines shouldn't index shouldn't turn up in the site's own search either.
+To avoid indexing the same article twice — once on its own canonical page, once again embedded in an index/category/notes/archive/gallery listing — Magnetizer marks the `<main>` of every multi-post listing page (`render_index_page_content`, `render_category_page_content`, `render_notes_page_content`, `render_archive_page_content`, `render_gallery_page_content`) with `data-pagefind-ignore`. `render_post_page_content`'s `<main>` (an individual post's, special page's, or the 404 page's own page — all three share this render path) is left unmarked, so Pagefind indexes each one exactly once, at its canonical URL — unless the post is `noindex: true` or `draft: true`, in which case `render_post_page_content` marks its own `<main>` too, consistent with that page already being excluded from `sitemap.xml`: a page search engines shouldn't index shouldn't turn up in the site's own search either.
 
 On that canonical page, `render_article`'s heading and date carry structured metadata so Pagefind's result title/date don't have to be scraped from the `<title>` tag (formatted as `{post_title} - {site_name}`, see [Metadata](#metadata)) or guessed from body text:
 
