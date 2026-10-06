@@ -9,6 +9,7 @@
 
 - Added ingest.py: turns an inbox/ drop-folder into a numbered post
 - Added pull.py: fast-forwards the project's own source from origin main
+- build.py --push now requires --force, to guard against CI being bypassed
 
 ### 5/10/26
 
