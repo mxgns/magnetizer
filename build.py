@@ -270,7 +270,18 @@ def main():
     parser.add_argument(
         "--push",
         action="store_true",
-        help="Push the contents of ./dist to GitHub Pages after a successful build.",
+        help=(
+            "Push the contents of ./dist to GitHub Pages after a successful build. "
+            "Refuses with an error and publishes nothing unless --force is also given."
+        ),
+    )
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help=(
+            "Only meaningful together with --push: confirms a direct, CI-bypassing "
+            "publish is intentional. An error on its own, without --push."
+        ),
     )
     parser.add_argument(
         "--verbose",
@@ -285,6 +296,22 @@ def main():
 
     if args.refresh and args.push:
         print("Error: --refresh cannot be used together with --push.", file=sys.stderr)
+        sys.exit(1)
+
+    if args.force and not args.push:
+        print("Error: --force has no effect without --push.", file=sys.stderr)
+        sys.exit(1)
+
+    if args.push and not args.force:
+        print(
+            "Error: build.py --push publishes dist/ straight to GitHub Pages, bypassing CI.\n"
+            "If CI is the normal publishing path for this project, it always rebuilds dist/\n"
+            "from this project's own repo -- if this content isn't pushed there too, the live\n"
+            "site will look right until CI's next run quietly reverts it. Run publish.py first\n"
+            "to push this same content as source, then pass --push --force to publish dist/\n"
+            "anyway.",
+            file=sys.stderr,
+        )
         sys.exit(1)
 
     config = load_config(Path.cwd() / "config.yaml")
@@ -349,8 +376,14 @@ def main():
     print("DONE.")
 
     if args.push:
+        # Reaching here means --force was also given -- the validation above
+        # already rejected --push without it.
         if args.verbose:
             print()
+        print(
+            "Publishing dist/ directly, bypassing CI. Make sure publish.py has already "
+            "pushed this same content as source — otherwise the next CI run will revert it."
+        )
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         print("Pushing to GitHub...", end=" ", flush=True)
         try:

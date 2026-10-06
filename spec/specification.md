@@ -195,7 +195,11 @@ Options:
                 template code, instead of --flush's much slower full rebuild.
                 Cannot be used together with FILENAME or --push.
   --push        Push the contents of ./dist to GitHub Pages after a successful 
-                build.
+                build. Refuses with an error and publishes nothing unless 
+                --force is also given -- see Publishing.
+  --force       Only meaningful together with --push: confirms a direct, 
+                CI-bypassing publish is intentional. An error on its own, 
+                without --push.
   --verbose     Print a detailed log of every file created, updated, or removed
                 during the build.
 
@@ -255,7 +259,7 @@ Examples:
 9. Sync `resources/` to `dist/resources/`:
     - If `--flush` or `--resources`: delete `dist/resources/` and copy all files from `resources/`
     - Otherwise: copy any files from `resources/` that are new or changed since the last build (detected via the manifest), and delete any files from `dist/resources/` that no longer exist in `resources/`
-10. If `--push` and no errors, push to GitHub Pages
+10. If `--push --force` and no errors, push to GitHub Pages. `--push` without `--force` is refused before any of the above runs — see [Publishing](#github-integration) — so this step is unreachable without `--force`.
 11. During the build, print a `.` for each file generated or updated (flushed immediately, all on one line). When the build completes, erase the dots line in normal mode; keep it in verbose mode (followed by a newline).
 12. Print console output and exit. The output format depends on whether `--verbose` is passed:
 
@@ -1647,7 +1651,13 @@ The generated site is published by pushing the contents of `dist/` to a dedicate
 
 `dist/` must be a cloned GitHub Pages repository. Magnetizer assumes this is already set up and does not manage git remotes or initialise repositories.
 
-When `--push` is specified and the build completes without errors, `build.py` will:
+**`--push` alone is refused.** If a CI pipeline is a project's normal publishing path, it always rebuilds `dist/` from the project's own repo — a direct `--push` whose same content was never also pushed there as source will look fine on the live site right up until CI's next run, which rebuilds from source and quietly reverts it. So `--push` without `--force` exits non-zero before any validation or build step runs, publishing nothing, printing:
+
+> `build.py --push` publishes `dist/` straight to GitHub Pages, bypassing CI. If CI is the normal publishing path for this project, it always rebuilds `dist/` from this project's own repo — if this content isn't pushed there too, the live site will look right until CI's next run quietly reverts it. Run `publish.py` first to push this same content as source, then pass `--push --force` to publish `dist/` anyway.
+
+`--force` exists to make a deliberate, CI-bypassing publish explicit rather than assumed — e.g. the documented manual/rollback path for when CI itself is unavailable. `--force` without `--push` is an error (nothing to force). Argument-combination errors ( `FILENAME`/other options, `--refresh`+`--push`) are checked first and take priority over this gate — e.g. `--refresh --push` (even without `--force`) is rejected as a `--refresh`/`--push` conflict, not as a missing `--force`.
+
+When `--push --force` is specified and the build completes without errors, `build.py` prints a one-line reminder (`Publishing dist/ directly, bypassing CI. Make sure publish.py has already pushed this same content as source — otherwise the next CI run will revert it.`), then:
 
 1. Stage all changes in `dist/` with `git add .`
 2. Commit with the message `Build {timestamp}`, e.g. `Build 2026-05-24 14:32:00`

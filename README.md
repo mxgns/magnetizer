@@ -296,11 +296,11 @@ Run `build.py` from your project directory.
 | `build.py --flush` | Delete all output and rebuild everything from scratch |
 | `build.py --resources` | Force-replace all of `dist/resources/` with the current `resources/` |
 | `build.py --refresh` | Re-render every page from the current generator/template code, reusing already-built images |
-| `build.py --push` | Build, then push `dist/` to GitHub Pages |
+| `build.py --push --force` | Build, then push `dist/` to GitHub Pages directly, bypassing CI |
 | `build.py --verbose` | Build and print a detailed post log plus summarised pages/resources sections |
 | `build.py 1.md` | Preview a single post or special page (does not update index pages) |
 
-Resource file changes (CSS, JS) are picked up automatically on the next build — no flag needed. A generator or template code change is different: it isn't tracked as a content change at all, so a plain build won't notice it and will report "No changes." Use `--refresh` to re-render every post, special page, and generated page against the current code — any post genuinely changed since the last build is still fully reprocessed as usual, but everything else reuses its existing images rather than reprocessing them, which is much cheaper than `--flush`'s full rebuild. `--refresh` can't be combined with `FILENAME` or `--push` — publishing straight from a `--refresh`'d build would ship whatever generator code you were iterating on, whether it was actually finished or not; a plain `build.py --push` afterward is the deliberate second step. A `.` is printed for each file generated so you can see progress — in normal mode the dots are erased when the build finishes; in `--verbose` mode they remain. Warnings (missing alt text, missing category, a broken internal link, etc.) are always shown inline next to the affected post, with the whole row coloured yellow in a terminal for visibility, e.g. `037   37.html   ⚠ Missing alt text`. Fatal errors are prefixed with a red `ERROR` label.
+Resource file changes (CSS, JS) are picked up automatically on the next build — no flag needed. A generator or template code change is different: it isn't tracked as a content change at all, so a plain build won't notice it and will report "No changes." Use `--refresh` to re-render every post, special page, and generated page against the current code — any post genuinely changed since the last build is still fully reprocessed as usual, but everything else reuses its existing images rather than reprocessing them, which is much cheaper than `--flush`'s full rebuild. `--refresh` can't be combined with `FILENAME` or `--push` — publishing straight from a `--refresh`'d build would ship whatever generator code you were iterating on, whether it was actually finished or not; a separate `build.py --push --force` afterward is the deliberate second step. A `.` is printed for each file generated so you can see progress — in normal mode the dots are erased when the build finishes; in `--verbose` mode they remain. Warnings (missing alt text, missing category, a broken internal link, etc.) are always shown inline next to the affected post, with the whole row coloured yellow in a terminal for visibility, e.g. `037   37.html   ⚠ Missing alt text`. Fatal errors are prefixed with a red `ERROR` label.
 
 Every full build (not a single-file preview build) also scans the whole of `dist/` for internal links — from Markdown or raw HTML — pointing at a page that no longer exists, warning `Broken internal link: '{href}'` against the page the link is on. It checks the entire site each time, not just pages rebuilt this run, since a link can go stale because the page it pointed to was deleted or renamed elsewhere.
 
@@ -545,9 +545,11 @@ To avoid indexing the same article twice (once on its own page, once again embed
 
 ## Publishing
 
-Set up `dist/` as a clone of your GitHub Pages repository before using `--push`. Magnetizer stages, commits, and pushes all changes automatically.
+Set up `dist/` as a clone of your GitHub Pages repository before using `--push --force`. Magnetizer stages, commits, and pushes all changes automatically.
 
 If the push is rejected because the remote has changes you don't have locally (e.g. a `CNAME` file added by GitHub), run `git pull --rebase origin main` inside `dist/` first.
+
+If a CI pipeline is the normal way this project gets published, `--push` alone refuses and publishes nothing — it always rebuilds `dist/` from the project's own repo, so a direct push whose content was never also pushed there as source will look fine right up until CI's next run quietly reverts it. `--push --force` confirms a direct, CI-bypassing publish is intentional (e.g. the documented manual/rollback path for when CI itself is down) and publishes exactly as plain `--push` always did. Run `publish.py` first so the pushed content is also on record as source — otherwise the next CI run will undo it.
 
 To publish the project's own source (`content/`, `resources/`, etc.) rather than the generated `dist/` output, use `publish.py [MESSAGE]` instead — it builds locally first as a sanity check, then commits and pushes to `origin main`. Prints `Nothing to publish` and exits cleanly if there's nothing to commit.
 
