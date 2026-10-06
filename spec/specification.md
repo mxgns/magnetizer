@@ -28,6 +28,7 @@ The `magnetizer` application directory includes the following:
 new-post.py
 build.py
 publish.py
+pull.py
 restore_mtimes.py
 check_gps.py
 magnetizer/    -- Python modules required by the above

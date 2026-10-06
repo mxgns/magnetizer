@@ -8,6 +8,7 @@
 ### 6/10/26
 
 - Added ingest.py: turns an inbox/ drop-folder into a numbered post
+- Added pull.py: fast-forwards the project's own source from origin main
 
 ### 5/10/26
 
