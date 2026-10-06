@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 import argparse
-import shutil
 import sys
 import tempfile
 from datetime import date
@@ -8,7 +7,15 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
 from magnetizer.config import load_config
-from magnetizer.inbox import build_post_markdown, is_draft_filename, output_image_filename, process_image, scan_inbox
+from magnetizer.inbox import (
+    build_post_markdown,
+    cleanup_inbox_sources,
+    commit_staged_files,
+    is_draft_filename,
+    output_image_filename,
+    process_image,
+    scan_inbox,
+)
 from magnetizer.post import get_next_post_id
 from magnetizer.validate import validate_content
 
@@ -45,7 +52,7 @@ def main():
 
     post_id = get_next_post_id(content_dir)
     is_draft = is_draft_filename(md_file)
-    today = date.today().isoformat()
+    skeleton_today = date.today().isoformat()
 
     with tempfile.TemporaryDirectory() as staging:
         staging_dir = Path(staging)
@@ -54,8 +61,8 @@ def main():
             dest = staging_dir / output_image_filename(post_id, i, src)
             process_image(src, dest, args.max_edge, args.quality)
 
-        markdown = build_post_markdown(md_file, today, is_draft, len(images))
-        (staging_dir / f"{post_id}.md").write_text(markdown)
+        markdown = build_post_markdown(md_file, skeleton_today, is_draft, len(images))
+        (staging_dir / f"{post_id}.md").write_text(markdown, encoding='utf-8')
 
         with tempfile.TemporaryDirectory() as merged:
             merged_dir = Path(merged)
@@ -72,13 +79,9 @@ def main():
             print(f"Would create post {post_id}.")
             return
 
-        for f in list(staging_dir.iterdir()):
-            shutil.move(str(f), str(content_dir / f.name))
+        commit_staged_files(staging_dir, content_dir)
 
-    if md_file is not None:
-        md_file.unlink()
-    for img in images:
-        img.unlink()
+    cleanup_inbox_sources(md_file, images)
 
     print(f"Post {post_id} created.")
 

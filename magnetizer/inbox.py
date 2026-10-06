@@ -1,8 +1,10 @@
 import re
 import shutil
 import sys
+from datetime import datetime
 from pathlib import Path
 from typing import NoReturn
+from zoneinfo import ZoneInfo
 
 import pillow_heif
 from PIL import Image
@@ -23,6 +25,15 @@ _NATURAL_KEY_RE = re.compile(r'(\d+)')
 def _error(msg) -> NoReturn:
     print(f"\033[31mERROR\033[0m: {msg}", file=sys.stderr)
     sys.exit(1)
+
+
+def today_in_london(now: datetime | None = None) -> str:
+    """Today's date in Europe/London -- used for a supplied .md's missing
+    date, so ingest.py gives the same answer regardless of the system/CI
+    runner's own local timezone."""
+    if now is None:
+        return datetime.now(ZoneInfo('Europe/London')).date().isoformat()
+    return now.astimezone(ZoneInfo('Europe/London')).date().isoformat()
 
 
 def natural_key(name: str):
@@ -86,18 +97,21 @@ def is_draft_filename(md_file: Path | None) -> bool:
     return md_file is not None and md_file.name.startswith('_')
 
 
-def build_post_markdown(md_file: Path | None, today: str, is_draft: bool, image_count: int) -> str:
+def build_post_markdown(md_file: Path | None, skeleton_today: str, is_draft: bool, image_count: int) -> str:
     """Build the post's markdown. If a .md was supplied its body and existing
-    frontmatter are kept, with date/draft/images/category normalised in;
-    otherwise a fresh skeleton is generated."""
+    frontmatter are kept, with date/draft/images/category normalised in --
+    its missing-date default uses Europe/London (today_in_london()),
+    independent of the system/CI runner's own local timezone. Otherwise a
+    fresh skeleton is generated, dated skeleton_today (matching
+    new-post.py's own date.today())."""
     if md_file is None:
-        return build_markdown(today, None, image_count)
+        return build_markdown(skeleton_today, None, image_count)
 
-    fm, body = _parse_frontmatter(md_file.read_text())
+    fm, body = _parse_frontmatter(md_file.read_text(encoding='utf-8'))
     order = list(fm.keys())
 
     if 'date' not in fm:
-        fm['date'] = today
+        fm['date'] = today_in_london()
         order.append('date')
 
     if is_draft:
@@ -132,3 +146,30 @@ def build_post_markdown(md_file: Path | None, today: str, is_draft: bool, image_
         lines.append(body)
         lines.append('')
     return '\n'.join(lines)
+
+
+def commit_staged_files(staging_dir: Path, content_dir: Path) -> None:
+    """Move every staged file into content_dir. All-or-nothing: if any move
+    fails partway through, whatever was already moved is rolled back so
+    content_dir ends up exactly as it started."""
+    moved = []
+    try:
+        for f in sorted(staging_dir.iterdir()):
+            dest = content_dir / f.name
+            shutil.move(str(f), str(dest))
+            moved.append(dest)
+    except Exception:
+        for dest in moved:
+            dest.unlink()
+        raise
+
+
+def cleanup_inbox_sources(md_file: Path | None, images: list) -> None:
+    """Delete inbox/'s processed source files. Best-effort: by the time this
+    runs the post is already committed to content/, so one file failing to
+    delete is a warning, not a reason to report the whole run as failed."""
+    for f in ([md_file] if md_file is not None else []) + list(images):
+        try:
+            f.unlink()
+        except OSError as e:
+            print(f"Warning: could not remove processed source '{f.name}' from inbox/: {e}", file=sys.stderr)

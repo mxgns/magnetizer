@@ -3,12 +3,14 @@ from PIL import Image, ImageOps
 
 
 def fix_orientation_and_strip_exif(img):
-    """Bake EXIF orientation into the pixels, then drop the EXIF block (camera
-    model, GPS, timestamps, ...) for privacy. Shared with ingest.py, which
-    needs this same step but a different output shape (one downscaled
-    content-original per image, not a dist-ready resized+thumbnail pair)."""
+    """Bake EXIF orientation into the pixels, then drop EXIF and any ICC
+    colour profile (camera model, GPS, timestamps, ...) for privacy. Shared
+    with ingest.py, which needs this same step but a different output shape
+    (one downscaled content-original per image, not a dist-ready
+    resized+thumbnail pair)."""
     img = ImageOps.exif_transpose(img)
     img.info.pop("exif", None)
+    img.info.pop("icc_profile", None)
     return img
 
 

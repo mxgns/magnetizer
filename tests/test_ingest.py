@@ -12,13 +12,19 @@ Covers all behaviour described in spec/ingest.md:
   - empty inbox no-op
 """
 
+import os
+import shutil
 import subprocess
 import sys
+from datetime import datetime
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 import pillow_heif
 import pytest
 from PIL import Image as PILImage
+
+from magnetizer.inbox import cleanup_inbox_sources, commit_staged_files, today_in_london
 
 pillow_heif.register_heif_opener()
 
@@ -254,6 +260,13 @@ class TestOrientationAndMetadata:
         img = open_image(project_dir / "content" / "1-image-01.jpg")
         assert dict(img.getexif()) == {}
 
+    def test_png_icc_profile_is_stripped(self, project_dir):
+        src = project_dir / "inbox" / "photo.png"
+        PILImage.new("RGB", (100, 80), color=(10, 20, 30)).save(src, icc_profile=b"fake-icc-profile-bytes")
+        run_ingest([], cwd=project_dir)
+        img = open_image(project_dir / "content" / "1-image-01.png")
+        assert "icc_profile" not in img.info
+
 
 # ---------------------------------------------------------------------------
 # Image processing: downscale-only
@@ -306,6 +319,105 @@ class TestNaturalSort:
         assert open_image(content / "1-image-01.jpg").size == (30, 30)
         assert open_image(content / "1-image-02.jpg").size == (20, 20)
         assert open_image(content / "1-image-03.jpg").size == (10, 10)
+
+
+# ---------------------------------------------------------------------------
+# today_in_london() -- the merge-case missing-date default must use
+# Europe/London, not naive system-local time (e.g. a CI runner in UTC)
+# ---------------------------------------------------------------------------
+
+class TestTodayInLondon:
+
+    def test_matches_london_date_for_a_given_instant(self):
+        # 23:30 UTC in June is already past midnight in London (BST, UTC+1)
+        # -- the London date is one day ahead of the UTC date.
+        now = datetime(2026, 6, 15, 23, 30, tzinfo=ZoneInfo("UTC"))
+        assert today_in_london(now) == "2026-06-16"
+
+    def test_uses_london_date_not_utc_date_in_winter_too(self):
+        # In winter (GMT, UTC+0) the two should coincide -- confirms the
+        # function isn't just always adding a day.
+        now = datetime(2026, 1, 15, 23, 30, tzinfo=ZoneInfo("UTC"))
+        assert today_in_london(now) == "2026-01-15"
+
+
+# ---------------------------------------------------------------------------
+# commit_staged_files() -- moving staged files into content/ must be
+# all-or-nothing: a failure partway through must not leave a partial post.
+# ---------------------------------------------------------------------------
+
+class TestCommitStagedFilesAtomicity:
+
+    def _make_staging(self, tmp_path):
+        staging = tmp_path / "staging"
+        staging.mkdir()
+        (staging / "1-image-01.jpg").write_bytes(b"a")
+        (staging / "1-image-02.jpg").write_bytes(b"b")
+        (staging / "1.md").write_text("---\ndate: 2026-01-01\n---\n")
+        content = tmp_path / "content"
+        content.mkdir()
+        return staging, content
+
+    def test_all_files_moved_on_success(self, tmp_path):
+        staging, content = self._make_staging(tmp_path)
+        commit_staged_files(staging, content)
+        assert sorted(f.name for f in content.iterdir()) == ["1-image-01.jpg", "1-image-02.jpg", "1.md"]
+
+    def test_partial_move_failure_rolls_back_content_dir(self, tmp_path, monkeypatch):
+        staging, content = self._make_staging(tmp_path)
+
+        real_move = shutil.move
+        calls = []
+
+        def failing_move(src, dst):
+            calls.append(src)
+            if len(calls) == 2:
+                raise OSError("simulated disk failure")
+            return real_move(src, dst)
+
+        monkeypatch.setattr("magnetizer.inbox.shutil.move", failing_move)
+
+        with pytest.raises(OSError):
+            commit_staged_files(staging, content)
+
+        assert list(content.iterdir()) == []
+
+
+# ---------------------------------------------------------------------------
+# cleanup_inbox_sources() -- best-effort: the post is already committed by
+# this point, so one file failing to delete must not be treated as the whole
+# run failing.
+# ---------------------------------------------------------------------------
+
+class TestCleanupInboxSources:
+
+    def test_all_sources_deleted_on_success(self, tmp_path):
+        md = tmp_path / "post.md"
+        md.write_text("hi")
+        img = tmp_path / "photo.jpg"
+        img.write_bytes(b"a")
+        cleanup_inbox_sources(md, [img])
+        assert not md.exists()
+        assert not img.exists()
+
+    def test_one_failure_does_not_raise_and_still_removes_others(self, tmp_path, monkeypatch, capsys):
+        md = tmp_path / "post.md"
+        md.write_text("hi")
+        img = tmp_path / "photo.jpg"
+        img.write_bytes(b"a")
+
+        real_unlink = Path.unlink
+
+        def failing_unlink(self):
+            if self == img:
+                raise OSError("simulated permission error")
+            return real_unlink(self)
+
+        monkeypatch.setattr(Path, "unlink", failing_unlink)
+
+        cleanup_inbox_sources(md, [img])  # must not raise
+        assert not md.exists()
+        assert "Warning" in capsys.readouterr().err
 
 
 # ---------------------------------------------------------------------------
@@ -503,6 +615,26 @@ class TestCLIInterface:
         result = run_ingest([], cwd=tmp_path)
         assert result.returncode != 0
         assert "content" in (result.stdout + result.stderr).lower()
+
+    def test_non_ascii_post_body_survives_a_non_utf8_locale(self, project_dir):
+        # Path.read_text()/write_text() without an explicit encoding fall back
+        # to the locale-dependent default. Force a non-UTF-8 default (ASCII)
+        # to genuinely reproduce that failure mode, rather than relying on
+        # this sandbox's own default encoding happening to be UTF-8.
+        (project_dir / "inbox" / "post.md").write_bytes(
+            "---\ndate: 2026-02-02\n---\n\nCafé ☕, naïve, 日本語.".encode("utf-8")
+        )
+        env = {**os.environ, "LC_ALL": "C", "LANG": "C", "PYTHONUTF8": "0"}
+        result = subprocess.run(
+            [sys.executable, str(INGEST_SCRIPT)],
+            cwd=str(project_dir),
+            capture_output=True,
+            text=True,
+            env=env,
+        )
+        assert result.returncode == 0, result.stderr
+        text = (project_dir / "content" / "1.md").read_text(encoding="utf-8")
+        assert "Café ☕, naïve, 日本語." in text
 
     def test_custom_inbox_and_content_directories(self, tmp_path):
         (tmp_path / "my-inbox").mkdir()
