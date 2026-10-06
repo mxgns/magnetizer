@@ -551,6 +551,8 @@ If the push is rejected because the remote has changes you don't have locally (e
 
 To publish the project's own source (`content/`, `resources/`, etc.) rather than the generated `dist/` output, use `publish.py [MESSAGE]` instead — it builds locally first as a sanity check, then commits and pushes to `origin main`. Prints `Nothing to publish` and exits cleanly if there's nothing to commit.
 
+`publish.py`'s read counterpart is `pull.py` — run it to catch up the project's own source on changes made elsewhere (chiefly CI's own ingest-and-push of a post dropped in `inbox/` from the iPad). It only ever fast-forwards: `Already up to date.` when there's nothing new, `Pulled N commit(s).` on a clean fast-forward, or a clear error with no changes made if local `main` and `origin/main` have diverged — resolve that manually (e.g. `git rebase origin/main`), the same as any other git conflict.
+
 ## Running in CI
 
 A fresh CI checkout resets every file's mtime, which breaks the sitemap's `<lastmod>` (derived from file mtimes). Run `restore_mtimes.py` on `content/` and `resources/` — from a checkout with full history (`fetch-depth: 0`, not shallow) — before building.
