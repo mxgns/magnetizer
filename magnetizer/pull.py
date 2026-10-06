@@ -17,11 +17,16 @@ def _run_git(cmd, *, cwd):
     except subprocess.CalledProcessError as e:
         msg = (e.stderr or "").strip()
         raise RuntimeError(f"Git command failed: {' '.join(cmd)}\n{msg}") from e
+    except subprocess.TimeoutExpired as e:
+        raise RuntimeError(f"Git command timed out after {_TIMEOUT}s: {' '.join(cmd)}") from e
+    except FileNotFoundError as e:
+        raise RuntimeError(f"git executable not found: {e}") from e
 
 
 def _current_branch(project_dir):
     result = _run_git(["git", "rev-parse", "--abbrev-ref", "HEAD"], cwd=project_dir)
-    return result.stdout.strip()
+    branch = result.stdout.strip()
+    return "detached HEAD" if branch == "HEAD" else branch
 
 
 def _commit_count(cmd, *, cwd):

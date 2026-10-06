@@ -115,7 +115,7 @@ class TestDiverged:
 
         result = run_pull([], cwd=local)
 
-        assert result.returncode != 0
+        assert result.returncode == 1
         assert (local / "content" / "114.md").exists()
         assert not (local / "content" / "113.md").exists()
 
@@ -128,5 +128,5 @@ class TestNotOnMain:
 
         result = run_pull([], cwd=local)
 
-        assert result.returncode != 0
+        assert result.returncode == 1
         assert "feature/x" in result.stderr

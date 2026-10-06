@@ -11,10 +11,10 @@ def main():
     parser = argparse.ArgumentParser(
         prog="pull.py",
         description=(
-            "Fast-forward the current project's own source (content/, etc.) from "
-            "origin main -- e.g. to catch up on a post CI ingested from the iPad. "
-            "Never merges: refuses with an error, making no changes, if local and "
-            "origin have diverged."
+            "Fast-forward the current project's entire source from origin main -- "
+            "e.g. to catch up on a post CI ingested from the iPad, or on template/"
+            "CSS/config changes pushed from elsewhere. Never merges: refuses with "
+            "an error, making no changes, if local and origin have diverged."
         ),
     )
     parser.parse_args()

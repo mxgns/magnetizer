@@ -177,3 +177,33 @@ class TestGitFailure:
         with patch("magnetizer.pull.subprocess.run", side_effect=side_effect):
             with pytest.raises(RuntimeError, match="would be overwritten"):
                 pull(tmp_path)
+
+    def test_timeout_raises_runtime_error(self, tmp_path):
+        """E.g. a slow git fetch over a bad connection."""
+        def side_effect(cmd, **kwargs):
+            if cmd == _BRANCH_CMD:
+                return MagicMock(returncode=0, stdout="main\n")
+            if cmd == _FETCH_CMD:
+                raise subprocess.TimeoutExpired(cmd=cmd, timeout=60)
+            return MagicMock(returncode=0)
+        with patch("magnetizer.pull.subprocess.run", side_effect=side_effect):
+            with pytest.raises(RuntimeError, match="timed out"):
+                pull(tmp_path)
+
+    def test_missing_git_binary_raises_runtime_error(self, tmp_path):
+        with patch("magnetizer.pull.subprocess.run",
+                   side_effect=FileNotFoundError("git not found")):
+            with pytest.raises(RuntimeError, match="git"):
+                pull(tmp_path)
+
+
+# ---------------------------------------------------------------------------
+# Detached HEAD
+# ---------------------------------------------------------------------------
+
+class TestDetachedHead:
+
+    def test_raises_with_clear_message_not_literal_head(self, tmp_path):
+        with patch("magnetizer.pull.subprocess.run", side_effect=make_mock(current_branch="HEAD")):
+            with pytest.raises(RuntimeError, match="detached"):
+                pull(tmp_path)
