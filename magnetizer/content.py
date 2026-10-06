@@ -170,11 +170,18 @@ def _build_meta_description(description, body_html, images):
 
 
 def _parse_frontmatter(text):
-    parts = text.split('---')
-    if len(parts) < 3:
+    # A frontmatter block is only recognised when its opening '---' is the
+    # very first line -- otherwise a '---' horizontal rule anywhere in a
+    # frontmatter-less body (two of them, especially) would be misread as a
+    # delimiter pair and silently swallow real body text.
+    all_lines = text.splitlines()
+    if not all_lines or all_lines[0].strip() != '---':
+        return {}, text.strip()
+    closing = next((i for i in range(1, len(all_lines)) if all_lines[i].strip() == '---'), None)
+    if closing is None:
         return {}, text.strip()
     fm = {}
-    lines = parts[1].splitlines()
+    lines = all_lines[1:closing]
     i = 0
     while i < len(lines):
         line = lines[i]
@@ -196,7 +203,7 @@ def _parse_frontmatter(text):
             else:
                 fm[key] = value
         i += 1
-    body = '---'.join(parts[2:]).strip()
+    body = '\n'.join(all_lines[closing + 1:]).strip()
     return fm, body
 
 

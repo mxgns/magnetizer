@@ -1,7 +1,7 @@
 """Tests for magnetizer/content.py — Post dataclass and parse_post()"""
 
 import pytest
-from magnetizer.content import Post, parse_post, Comment, parse_comment, special_page_comment_pattern, thumbnail_filename
+from magnetizer.content import Post, parse_post, Comment, parse_comment, special_page_comment_pattern, thumbnail_filename, _parse_frontmatter
 
 
 # ---------------------------------------------------------------------------
@@ -68,6 +68,60 @@ class TestFrontmatterParsing:
         md = "---\ndate: 2026-05-24\ntitle:   \n---\nSome body text\n"
         post = parse_post(md, 1, [])
         assert post.title is None
+
+
+# ---------------------------------------------------------------------------
+# _parse_frontmatter — body text must survive even when it contains '---'
+# horizontal rules and there is no real frontmatter block (e.g. a hand-typed
+# post from ingest.py with no frontmatter at all)
+# ---------------------------------------------------------------------------
+
+class TestParseFrontmatterNoRealFrontmatter:
+
+    def test_body_with_no_dashes_preserved(self):
+        fm, body = _parse_frontmatter("Just some text.")
+        assert fm == {}
+        assert body == "Just some text."
+
+    def test_body_with_one_horizontal_rule_preserved(self):
+        text = "Intro.\n\n---\n\nMore text after a rule."
+        fm, body = _parse_frontmatter(text)
+        assert fm == {}
+        assert body == text.strip()
+
+    def test_body_with_two_horizontal_rules_not_misread_as_frontmatter(self):
+        # Two '---' dividers with no opening frontmatter at all -- naive
+        # text.split('---') treats the first divider as an opening delimiter
+        # and silently drops everything before it plus the "frontmatter"
+        # between the two dividers.
+        text = "Intro paragraph that matters.\n\n---\n\nMiddle section.\n\n---\n\nFinal section."
+        fm, body = _parse_frontmatter(text)
+        assert fm == {}
+        assert "Intro paragraph that matters." in body
+        assert "Middle section." in body
+        assert "Final section." in body
+
+    def test_real_frontmatter_must_start_on_the_first_line(self):
+        # A '---' divider followed by what looks like frontmatter, but only
+        # after some leading prose, must not be mistaken for a real
+        # frontmatter block.
+        text = "Some leading text.\n\n---\ndate: 2026-05-24\n---\n\nBody."
+        fm, body = _parse_frontmatter(text)
+        assert fm == {}
+        assert "Some leading text." in body
+
+    def test_real_frontmatter_still_parsed_normally(self):
+        text = "---\ndate: 2026-05-24\n---\n\nBody text."
+        fm, body = _parse_frontmatter(text)
+        assert fm == {"date": "2026-05-24"}
+        assert body == "Body text."
+
+    def test_real_frontmatter_with_dashes_in_body_still_parsed_normally(self):
+        text = "---\ndate: 2026-05-24\n---\n\nBefore.\n\n---\n\nAfter."
+        fm, body = _parse_frontmatter(text)
+        assert fm == {"date": "2026-05-24"}
+        assert "Before." in body
+        assert "After." in body
 
 
 # ---------------------------------------------------------------------------

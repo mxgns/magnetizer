@@ -5,6 +5,10 @@
 
 ## Released changes
 
+### 6/10/26
+
+- Added ingest.py: turns an inbox/ drop-folder into a numbered post
+
 ### 5/10/26
 
 - Reintroduced draft posts (draft: true), now excluded everywhere

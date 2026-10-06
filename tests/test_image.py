@@ -181,6 +181,16 @@ class TestExifStripped:
         resize_image(src, dest, max_dimension=2000, quality=85)
         assert dict(open_image(dest).getexif()) == {}
 
+    def test_png_icc_profile_is_stripped(self, tmp_path):
+        # Pillow carries a PNG's ICC colour profile in img.info separately
+        # from EXIF -- popping only "exif" leaves it in place on save.
+        src = tmp_path / "src.png"
+        PILImage.new("RGB", (400, 300), color=(128, 128, 128)).save(src, icc_profile=b"fake-icc-profile-bytes")
+        assert "icc_profile" in open_image(src).info
+        dest = tmp_path / "dest.png"
+        resize_image(src, dest, max_dimension=2000, quality=85)
+        assert "icc_profile" not in open_image(dest).info
+
 
 # ---------------------------------------------------------------------------
 # EXIF orientation — must be baked into pixels before being stripped
