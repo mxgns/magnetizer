@@ -2,12 +2,19 @@ from pathlib import Path
 from PIL import Image, ImageOps
 
 
+def fix_orientation_and_strip_exif(img):
+    """Bake EXIF orientation into the pixels, then drop the EXIF block (camera
+    model, GPS, timestamps, ...) for privacy. Shared with ingest.py, which
+    needs this same step but a different output shape (one downscaled
+    content-original per image, not a dist-ready resized+thumbnail pair)."""
+    img = ImageOps.exif_transpose(img)
+    img.info.pop("exif", None)
+    return img
+
+
 def resize_image(src, dest, max_dimension, quality):
     img = Image.open(src)
-    # Bake EXIF orientation into the pixels before the EXIF block is dropped below,
-    # so rotated phone/camera photos still display right-side up without it.
-    img = ImageOps.exif_transpose(img)
-    img.info.pop("exif", None)  # strip all EXIF (camera model, GPS, timestamps, ...) for privacy
+    img = fix_orientation_and_strip_exif(img)
     w, h = img.size
     long_edge = max(w, h)
     if long_edge > max_dimension:

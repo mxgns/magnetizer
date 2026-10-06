@@ -149,6 +149,20 @@ Any link in a post body whose host doesn't match `site_url` is treated as extern
 
 Every full build also checks that internal links resolve to a page that actually exists in `dist/`, warning (not erroring) on anything broken — see [Building the site](#building-the-site) below.
 
+## Ingesting photos from the inbox
+
+`ingest.py` turns a drop-folder into a numbered post, for posting from a device with no Python (e.g. an iPad) — no manual filename or frontmatter rules needed. Drop files directly into `inbox/` (no subfolders — one run makes one post) and run:
+
+```
+ingest.py [--inbox inbox] [--content content] [--max-edge 2000] [--quality 90] [--dry-run]
+```
+
+Supported image extensions: `.jpg .jpeg .png .svg .heic .heif` (case-insensitive). At most one `.md` file is allowed; everything else must be a recognised image extension, or the whole run is an error. Raster images get their EXIF orientation baked into the pixels, all EXIF metadata (including GPS) stripped, and are downscaled so the long edge is at most `--max-edge` (never upscaled); `.heic`/`.heif` are converted to `.jpg`, `.png` stays `.png`, and `.svg` is copied as-is. Images are numbered `{id}-image-{NN}.{ext}` in natural-sort order of their original filename.
+
+If a `.md` file is supplied, its body and existing frontmatter are kept, with `date:` (if absent), an empty `category:` (if absent), and `images:` (padded with generic `Image N` placeholders up to the image count, warning rather than truncating if the existing list is already longer) merged in. If no `.md` is supplied, a fresh skeleton is generated, same as `new-post.py`. Name the `.md` file with a leading underscore (e.g. `_my-post.md`) to mark the post `draft: true` — the underscore itself never appears in the output.
+
+Everything is validated (reusing the same checks `build.py` runs) against a merged view of the real `content/` plus the new post before anything is touched; any failure anywhere aborts the whole run with `inbox/` and `content/` left exactly as they started. `--dry-run` runs the same validation and processing but reports what would be created without changing anything. An empty `inbox/` (nothing but dotfiles) is a no-op. On success, the processed source files are deleted from `inbox/`.
+
 ## Post types
 
 Every post is one of three types, based on its `title`, top-level images, and body content:
