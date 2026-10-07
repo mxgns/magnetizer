@@ -193,13 +193,7 @@ Options:
                 whichever images are already in ./dist instead of 
                 reprocessing them. Use while iterating on generator or
                 template code, instead of --flush's much slower full rebuild.
-                Cannot be used together with FILENAME or --push.
-  --push        Push the contents of ./dist to GitHub Pages after a successful 
-                build. Refuses with an error and publishes nothing unless 
-                --force is also given -- see Publishing.
-  --force       Only meaningful together with --push: confirms a direct, 
-                CI-bypassing publish is intentional. An error on its own, 
-                without --push.
+                Cannot be used together with FILENAME.
   --verbose     Print a detailed log of every file created, updated, or removed
                 during the build.
 
@@ -259,9 +253,8 @@ Examples:
 9. Sync `resources/` to `dist/resources/`:
     - If `--flush` or `--resources`: delete `dist/resources/` and copy all files from `resources/`
     - Otherwise: copy any files from `resources/` that are new or changed since the last build (detected via the manifest), and delete any files from `dist/resources/` that no longer exist in `resources/`
-10. If `--push --force` and no errors, push to GitHub Pages. `--push` without `--force` is refused before any of the above runs — see [Publishing](#github-integration) — so this step is unreachable without `--force`.
-11. During the build, print a `.` for each file generated or updated (flushed immediately, all on one line). When the build completes, erase the dots line in normal mode; keep it in verbose mode (followed by a newline).
-12. Print console output and exit. The output format depends on whether `--verbose` is passed:
+10. During the build, print a `.` for each file generated or updated (flushed immediately, all on one line). When the build completes, erase the dots line in normal mode; keep it in verbose mode (followed by a newline).
+11. Print console output and exit. The output format depends on whether `--verbose` is passed:
 
     **Normal output** (only posts with warnings are listed):
 
@@ -1632,7 +1625,7 @@ Notes:
 
 ### Pagefind indexing
 
-After every build — full or single-file preview — Magnetizer runs `npx --yes pagefind@1.5.2 --site dist/` (a pinned version, so a bare `npx pagefind` can't silently pick up a newer release and change the generated index's format/behaviour between builds), writing `dist/pagefind/`. This requires Node and, on first run on a machine, network access to resolve the `pagefind` npm package. A nonzero exit, a timeout, or a missing `npx` binary aborts the build with a red `ERROR`, the same as a failed `--push`; there is no flag to skip or downgrade this to a warning.
+After every build — full or single-file preview — Magnetizer runs `npx --yes pagefind@1.5.2 --site dist/` (a pinned version, so a bare `npx pagefind` can't silently pick up a newer release and change the generated index's format/behaviour between builds), writing `dist/pagefind/`. This requires Node and, on first run on a machine, network access to resolve the `pagefind` npm package. A nonzero exit, a timeout, or a missing `npx` binary aborts the build with a red `ERROR`; there is no flag to skip or downgrade this to a warning.
 
 To avoid indexing the same article twice — once on its own canonical page, once again embedded in an index/category/notes/archive/gallery listing — Magnetizer marks the `<main>` of every multi-post listing page (`render_index_page_content`, `render_category_page_content`, `render_notes_page_content`, `render_archive_page_content`, `render_gallery_page_content`) with `data-pagefind-ignore`. `render_post_page_content`'s `<main>` (an individual post's, special page's, or the 404 page's own page — all three share this render path) is left unmarked, so Pagefind indexes each one exactly once, at its canonical URL — unless the post is `noindex: true` or `draft: true`, in which case `render_post_page_content` marks its own `<main>` too, consistent with that page already being excluded from `sitemap.xml`: a page search engines shouldn't index shouldn't turn up in the site's own search either.
 
@@ -1647,25 +1640,11 @@ Category is deliberately not given `data-pagefind-meta` treatment — Pagefind's
 
 ## GitHub integration
 
-The generated site is published by pushing the contents of `dist/` to a dedicated GitHub Pages repository, separate from both the Magnetizer application and the user's project.
+The generated site is published to a dedicated GitHub Pages repository, separate from both the Magnetizer application and the user's project — typically by a CI pipeline (outside Magnetizer's own scope) that checks it out into `dist/`, runs a build, and pushes the result.
 
-`dist/` must be a cloned GitHub Pages repository. Magnetizer assumes this is already set up and does not manage git remotes or initialise repositories.
+`dist/` must be a cloned GitHub Pages repository whenever publishing (by any means) is in scope. Magnetizer assumes this is already set up and does not manage git remotes or initialise repositories; it only ever reads and writes files inside `dist/`, never git operations on it. `--flush` deliberately preserves `.git`, `CNAME`, and `.nojekyll` inside `dist/` rather than deleting them along with everything else, specifically so `dist/` stays a valid, correctly-configured clone across a full rebuild.
 
-**`--push` alone is refused.** If a CI pipeline is a project's normal publishing path, it always rebuilds `dist/` from the project's own repo — a direct `--push` whose same content was never also pushed there as source will look fine on the live site right up until CI's next run, which rebuilds from source and quietly reverts it. So `--push` without `--force` exits non-zero before any validation or build step runs, publishing nothing, printing:
-
-> `build.py --push` publishes `dist/` straight to GitHub Pages, bypassing CI. If CI is the normal publishing path for this project, it always rebuilds `dist/` from this project's own repo — if this content isn't pushed there too, the live site will look right until CI's next run quietly reverts it. Run `publish.py` first to push this same content as source, then pass `--push --force` to publish `dist/` anyway.
-
-`--force` exists to make a deliberate, CI-bypassing publish explicit rather than assumed — e.g. the documented manual/rollback path for when CI itself is unavailable. `--force` without `--push` is an error (nothing to force). Argument-combination errors ( `FILENAME`/other options, `--refresh`+`--push`) are checked first and take priority over this gate — e.g. `--refresh --push` (even without `--force`) is rejected as a `--refresh`/`--push` conflict, not as a missing `--force`.
-
-When `--push --force` is specified and the build completes without errors, `build.py` prints a one-line reminder (`Publishing dist/ directly, bypassing CI. Make sure publish.py has already pushed this same content as source — otherwise the next CI run will revert it.`), then:
-
-1. Stage all changes in `dist/` with `git add .`
-2. Commit with the message `Build {timestamp}`, e.g. `Build 2026-05-24 14:32:00`
-3. Push to `origin main`
-
-If there are no changes to commit, skip the commit and push and output: `Nothing to publish — no changes since last build.`
-
-`--push` cannot be combined with `--refresh`. `--push` stages and commits whatever is currently in `dist/` regardless of how it got there, so this isn't a staleness check — `--flush` wouldn't make a `--refresh`'d `dist/` any more "real," since both would use the exact same (possibly still-being-edited) generator code. The actual risk is publishing output from generator code that was only ever meant for local iteration; blocking the combination forces a separate, deliberate build once that code is finished, rather than relying on a warning that's easy to miss in a fast test loop.
+Magnetizer itself has no built-in way to push `dist/` anywhere — publishing it, by whatever means a project chooses (CI, a manual `git push`, or anything else), is entirely outside this tool's scope. (An earlier `build.py --push`/`--force` existed for this; removed as unnecessary now that CI is the normal publishing path for every project this generator is actually used for — see `magnetizer` issue #71 for the reasoning, and git history if a similar built-in publish step is ever genuinely needed again.)
 
 ## restore_mtimes.py
 
@@ -1689,7 +1668,7 @@ Scans every `.jpg`, `.jpeg` and `.png` file under `DIRECTORY` (case-insensitive 
 
 ## publish.py
 
-Publishes the project's *source* — `content/`, `resources/`, and any other tracked file in the project directory — to `origin main`. Distinct from `build.py --push`, which publishes `dist/` (the generated output) to the Pages repo; `publish.py` is the Mac/CI-era equivalent for the project itself, so day-to-day posting doesn't need raw `git` commands.
+Publishes the project's *source* — `content/`, `resources/`, and any other tracked file in the project directory — to `origin main`. Distinct from `dist/` (the generated output), which this doesn't touch at all — see [GitHub integration](#github-integration); `publish.py` is the Mac/CI-era equivalent for the project itself, so day-to-day posting doesn't need raw `git` commands.
 
 Usage: `publish.py [MESSAGE]`
 
@@ -1699,6 +1678,6 @@ Must be run from the project root (same convention as `build.py`/`new-post.py`).
 2. Refuse to continue if the current branch isn't `main` — pushing a commit made on another branch to `origin main` would silently push whatever `main` already was, not the new commit, while still reporting success.
 3. Stage everything in the project directory (`git add -A`), then unstage `dist/` and `manifest.json` if either ended up staged. This is defensive, independent of `.gitignore`: `dist/` is a clone of the Pages repo (a nested git repository), and `git add -A` would otherwise commit it as a bare gitlink if a project ever forgot to ignore it. Both are also unstaged in the normal case, where `.gitignore` already excludes them and this is a no-op.
 4. If nothing is staged, print `Nothing to publish — no changes to commit.` and exit 0.
-5. Otherwise, commit with `MESSAGE` if given, or `Update {timestamp}` (same timestamp format as `build.py --push`'s `Build {timestamp}` commit message) if not, then push to `origin main`.
+5. Otherwise, commit with `MESSAGE` if given, or `Update {timestamp}` (`%Y-%m-%d %H:%M:%S`) if not, then push to `origin main`.
 
 A git failure at any step raises an error and stops; nothing partially staged or committed is pushed.

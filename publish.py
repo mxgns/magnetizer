@@ -15,9 +15,9 @@ def main():
         prog="publish.py",
         description=(
             "Build the project locally as a sanity check, then commit and push any "
-            "changes in the current directory to origin main. Distinct from "
-            "'build.py --push', which publishes dist/ (the generated output) to the "
-            "Pages repo -- this publishes the project's own source."
+            "changes in the current directory to origin main. This publishes the "
+            "project's own source, not dist/ (the generated output), which this "
+            "script never touches."
         ),
     )
     parser.add_argument(
