@@ -148,6 +148,17 @@ def _delete_special_page_image_files(dist_dir, name):
             f.unlink()
 
 
+def _delete_paginated_files(dist_dir, prefix):
+    """Delete every existing {prefix}.html / {prefix}-{N}.html in dist_dir, for
+    any N -- called before rewriting a listing kind's current page range, so a
+    page beyond the new total (or the listing's own page 1, if it has no
+    pages at all any more) never lingers once it's no longer being written."""
+    pattern = re.compile(rf'^{re.escape(prefix)}(-\d+)?\.html$')
+    for f in list(dist_dir.iterdir()):
+        if pattern.match(f.name):
+            f.unlink()
+
+
 def _build_post(post, dist_dir, content_dir, config):
     _delete_post_files(dist_dir, post.id)
 
@@ -270,6 +281,7 @@ def _write_index_pages(posts_sorted_desc, dist_dir, config, template, categories
     index_title = _metadata_title(metadata, "index", None)
     index_description = _metadata_description(metadata, "index")
 
+    _delete_paginated_files(dist_dir, "index")
     for page_num in range(1, total_pages + 1):
         slice_ = posts_sorted_desc[(page_num - 1) * per_page: page_num * per_page]
         content_html = render_index_page_content(slice_, page_num, total_pages, categories=categories, ai_disclosure_html=config["ai_disclosure_html"], images_per_post=config["images_per_post"])
@@ -300,6 +312,11 @@ def _write_category_pages(posts_sorted_desc, dist_dir, config, template, metadat
     if not categories:
         return
     per_page = config["posts_per_page"]
+    # Every configured slug, not just ones with posts this build -- a category
+    # that just became empty still needs its own stale page 1 (and beyond)
+    # cleaned up, even though the loop below has nothing to write back for it.
+    for slug in categories:
+        _delete_paginated_files(dist_dir, slug)
     for slug, display_name, category_posts, total_pages in _category_pages(posts_sorted_desc, categories, per_page):
         title_text = _metadata_title(metadata, slug, display_name)
         description = _metadata_description(metadata, slug)
@@ -321,6 +338,7 @@ def _write_category_pages(posts_sorted_desc, dist_dir, config, template, metadat
 
 def _write_notes_pages(posts_sorted_desc, dist_dir, config, template, metadata=None):
     note_posts = [p for p in posts_sorted_desc if p.post_type == "note"]
+    _delete_paginated_files(dist_dir, "notes")
     if not note_posts:
         return
     per_page = config["notes_per_page"]
@@ -385,6 +403,7 @@ def _write_gallery_pages(photos, dist_dir, config, template, metadata=None):
     per_page = config["gallery_per_page"]
     title_text = _metadata_title(metadata, "gallery", "Photo archive")
     description = _metadata_description(metadata, "gallery")
+    _delete_paginated_files(dist_dir, "gallery")
     for page_num, slice_, total_pages in _gallery_pages(photos, per_page):
         content_html = render_gallery_page_content(slice_, page_num, total_pages)
         title = render_page_title(config["site_name"], title_text, page_num=None)

@@ -766,7 +766,11 @@ When a post has a category that matches a configured slug, a link to that catego
 <a href="{slug}.html" class="category">{display name}</a>
 ```
 
-For each configured category with at least one matching post, Magnetizer generates a paginated category page (`{slug}.html`, `{slug}-2.html`, etc.), using the same pagination and `posts_per_page` rules as index pages. Category pages are generated under the same conditions as index pages — full builds where post changes are detected, not single-file preview builds. The `MAGNETIZER_CONTENT` has the following structure:
+For each configured category with at least one matching post, Magnetizer generates a paginated category page (`{slug}.html`, `{slug}-2.html`, etc.), using the same pagination and `posts_per_page` rules as index pages. Category pages are generated under the same conditions as index pages — full builds where post changes are detected, not single-file preview builds.
+
+Every existing `{slug}*.html` for every *configured* category slug (whether or not it currently has any matching posts) is deleted before the current set is written back, the same way index pages are. This covers both a shrinking category (a stale `{slug}-2.html` once it's down to one page) and a category that's lost its last post entirely (`{slug}.html` itself, since the loop that writes category pages only ever runs for categories that still have at least one matching post).
+
+The `MAGNETIZER_CONTENT` has the following structure:
 
 ```html
 <main>
@@ -1230,6 +1234,8 @@ The `MAGNETIZER_CONTENT` structure is:
 
 Magnetizer generates `dist/notes.html` (and `notes-2.html`, etc.) under the same conditions as index pages — on full builds where post changes are detected, but not during single-file preview builds. If no Notes exist, no notes pages are generated.
 
+Every existing `notes*.html` is deleted before the current set (if any) is written back, the same way index pages are — so a stale `notes-2.html` from a shrinking Notes count, or `notes.html` itself once the last Note is gone, never lingers.
+
 Notes pages show all Notes in reverse chronological order (newest first), in full, with `notes_per_page` posts per page. The page title is `Short notes - {site_name}`.
 
 The `MAGNETIZER_CONTENT` has the following structure:
@@ -1256,6 +1262,8 @@ Where:
 ### Gallery page
 
 Magnetizer generates `dist/gallery.html` (and `gallery-2.html`, `gallery-3.html`, etc.) under the same conditions as index pages — on full builds where post changes are detected, but not during single-file preview builds. If no qualifying photos exist, no gallery pages are generated.
+
+Every existing `gallery*.html` is deleted before the current set (if any) is written back, the same way index pages are — so a stale `gallery-2.html` from a shrinking photo count, or `gallery.html` itself once the last qualifying photo is gone, never lingers.
 
 The gallery shows every photo on the blog as a thumbnail grid, newest first, paginated at `gallery_per_page` photos per page. The page title is `Photo archive - {site_name}`.
 
@@ -1383,6 +1391,8 @@ Points a project's implementation should handle, none of which require anything 
 ### Index pages
 
 The index pages are a reverse-chronological representation of all posts, in full, with `posts_per_page` posts per page. The first index page (the latest posts) is named `index.html,` then `index-2.html`, `index-3.html` etc.
+
+Every time the index pages are regenerated, every existing `index*.html` in `dist/` is deleted first, then the current page range is written back. This means a page that's no longer needed — e.g. `index-2.html` when the post count shrinks back down to one page's worth — never lingers as a stale, unlinked file.
 
 The `MAGNETIZER_CONTENT` for each index page has the following structure:
 
