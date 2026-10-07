@@ -160,7 +160,7 @@ After running the script, the user will typically open the generated .md file in
 
 ## build.py
 
-`build.py` is used to generate static html pages from the input files, using templates, and optionally push these to GitHub Pages to make them available on the web.
+`build.py` is used to generate static html pages from the input files, using templates.
 
 ```
 Usage: build.py [OPTIONS] [FILENAME]

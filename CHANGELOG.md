@@ -7,7 +7,7 @@
 
 ### 7/10/26
 
-- Removed build.py --push/--force and publisher.py (YAGNI; CI publishes now)
+- Removed build.py --push/--force and publisher.py; publishing stays external
 
 ### 6/10/26
 
