@@ -5,6 +5,10 @@
 
 ## Released changes
 
+### 7/10/26
+
+- Removed build.py --push/--force and publisher.py; publishing stays external
+
 ### 6/10/26
 
 - Added ingest.py: turns an inbox/ drop-folder into a numbered post

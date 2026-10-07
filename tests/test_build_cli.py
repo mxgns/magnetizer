@@ -55,14 +55,6 @@ class TestHelp:
         result = run_build(["--help"], cwd=tmp_path)
         assert "re-render" in result.stdout.lower()
 
-    def test_help_describes_push(self, tmp_path):
-        result = run_build(["--help"], cwd=tmp_path)
-        assert "github pages" in result.stdout.lower()
-
-    def test_help_describes_force(self, tmp_path):
-        result = run_build(["--help"], cwd=tmp_path)
-        assert "--force" in result.stdout
-
     def test_help_describes_verbose(self, tmp_path):
         result = run_build(["--help"], cwd=tmp_path)
         assert "verbose" in result.stdout.lower()
@@ -112,81 +104,10 @@ class TestCLIValidation:
         result = run_build(["1.md", "--resources"], cwd=tmp_path)
         assert result.returncode != 0
 
-    def test_filename_with_push_is_rejected(self, tmp_path):
-        make_project(tmp_path, posts={1: MINIMAL_MD})
-        result = run_build(["1.md", "--push"], cwd=tmp_path)
-        assert result.returncode != 0
-
     def test_filename_with_refresh_is_rejected(self, tmp_path):
         make_project(tmp_path, posts={1: MINIMAL_MD})
         result = run_build(["1.md", "--refresh"], cwd=tmp_path)
         assert result.returncode != 0
-
-    def test_refresh_with_push_is_rejected(self, tmp_path):
-        make_project(tmp_path, posts={1: MINIMAL_MD})
-        result = run_build(["--refresh", "--push"], cwd=tmp_path)
-        assert result.returncode != 0
-
-    def test_refresh_with_push_rejected_as_combo_not_missing_force(self, tmp_path):
-        """--refresh + --push is its own hard conflict, checked before the
-        --force gate -- even without --force, the error is about --refresh,
-        not about needing --force."""
-        make_project(tmp_path, posts={1: MINIMAL_MD})
-        result = run_build(["--refresh", "--push"], cwd=tmp_path)
-        assert "--refresh" in result.stderr
-        assert "--force" not in result.stderr
-
-
-# ---------------------------------------------------------------------------
-# --push requires --force
-# ---------------------------------------------------------------------------
-
-class TestPushForceGate:
-
-    def test_push_without_force_is_rejected(self, tmp_path):
-        make_project(tmp_path, posts={1: MINIMAL_MD})
-        result = run_build(["--push"], cwd=tmp_path)
-        assert result.returncode != 0
-
-    def test_push_without_force_message_mentions_force_and_publish_py(self, tmp_path):
-        make_project(tmp_path, posts={1: MINIMAL_MD})
-        result = run_build(["--push"], cwd=tmp_path)
-        assert "--force" in result.stderr
-        assert "publish.py" in result.stderr
-
-    def test_push_without_force_builds_nothing(self, tmp_path):
-        """The gate fires before any validation or build step -- not just
-        before the push."""
-        p = make_project(tmp_path, posts={1: MINIMAL_MD})
-        run_build(["--push"], cwd=p)
-        assert not (p / "dist" / "1.html").exists()
-
-    def test_force_without_push_is_rejected(self, tmp_path):
-        make_project(tmp_path, posts={1: MINIMAL_MD})
-        result = run_build(["--force"], cwd=tmp_path)
-        assert result.returncode != 0
-
-    def test_force_without_push_message_mentions_push(self, tmp_path):
-        make_project(tmp_path, posts={1: MINIMAL_MD})
-        result = run_build(["--force"], cwd=tmp_path)
-        assert "--push" in result.stderr
-
-    def test_push_with_force_proceeds_past_the_gate(self, tmp_path):
-        """dist/ here is a plain directory, not a git repo, so the actual
-        publish attempt still fails -- but it fails with a git error, not the
-        --force gate's message, and only after a real build already ran.
-        That combination proves --force let it through rather than that the
-        push itself happened to succeed."""
-        p = make_project(tmp_path, posts={1: MINIMAL_MD})
-        result = run_build(["--push", "--force"], cwd=p)
-        assert (p / "dist" / "1.html").exists()
-        assert result.returncode != 0
-        assert "--force" not in result.stderr
-
-    def test_push_with_force_prints_reminder(self, tmp_path):
-        p = make_project(tmp_path, posts={1: MINIMAL_MD})
-        result = run_build(["--push", "--force"], cwd=p)
-        assert "publish.py" in result.stdout
 
 
 # ---------------------------------------------------------------------------
