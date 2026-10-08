@@ -17,7 +17,7 @@ from magnetizer.inbox import (
     scan_inbox,
 )
 from magnetizer.post import get_next_post_id
-from magnetizer.validate import validate_content
+from magnetizer.validate import validate_content, validate_default_category
 
 
 def main():
@@ -54,6 +54,7 @@ def main():
     is_draft = is_draft_filename(md_file)
     skeleton_today = date.today().isoformat()
     config = load_config(Path.cwd() / "config.yaml")
+    validate_default_category(config)
 
     with tempfile.TemporaryDirectory() as staging:
         staging_dir = Path(staging)

@@ -29,6 +29,12 @@ def _is_reserved_slug(slug, reserved):
     )
 
 
+def validate_default_category(config):
+    default_category = config.get("default_category")
+    if default_category and default_category not in config.get("categories", {}):
+        _error(f"'default_category' in config.yaml is set to '{default_category}', which doesn't match any slug in 'categories'")
+
+
 def validate_config(config):
     if not config.get("site_url"):
         _error("'site_url' is required in config.yaml — set it to the absolute base URL of your site, e.g. https://example.github.io")
@@ -45,9 +51,7 @@ def validate_config(config):
     for slug in config.get("categories", {}):
         if _is_reserved_slug(slug, reserved):
             _error(f"category slug '{slug}' in config.yaml is reserved and would overwrite a generated page — choose a different slug")
-    default_category = config.get("default_category")
-    if default_category and default_category not in config.get("categories", {}):
-        _error(f"'default_category' in config.yaml is set to '{default_category}', which doesn't match any slug in 'categories'")
+    validate_default_category(config)
 
 
 def validate_metadata(metadata, config):

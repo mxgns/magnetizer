@@ -8,6 +8,7 @@
 ### 8/10/26
 
 - Added default_category config key, used by ingest.py for uncategorised posts
+- ingest.py now rejects a misconfigured default_category before ingesting
 
 ### 7/10/26
 

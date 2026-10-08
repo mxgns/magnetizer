@@ -167,6 +167,19 @@ class TestValidationErrors:
         assert (inbox / "a.md").exists()
         assert (inbox / "b.md").exists()
 
+    def test_invalid_default_category_is_an_error(self, project_dir):
+        (project_dir / "config.yaml").write_text("default_category: trael\n")
+        make_jpeg(project_dir / "inbox" / "photo.jpg", 100, 80)
+        result = run_ingest([], cwd=project_dir)
+        assert result.returncode != 0
+        assert list((project_dir / "content").iterdir()) == []
+
+    def test_invalid_default_category_leaves_inbox_untouched(self, project_dir):
+        (project_dir / "config.yaml").write_text("default_category: trael\n")
+        make_jpeg(project_dir / "inbox" / "photo.jpg", 100, 80)
+        run_ingest([], cwd=project_dir)
+        assert (project_dir / "inbox" / "photo.jpg").exists()
+
     def test_preexisting_content_defect_aborts_the_whole_run(self, project_dir):
         # An orphan image with no matching .md -- a real defect in content/,
         # unrelated to this run. validate_content runs against the merged
@@ -439,7 +452,7 @@ class TestGeneratedSkeleton:
         assert "draft" not in text
 
     def test_no_md_skeleton_uses_default_category_from_config(self, project_dir):
-        (project_dir / "config.yaml").write_text("default_category: day-to-day\n")
+        (project_dir / "config.yaml").write_text("categories:\n  day-to-day: Day-to-Day\ndefault_category: day-to-day\n")
         make_jpeg(project_dir / "inbox" / "photo.jpg", 100, 80)
         run_ingest([], cwd=project_dir)
         text = (project_dir / "content" / "1.md").read_text()
@@ -483,14 +496,14 @@ class TestMarkdownMerge:
         assert "category: travel" in text
 
     def test_missing_category_uses_default_category_from_config(self, project_dir):
-        (project_dir / "config.yaml").write_text("default_category: day-to-day\n")
+        (project_dir / "config.yaml").write_text("categories:\n  day-to-day: Day-to-Day\ndefault_category: day-to-day\n")
         (project_dir / "inbox" / "post.md").write_text("---\ndate: 2026-02-02\n---\n\nBody.")
         run_ingest([], cwd=project_dir)
         text = (project_dir / "content" / "1.md").read_text()
         assert "category: day-to-day" in text
 
     def test_existing_category_is_preserved_even_with_default_category_configured(self, project_dir):
-        (project_dir / "config.yaml").write_text("default_category: day-to-day\n")
+        (project_dir / "config.yaml").write_text("categories:\n  day-to-day: Day-to-Day\ndefault_category: day-to-day\n")
         (project_dir / "inbox" / "post.md").write_text("---\ndate: 2026-02-02\ncategory: travel\n---\n\nBody.")
         run_ingest([], cwd=project_dir)
         text = (project_dir / "content" / "1.md").read_text()

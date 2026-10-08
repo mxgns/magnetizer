@@ -32,6 +32,7 @@ No `.md` at all means never a draft (there's nothing to name `_...`) — only an
 - At most one `.md` in `inbox/` (regardless of underscore prefix) — more than one is an error.
 - Every other file must be a recognised image extension (`.jpg .jpeg .png .svg .heic .heif`, case-insensitive) — anything else (e.g. a `.txt`, a video) is an error.
 - Zero images and no usable `.md` is an error — no silent no-op beyond the genuinely empty-inbox case (see Output below).
+- `default_category` in `config.yaml`, if set, must match a configured `categories` slug — checked up front (via `validate_default_category`) rather than deferred to the next `build.py` run, since by then the bad value would already be baked into the ingested post.
 
 ### Image processing
 
