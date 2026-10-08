@@ -9,6 +9,7 @@
 
 - Added default_category config key, used by ingest.py for uncategorised posts
 - ingest.py now rejects a misconfigured default_category before ingesting
+- Extracted shared git_utils.py from pull.py and source_publisher.py
 
 ### 7/10/26
 
