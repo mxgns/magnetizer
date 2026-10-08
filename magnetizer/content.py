@@ -34,6 +34,12 @@ _CLASS_ATTR_RE = re.compile(r'class\s*=\s*(["\'])(.*?)\1', re.IGNORECASE)
 _TARGET_ATTR_RE = re.compile(r'target\s*=\s*(["\'])(.*?)\1', re.IGNORECASE)
 _REL_ATTR_RE = re.compile(r'rel\s*=\s*(["\'])(.*?)\1', re.IGNORECASE)
 
+_SCRIPT_TAG_RE = re.compile(r'<script\b[^>]*>.*?</script>', re.IGNORECASE | re.DOTALL)
+
+
+def _strip_scripts(html_str):
+    return _SCRIPT_TAG_RE.sub('', html_str)
+
 _FOOTNOTE_ID_RE = re.compile(r'((?:id="|href="#)(?:fnref\d*|fn):)([^"]+)"')
 _FOOTNOTE_REF_RE = re.compile(r'\[\^([^\]]+)\](?!:)')
 _FOOTNOTE_DEF_RE = re.compile(r'^\[\^([^\]]+)\]:')

@@ -167,6 +167,22 @@ class TestImageProcessing:
         assert (p / "dist" / "1-image-01-resized.jpg").exists()
         assert (p / "dist" / "1-image-02.svg").exists()
 
+    def test_svg_script_tag_stripped_when_copied_to_dist(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD})
+        (p / "content" / "1-image-01.svg").write_text(
+            '<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script><circle r="5"/></svg>'
+        )
+        build(p)
+        svg = (p / "dist" / "1-image-01.svg").read_text()
+        assert "<script" not in svg.lower()
+        assert "<circle" in svg
+
+    def test_benign_svg_content_unchanged_when_copied_to_dist(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD})
+        make_svg(p / "content" / "1-image-01.svg")
+        build(p)
+        assert (p / "dist" / "1-image-01.svg").read_text() == (p / "content" / "1-image-01.svg").read_text()
+
 
 # ---------------------------------------------------------------------------
 # Thumbnail generation
@@ -1441,6 +1457,17 @@ class TestAboutPage:
         assert (p / "dist" / "about-image-01.svg").exists()
         assert not (p / "dist" / "about-image-01-resized.svg").exists()
         assert not (p / "dist" / "about-image-01-thumb.svg").exists()
+
+    def test_about_svg_script_tag_stripped_when_copied_to_dist(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD}, config=_ABOUT_CONFIG)
+        (p / "content" / "about.md").write_text(ABOUT_MD)
+        (p / "content" / "about-image-01.svg").write_text(
+            '<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script><circle r="5"/></svg>'
+        )
+        build(p)
+        svg = (p / "dist" / "about-image-01.svg").read_text()
+        assert "<script" not in svg.lower()
+        assert "<circle" in svg
 
     def test_build_errors_on_second_build_when_about_md_deleted_while_configured(self, tmp_path):
         p = make_project(tmp_path, posts={1: MINIMAL_MD}, config=_ABOUT_CONFIG)
