@@ -33,13 +33,13 @@ def make_mock(current_branch="main", behind=0, ahead=0):
 class TestBranchCheck:
 
     def test_raises_when_not_on_main(self, tmp_path):
-        with patch("magnetizer.pull.subprocess.run",
+        with patch("magnetizer.git_utils.subprocess.run",
                    side_effect=make_mock(current_branch="feature/x")):
             with pytest.raises(RuntimeError, match="feature/x"):
                 pull(tmp_path)
 
     def test_no_fetch_when_not_on_main(self, tmp_path):
-        with patch("magnetizer.pull.subprocess.run",
+        with patch("magnetizer.git_utils.subprocess.run",
                    side_effect=make_mock(current_branch="feature/x")) as mock_run:
             with pytest.raises(RuntimeError):
                 pull(tmp_path)
@@ -47,7 +47,7 @@ class TestBranchCheck:
         assert _FETCH_CMD not in cmds
 
     def test_branch_checked_before_fetch(self, tmp_path):
-        with patch("magnetizer.pull.subprocess.run", side_effect=make_mock()) as mock_run:
+        with patch("magnetizer.git_utils.subprocess.run", side_effect=make_mock()) as mock_run:
             pull(tmp_path)
         cmds = [c.args[0] for c in mock_run.call_args_list]
         assert cmds.index(_BRANCH_CMD) < cmds.index(_FETCH_CMD)
@@ -60,17 +60,17 @@ class TestBranchCheck:
 class TestNothingToPull:
 
     def test_returns_zero_when_even(self, tmp_path):
-        with patch("magnetizer.pull.subprocess.run", side_effect=make_mock(behind=0, ahead=0)):
+        with patch("magnetizer.git_utils.subprocess.run", side_effect=make_mock(behind=0, ahead=0)):
             assert pull(tmp_path) == 0
 
     def test_returns_zero_when_purely_ahead(self, tmp_path):
         """Local has unpushed commits, origin has nothing new -- not an error,
         not this tool's concern (that's publish.py's job)."""
-        with patch("magnetizer.pull.subprocess.run", side_effect=make_mock(behind=0, ahead=3)):
+        with patch("magnetizer.git_utils.subprocess.run", side_effect=make_mock(behind=0, ahead=3)):
             assert pull(tmp_path) == 0
 
     def test_no_merge_when_nothing_to_pull(self, tmp_path):
-        with patch("magnetizer.pull.subprocess.run", side_effect=make_mock(behind=0, ahead=3)) as mock_run:
+        with patch("magnetizer.git_utils.subprocess.run", side_effect=make_mock(behind=0, ahead=3)) as mock_run:
             pull(tmp_path)
         cmds = [c.args[0] for c in mock_run.call_args_list]
         assert _MERGE_CMD not in cmds
@@ -83,23 +83,23 @@ class TestNothingToPull:
 class TestFastForward:
 
     def test_returns_commit_count(self, tmp_path):
-        with patch("magnetizer.pull.subprocess.run", side_effect=make_mock(behind=2, ahead=0)):
+        with patch("magnetizer.git_utils.subprocess.run", side_effect=make_mock(behind=2, ahead=0)):
             assert pull(tmp_path) == 2
 
     def test_merge_ff_only_is_called(self, tmp_path):
-        with patch("magnetizer.pull.subprocess.run", side_effect=make_mock(behind=2, ahead=0)) as mock_run:
+        with patch("magnetizer.git_utils.subprocess.run", side_effect=make_mock(behind=2, ahead=0)) as mock_run:
             pull(tmp_path)
         cmds = [c.args[0] for c in mock_run.call_args_list]
         assert _MERGE_CMD in cmds
 
     def test_merge_runs_in_project_dir(self, tmp_path):
-        with patch("magnetizer.pull.subprocess.run", side_effect=make_mock(behind=2, ahead=0)) as mock_run:
+        with patch("magnetizer.git_utils.subprocess.run", side_effect=make_mock(behind=2, ahead=0)) as mock_run:
             pull(tmp_path)
         merge_call = next(c for c in mock_run.call_args_list if c.args[0] == _MERGE_CMD)
         assert merge_call.kwargs.get("cwd") == tmp_path
 
     def test_fetch_called_before_merge(self, tmp_path):
-        with patch("magnetizer.pull.subprocess.run", side_effect=make_mock(behind=2, ahead=0)) as mock_run:
+        with patch("magnetizer.git_utils.subprocess.run", side_effect=make_mock(behind=2, ahead=0)) as mock_run:
             pull(tmp_path)
         cmds = [c.args[0] for c in mock_run.call_args_list]
         assert cmds.index(_FETCH_CMD) < cmds.index(_MERGE_CMD)
@@ -112,17 +112,17 @@ class TestFastForward:
 class TestDiverged:
 
     def test_raises_when_diverged(self, tmp_path):
-        with patch("magnetizer.pull.subprocess.run", side_effect=make_mock(behind=3, ahead=2)):
+        with patch("magnetizer.git_utils.subprocess.run", side_effect=make_mock(behind=3, ahead=2)):
             with pytest.raises(RuntimeError, match="diverged"):
                 pull(tmp_path)
 
     def test_error_names_both_counts(self, tmp_path):
-        with patch("magnetizer.pull.subprocess.run", side_effect=make_mock(behind=3, ahead=2)):
+        with patch("magnetizer.git_utils.subprocess.run", side_effect=make_mock(behind=3, ahead=2)):
             with pytest.raises(RuntimeError, match=r"3.*2|2.*3"):
                 pull(tmp_path)
 
     def test_no_merge_when_diverged(self, tmp_path):
-        with patch("magnetizer.pull.subprocess.run", side_effect=make_mock(behind=3, ahead=2)) as mock_run:
+        with patch("magnetizer.git_utils.subprocess.run", side_effect=make_mock(behind=3, ahead=2)) as mock_run:
             with pytest.raises(RuntimeError):
                 pull(tmp_path)
         cmds = [c.args[0] for c in mock_run.call_args_list]
@@ -136,7 +136,7 @@ class TestDiverged:
 class TestGitCallParameters:
 
     def test_all_git_calls_specify_timeout(self, tmp_path):
-        with patch("magnetizer.pull.subprocess.run", side_effect=make_mock(behind=2, ahead=0)) as mock_run:
+        with patch("magnetizer.git_utils.subprocess.run", side_effect=make_mock(behind=2, ahead=0)) as mock_run:
             pull(tmp_path)
         for call in mock_run.call_args_list:
             assert call.kwargs.get("timeout") is not None, \
@@ -156,7 +156,7 @@ class TestGitFailure:
             if cmd == _FETCH_CMD:
                 raise subprocess.CalledProcessError(1, cmd, stderr="fatal: could not fetch")
             return MagicMock(returncode=0)
-        with patch("magnetizer.pull.subprocess.run", side_effect=side_effect):
+        with patch("magnetizer.git_utils.subprocess.run", side_effect=side_effect):
             with pytest.raises(RuntimeError, match="could not fetch"):
                 pull(tmp_path)
 
@@ -174,7 +174,7 @@ class TestGitFailure:
                     1, cmd, stderr="error: Your local changes would be overwritten by merge"
                 )
             return MagicMock(returncode=0)
-        with patch("magnetizer.pull.subprocess.run", side_effect=side_effect):
+        with patch("magnetizer.git_utils.subprocess.run", side_effect=side_effect):
             with pytest.raises(RuntimeError, match="would be overwritten"):
                 pull(tmp_path)
 
@@ -186,12 +186,12 @@ class TestGitFailure:
             if cmd == _FETCH_CMD:
                 raise subprocess.TimeoutExpired(cmd=cmd, timeout=60)
             return MagicMock(returncode=0)
-        with patch("magnetizer.pull.subprocess.run", side_effect=side_effect):
+        with patch("magnetizer.git_utils.subprocess.run", side_effect=side_effect):
             with pytest.raises(RuntimeError, match="timed out"):
                 pull(tmp_path)
 
     def test_missing_git_binary_raises_runtime_error(self, tmp_path):
-        with patch("magnetizer.pull.subprocess.run",
+        with patch("magnetizer.git_utils.subprocess.run",
                    side_effect=FileNotFoundError("git not found")):
             with pytest.raises(RuntimeError, match="git"):
                 pull(tmp_path)
@@ -204,6 +204,6 @@ class TestGitFailure:
 class TestDetachedHead:
 
     def test_raises_with_clear_message_not_literal_head(self, tmp_path):
-        with patch("magnetizer.pull.subprocess.run", side_effect=make_mock(current_branch="HEAD")):
+        with patch("magnetizer.git_utils.subprocess.run", side_effect=make_mock(current_branch="HEAD")):
             with pytest.raises(RuntimeError, match="detached"):
                 pull(tmp_path)

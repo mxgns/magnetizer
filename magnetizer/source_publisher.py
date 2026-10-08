@@ -1,35 +1,9 @@
 import subprocess
 import sys
 
-_TIMEOUT = 60
+from magnetizer.git_utils import _run_git, _run_git_probe
+
 _BUILD_TIMEOUT = 600  # generous enough for a --flush full rebuild; catches a true hang
-
-
-def _run_git(cmd, *, cwd):
-    try:
-        return subprocess.run(
-            cmd,
-            cwd=cwd,
-            check=True,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.PIPE,
-            text=True,
-            timeout=_TIMEOUT,
-        )
-    except subprocess.CalledProcessError as e:
-        msg = (e.stderr or "").strip()
-        raise RuntimeError(f"Git command failed: {' '.join(cmd)}\n{msg}") from e
-
-
-def _run_git_probe(cmd, *, cwd, valid_returncodes=(0,)):
-    result = subprocess.run(
-        cmd, cwd=cwd, capture_output=True, text=True, timeout=_TIMEOUT,
-    )
-    if result.returncode not in valid_returncodes:
-        raise RuntimeError(
-            f"Git command failed: {' '.join(cmd)}\n{(result.stderr or '').strip()}"
-        )
-    return result
 
 
 def run_build(build_script, cwd):

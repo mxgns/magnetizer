@@ -1,26 +1,4 @@
-import subprocess
-
-_TIMEOUT = 60
-
-
-def _run_git(cmd, *, cwd):
-    try:
-        return subprocess.run(
-            cmd,
-            cwd=cwd,
-            check=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
-            timeout=_TIMEOUT,
-        )
-    except subprocess.CalledProcessError as e:
-        msg = (e.stderr or "").strip()
-        raise RuntimeError(f"Git command failed: {' '.join(cmd)}\n{msg}") from e
-    except subprocess.TimeoutExpired as e:
-        raise RuntimeError(f"Git command timed out after {_TIMEOUT}s: {' '.join(cmd)}") from e
-    except FileNotFoundError as e:
-        raise RuntimeError(f"git executable not found: {e}") from e
+from magnetizer.git_utils import _run_git
 
 
 def _current_branch(project_dir):
