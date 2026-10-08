@@ -537,6 +537,102 @@ class TestCLINotesPages:
 
 
 # ---------------------------------------------------------------------------
+# Stale paginated pages when post count shrinks (#58)
+# ---------------------------------------------------------------------------
+
+class TestCLIStalePaginatedPages:
+
+    def test_index_page_2_removed_when_post_count_shrinks(self, tmp_path):
+        config = "site_name: Test Blog\nsite_url: https://example.github.io\nposts_per_page: 1\n"
+        p = make_project(tmp_path, posts={1: MINIMAL_MD, 2: MINIMAL_MD}, config=config)
+        run_build([], cwd=p)
+        assert (p / "dist" / "index-2.html").exists()
+
+        (p / "content" / "2.md").unlink()
+        run_build([], cwd=p)
+
+        assert not (p / "dist" / "index-2.html").exists()
+
+    def test_category_page_removed_when_category_becomes_empty(self, tmp_path):
+        # A second, uncategorised post stays around -- content/ can't be
+        # emptied out entirely, that's its own unrelated validation error.
+        p = make_project(tmp_path, posts={1: _PHOTO_MD, 2: MINIMAL_MD}, config=_CATEGORIES_CLI_CONFIG)
+        run_build([], cwd=p)
+        assert (p / "dist" / "photography.html").exists()
+
+        (p / "content" / "1.md").unlink()
+        run_build([], cwd=p)
+
+        assert not (p / "dist" / "photography.html").exists()
+
+    def test_category_page_2_removed_when_category_post_count_shrinks(self, tmp_path):
+        config = (
+            "site_name: Test Blog\nsite_url: https://example.github.io\n"
+            "posts_per_page: 1\ncategories:\n  photography: Photography\n"
+        )
+        p = make_project(tmp_path, posts={1: _PHOTO_MD, 2: _PHOTO_MD}, config=config)
+        run_build([], cwd=p)
+        assert (p / "dist" / "photography-2.html").exists()
+
+        (p / "content" / "2.md").unlink()
+        run_build([], cwd=p)
+
+        assert not (p / "dist" / "photography-2.html").exists()
+
+    def test_notes_page_removed_when_no_notes_remain(self, tmp_path):
+        # A second, non-note post stays around -- content/ can't be emptied
+        # out entirely, that's its own unrelated validation error.
+        p = make_project(tmp_path, posts={1: NOTE_MD, 2: TITLED_MD})
+        run_build([], cwd=p)
+        assert (p / "dist" / "notes.html").exists()
+
+        (p / "content" / "1.md").unlink()
+        run_build([], cwd=p)
+
+        assert not (p / "dist" / "notes.html").exists()
+
+    def test_notes_page_2_removed_when_note_count_shrinks(self, tmp_path):
+        config = (
+            "site_name: Test Blog\nsite_url: https://example.github.io\n"
+            "posts_per_page: 10\nnotes_per_page: 1\n"
+        )
+        p = make_project(tmp_path, posts={1: NOTE_MD, 2: NOTE_MD}, config=config)
+        run_build([], cwd=p)
+        assert (p / "dist" / "notes-2.html").exists()
+
+        (p / "content" / "2.md").unlink()
+        run_build([], cwd=p)
+
+        assert not (p / "dist" / "notes-2.html").exists()
+
+    def test_gallery_page_removed_when_no_photos_remain(self, tmp_path):
+        # A second, image-less post stays around -- content/ can't be
+        # emptied out entirely, that's its own unrelated validation error.
+        p = make_gallery_project(tmp_path, [1])
+        (p / "content" / "2.md").write_text(MINIMAL_MD)
+        run_build([], cwd=p)
+        assert (p / "dist" / "gallery.html").exists()
+
+        (p / "content" / "1.md").unlink()
+        (p / "content" / "1-image-01.jpg").unlink()
+        run_build([], cwd=p)
+
+        assert not (p / "dist" / "gallery.html").exists()
+
+    def test_gallery_page_2_removed_when_photo_count_shrinks(self, tmp_path):
+        config = "site_name: Test Blog\nsite_url: https://example.github.io\nposts_per_page: 2\ngallery_per_page: 1\n"
+        p = make_gallery_project(tmp_path, [1, 2], config=config)
+        run_build([], cwd=p)
+        assert (p / "dist" / "gallery-2.html").exists()
+
+        (p / "content" / "2.md").unlink()
+        (p / "content" / "2-image-01.jpg").unlink()
+        run_build([], cwd=p)
+
+        assert not (p / "dist" / "gallery-2.html").exists()
+
+
+# ---------------------------------------------------------------------------
 # Non-post warnings (special pages, build-level) shown on console
 # ---------------------------------------------------------------------------
 

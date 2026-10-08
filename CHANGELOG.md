@@ -8,6 +8,7 @@
 ### 7/10/26
 
 - Removed build.py --push/--force and publisher.py; publishing stays external
+- Bug fix: stale index/category/notes/gallery pages no longer linger in dist/
 
 ### 6/10/26
 
