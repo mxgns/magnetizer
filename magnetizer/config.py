@@ -16,6 +16,7 @@ DEFAULTS = {
     "images_per_post": 2,
     "feed_max_posts": 30,
     "categories": {},
+    "default_category": "",
     "navigation": {},
     "special_pages": [],
     "ai_disclosure_html": None,

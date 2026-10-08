@@ -640,6 +640,29 @@ class TestValidateConfig:
             validate_config({"site_url": "https://example.github.io", "categories": {"archive": "Whatever"}})
         assert "archive" in capsys.readouterr().err
 
+    def test_passes_when_default_category_not_set(self):
+        validate_config({"site_url": "https://example.github.io", "categories": {"day-to-day": "Day-to-Day"}})  # should not raise
+
+    def test_passes_when_default_category_matches_configured_category(self):
+        validate_config({
+            "site_url": "https://example.github.io",
+            "categories": {"day-to-day": "Day-to-Day"},
+            "default_category": "day-to-day",
+        })  # should not raise
+
+    def test_fails_when_default_category_does_not_match_any_category(self):
+        with pytest.raises(SystemExit):
+            validate_config({
+                "site_url": "https://example.github.io",
+                "categories": {"day-to-day": "Day-to-Day"},
+                "default_category": "trael",
+            })
+
+    def test_error_message_mentions_default_category(self, capsys):
+        with pytest.raises(SystemExit):
+            validate_config({"site_url": "https://example.github.io", "default_category": "trael"})
+        assert "trael" in capsys.readouterr().err
+
     def test_passes_when_both_404_page_filenames_set(self):
         validate_config({
             "site_url": "https://example.github.io",

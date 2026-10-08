@@ -306,6 +306,7 @@ Examples:
 | `images_per_post` | Number of top-level images shown per post on multi-post pages (index, category, notes) — 0 is valid and shows none. Never limits an individual post's own page, where all top-level images are always shown. Inline images (via `{{ image N }}`) aren't counted; those are governed by `<!-- more -->` instead. | `2` |
 | `feed_max_posts` | Maximum number of most-recent dated posts included in the Atom feed | `30` |
 | `categories` | A map of category slug to a display name, e.g. `{photography: Photography}`. See [Categories](#categories). | `{}` (no categories) |
+| `default_category` | The category slug `ingest.py` fills in for an inbox post that doesn't set its own `category`. Must match a slug in `categories` — `validate_config` rejects anything else. | Not set — ingested posts are left uncategorised |
 | `navigation` | A map of page filename to nav label, e.g. `{index.html: Home}`. See [Navigation](#navigation). | `{}` (no navigation) |
 | `special_pages` | A list of page names, each backed by a `{name}.md` file in `content/`, e.g. `[about, cookies]`. See [Special pages](#special-pages). | `[]` (no special pages) |
 | `ai_disclosure_html` | Raw HTML shown in the AI-assisted disclosure banner (see [AI-assisted disclosure](#ai-assisted-disclosure)). Not escaped, so it may include markup such as a link. | Not set — falls back to a generic built-in disclosure sentence |
