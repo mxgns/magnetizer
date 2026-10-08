@@ -18,6 +18,7 @@ DEFAULTS = {
     "images_per_post": 2,
     "feed_max_posts": 30,
     "categories": {},
+    "default_category": "",
     "navigation": {},
     "special_pages": [],
     "ai_disclosure_html": None,
@@ -70,6 +71,9 @@ class TestDefaults:
 
     def test_ai_disclosure_html_default(self, tmp_path):
         assert load_config(tmp_path / "config.yaml")["ai_disclosure_html"] is None
+
+    def test_default_category_default(self, tmp_path):
+        assert load_config(tmp_path / "config.yaml")["default_category"] == ""
 
     def test_missing_file_returns_all_defaults(self, tmp_path):
         config = load_config(tmp_path / "config.yaml")
@@ -129,6 +133,10 @@ class TestCustomValues:
     def test_ai_disclosure_html_overridden(self, tmp_path):
         p = write_config(tmp_path, 'ai_disclosure_html: \'Some text with a <a href="48.html">link</a>.\'\n')
         assert load_config(p)["ai_disclosure_html"] == 'Some text with a <a href="48.html">link</a>.'
+
+    def test_default_category_overridden(self, tmp_path):
+        p = write_config(tmp_path, "categories:\n  day-to-day: Day-to-Day\ndefault_category: day-to-day\n")
+        assert load_config(p)["default_category"] == "day-to-day"
 
     def test_all_values_overridden(self, tmp_path):
         p = write_config(tmp_path, (

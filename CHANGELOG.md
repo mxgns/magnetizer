@@ -5,6 +5,10 @@
 
 ## Released changes
 
+### 8/10/26
+
+- Added default_category config key, used by ingest.py for uncategorised posts
+
 ### 7/10/26
 
 - Removed build.py --push/--force and publisher.py; publishing stays external

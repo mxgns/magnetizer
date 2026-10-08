@@ -46,6 +46,7 @@ manifest.json  Build state (created automatically)
 | `images_per_post` | Top-level images shown per post on multi-post pages (index, category, notes) — `0` shows none. The post's own page always shows all top-level images regardless. Inline images (`{{ image N }}`) aren't counted; use `<!-- more -->` to control those | `2` |
 | `feed_max_posts` | Maximum number of most-recent dated posts included in the Atom feed | `30` |
 | `categories` | Map of category slug to a display name, e.g. `{photography: Photography}` — see [Categories](#categories) | `{}` (no categories) |
+| `default_category` | Category slug `ingest.py` fills in for an inbox post that doesn't set its own `category` — must match a slug in `categories` | Not set — ingested posts are left uncategorised |
 | `navigation` | Map of page filename to nav label, e.g. `{index.html: Home}`, in display order | `{}` (no navigation) |
 | `special_pages` | List of standalone page names, each backed by a `content/{name}.md` file — see [Special pages](#special-pages) | `[]` (no special pages) |
 | `ai_disclosure_html` | Raw HTML (not escaped, so it may include a link) shown in the disclosure banner when a post or special page sets `ai_assisted: true` — see the `ai_assisted` entry in [Frontmatter reference](#frontmatter-reference) | Not set — falls back to a generic disclosure sentence |

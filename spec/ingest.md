@@ -49,7 +49,7 @@ Implementation note: factor the orientation-fix + metadata-strip step out of `ma
   - Add `date:` (today, `Europe/London`, via `zoneinfo`) if absent.
   - Add `draft: true` if the filename was underscore-prefixed (see above).
   - Pad `images:` with generic `Image N` placeholders up to the image count, if the existing list is shorter. Warn (don't error, don't truncate) if the existing list is already longer than the image count.
-  - Add an empty `category:` if absent.
+  - Add `category:` if absent, set to `default_category` from `config.yaml` (empty if not configured).
 - If no `.md` was supplied: generate the same skeleton `new-post.py` would (reusing `build_markdown`), with `draft: true` impossible in this case (see Draft trigger above).
 
 ### Numbering and atomicity

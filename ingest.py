@@ -53,6 +53,7 @@ def main():
     post_id = get_next_post_id(content_dir)
     is_draft = is_draft_filename(md_file)
     skeleton_today = date.today().isoformat()
+    config = load_config(Path.cwd() / "config.yaml")
 
     with tempfile.TemporaryDirectory() as staging:
         staging_dir = Path(staging)
@@ -61,7 +62,7 @@ def main():
             dest = staging_dir / output_image_filename(post_id, i, src)
             process_image(src, dest, args.max_edge, args.quality)
 
-        markdown = build_post_markdown(md_file, skeleton_today, is_draft, len(images))
+        markdown = build_post_markdown(md_file, skeleton_today, is_draft, len(images), config["default_category"])
         (staging_dir / f"{post_id}.md").write_text(markdown, encoding='utf-8')
 
         with tempfile.TemporaryDirectory() as merged:
@@ -72,7 +73,6 @@ def main():
             for f in staging_dir.iterdir():
                 (merged_dir / f.name).symlink_to(f)
 
-            config = load_config(Path.cwd() / "config.yaml")
             validate_content(merged_dir, config)
 
         if args.dry_run:

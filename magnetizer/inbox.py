@@ -97,7 +97,7 @@ def is_draft_filename(md_file: Path | None) -> bool:
     return md_file is not None and md_file.name.startswith('_')
 
 
-def build_post_markdown(md_file: Path | None, skeleton_today: str, is_draft: bool, image_count: int) -> str:
+def build_post_markdown(md_file: Path | None, skeleton_today: str, is_draft: bool, image_count: int, default_category: str = "") -> str:
     """Build the post's markdown. If a .md was supplied its body and existing
     frontmatter are kept, with date/draft/images/category normalised in --
     its missing-date default uses Europe/London (today_in_london()),
@@ -105,7 +105,7 @@ def build_post_markdown(md_file: Path | None, skeleton_today: str, is_draft: boo
     fresh skeleton is generated, dated skeleton_today (matching
     new-post.py's own date.today())."""
     if md_file is None:
-        return build_markdown(skeleton_today, None, image_count)
+        return build_markdown(skeleton_today, None, image_count, default_category)
 
     fm, body = _parse_frontmatter(md_file.read_text(encoding='utf-8'))
     order = list(fm.keys())
@@ -129,7 +129,7 @@ def build_post_markdown(md_file: Path | None, skeleton_today: str, is_draft: boo
             print(f"Warning: '{md_file.name}' lists {len(images)} image(s) in frontmatter, but only {image_count} image file(s) were supplied.")
 
     if 'category' not in fm:
-        fm['category'] = ''
+        fm['category'] = default_category
         order.append('category')
 
     lines = ['---']
