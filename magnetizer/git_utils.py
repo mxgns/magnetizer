@@ -24,9 +24,14 @@ def _run_git(cmd, *, cwd):
 
 
 def _run_git_probe(cmd, *, cwd, valid_returncodes=(0,)):
-    result = subprocess.run(
-        cmd, cwd=cwd, capture_output=True, text=True, timeout=_TIMEOUT,
-    )
+    try:
+        result = subprocess.run(
+            cmd, cwd=cwd, capture_output=True, text=True, timeout=_TIMEOUT,
+        )
+    except subprocess.TimeoutExpired as e:
+        raise RuntimeError(f"Git command timed out after {_TIMEOUT}s: {' '.join(cmd)}") from e
+    except FileNotFoundError as e:
+        raise RuntimeError(f"git executable not found: {e}") from e
     if result.returncode not in valid_returncodes:
         raise RuntimeError(
             f"Git command failed: {' '.join(cmd)}\n{(result.stderr or '').strip()}"

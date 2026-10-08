@@ -88,3 +88,15 @@ class TestRunGitProbe:
             mock_run.return_value = MagicMock(returncode=0)
             _run_git_probe(_CMD, cwd=tmp_path)
         assert mock_run.call_args.kwargs.get("timeout") is not None
+
+    def test_timeout_expired_raises_runtime_error(self, tmp_path):
+        with patch("magnetizer.git_utils.subprocess.run",
+                   side_effect=subprocess.TimeoutExpired(cmd=_CMD, timeout=60)):
+            with pytest.raises(RuntimeError, match="timed out"):
+                _run_git_probe(_CMD, cwd=tmp_path)
+
+    def test_missing_git_binary_raises_runtime_error(self, tmp_path):
+        with patch("magnetizer.git_utils.subprocess.run",
+                   side_effect=FileNotFoundError("git not found")):
+            with pytest.raises(RuntimeError, match="git"):
+                _run_git_probe(_CMD, cwd=tmp_path)
