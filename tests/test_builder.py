@@ -3,7 +3,6 @@
 import json
 import re
 import shutil
-from pathlib import Path
 from unittest.mock import patch
 
 import pytest
@@ -166,6 +165,43 @@ class TestImageProcessing:
         build(p)
         assert (p / "dist" / "1-image-01-resized.jpg").exists()
         assert (p / "dist" / "1-image-02.svg").exists()
+
+    def test_svg_script_tag_stripped_when_copied_to_dist(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD})
+        (p / "content" / "1-image-01.svg").write_text(
+            '<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script><circle r="5"/></svg>'
+        )
+        build(p)
+        svg = (p / "dist" / "1-image-01.svg").read_text()
+        assert "<script" not in svg.lower()
+        assert "<circle" in svg
+
+    def test_benign_svg_content_unchanged_when_copied_to_dist(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD})
+        make_svg(p / "content" / "1-image-01.svg")
+        build(p)
+        assert (p / "dist" / "1-image-01.svg").read_text() == (p / "content" / "1-image-01.svg").read_text()
+
+    def test_svg_script_stripped_without_assuming_an_encoding(self, tmp_path):
+        """The project doesn't declare SVG inputs as UTF-8-only, so stripping
+        <script> must not decode/re-encode the file -- that would crash or
+        corrupt an SVG in any other encoding. 0xE9 alone is not valid UTF-8
+        (it's a lone continuation-less lead byte), so decoding this file as
+        UTF-8 would raise UnicodeDecodeError; the fix must strip the script
+        as raw bytes and leave the rest -- whatever encoding it's actually
+        in -- untouched."""
+        p = make_project(tmp_path, posts={1: MINIMAL_MD})
+        svg_bytes = (
+            b'<svg xmlns="http://www.w3.org/2000/svg">'
+            b'<script>alert(1)</script>'
+            b'<title>caf\xe9</title>'
+            b'<circle r="5"/></svg>'
+        )
+        (p / "content" / "1-image-01.svg").write_bytes(svg_bytes)
+        build(p)
+        output = (p / "dist" / "1-image-01.svg").read_bytes()
+        assert b"<script" not in output
+        assert b"caf\xe9" in output
 
 
 # ---------------------------------------------------------------------------
@@ -1441,6 +1477,17 @@ class TestAboutPage:
         assert (p / "dist" / "about-image-01.svg").exists()
         assert not (p / "dist" / "about-image-01-resized.svg").exists()
         assert not (p / "dist" / "about-image-01-thumb.svg").exists()
+
+    def test_about_svg_script_tag_stripped_when_copied_to_dist(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD}, config=_ABOUT_CONFIG)
+        (p / "content" / "about.md").write_text(ABOUT_MD)
+        (p / "content" / "about-image-01.svg").write_text(
+            '<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script><circle r="5"/></svg>'
+        )
+        build(p)
+        svg = (p / "dist" / "about-image-01.svg").read_text()
+        assert "<script" not in svg.lower()
+        assert "<circle" in svg
 
     def test_build_errors_on_second_build_when_about_md_deleted_while_configured(self, tmp_path):
         p = make_project(tmp_path, posts={1: MINIMAL_MD}, config=_ABOUT_CONFIG)

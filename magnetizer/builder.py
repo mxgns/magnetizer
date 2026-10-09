@@ -9,6 +9,7 @@ from magnetizer.config import load_config
 from magnetizer.metadata import load_metadata
 from magnetizer.content import (
     _IMAGE_EXT_RE,
+    _strip_scripts_bytes,
     parse_comment,
     parse_post,
     resized_filename,
@@ -164,7 +165,8 @@ def _build_post(post, dist_dir, content_dir, config):
 
     for image in post.images:
         if image.filename.lower().endswith('.svg'):
-            shutil.copy2(content_dir / image.filename, dist_dir / image.filename)
+            svg = (content_dir / image.filename).read_bytes()
+            (dist_dir / image.filename).write_bytes(_strip_scripts_bytes(svg))
         else:
             stem, _, ext = image.filename.rpartition('.')
             resize_image(
@@ -457,7 +459,8 @@ def _build_special_page(name, content_dir, dist_dir, config, template, values, w
         _delete_special_page_image_files(dist_dir, name)
         for image in post.images:
             if image.filename.lower().endswith('.svg'):
-                shutil.copy2(content_dir / image.filename, dist_dir / image.filename)
+                svg = (content_dir / image.filename).read_bytes()
+                (dist_dir / image.filename).write_bytes(_strip_scripts_bytes(svg))
             else:
                 stem, _, ext = image.filename.rpartition('.')
                 resize_image(

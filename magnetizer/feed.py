@@ -1,14 +1,7 @@
 import html as _html
-import re
 
-from magnetizer.content import resized_filename as _resized_filename
+from magnetizer.content import _strip_scripts, resized_filename as _resized_filename
 from magnetizer.render import post_display_text
-
-_SCRIPT_TAG_RE = re.compile(r'<script\b[^>]*>.*?</script>', re.IGNORECASE | re.DOTALL)
-
-
-def _strip_scripts(html_str):
-    return _SCRIPT_TAG_RE.sub('', html_str)
 
 
 def _rfc3339(date_str, post_id):

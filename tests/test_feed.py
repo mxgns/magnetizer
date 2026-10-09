@@ -321,6 +321,16 @@ class TestFeedScriptStripping:
         assert "<strong>bold</strong>" in xml
         assert "<em>italic</em>" in xml
 
+    def test_script_tag_with_space_before_closing_angle_bracket_stripped(self):
+        """`</script >` is valid XML (an end-tag may have whitespace between
+        the name and `>`) -- a bare literal `</script>` match would let this
+        form slip through untouched."""
+        post = make_post(body_html='<p>Hi</p><script>alert(1)</script ><p>Bye</p>')
+        xml = render_feed([post], CONFIG)
+        assert "<script" not in xml.lower()
+        assert "alert(1)" not in xml
+        assert "<p>Bye</p>" in xml
+
     def test_script_tag_stripped_from_excerpt_html(self):
         post = make_post(
             body_html='<p>Full body</p>',
