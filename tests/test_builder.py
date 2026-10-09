@@ -8,7 +8,8 @@ from unittest.mock import patch
 import pytest
 from PIL import Image as PILImage
 
-from magnetizer.builder import build
+from magnetizer.builder import _build_post_images, build
+from magnetizer.content import Image
 from magnetizer.image import image_dimensions
 from conftest import MINIMAL_MD, make_project
 
@@ -18,6 +19,13 @@ from conftest import MINIMAL_MD, make_project
 # ---------------------------------------------------------------------------
 
 TITLED_MD = "---\ndate: 2026-05-24\ntitle: My Post\n---\n\n# My Post\n\nContent here.\n"
+
+_CONFIG = {
+    "image_max_dimension": 1600,
+    "image_quality": 75,
+    "thumbnail_max_dimension": 400,
+    "thumbnail_quality": 70,
+}
 
 
 def make_jpg(path, width=800, height=600):
@@ -202,6 +210,56 @@ class TestImageProcessing:
         output = (p / "dist" / "1-image-01.svg").read_bytes()
         assert b"<script" not in output
         assert b"caf\xe9" in output
+
+
+# ---------------------------------------------------------------------------
+# _build_post_images — shared helper (issue #67: was duplicated between
+# _build_post and _build_special_page)
+# ---------------------------------------------------------------------------
+
+class TestBuildPostImagesHelper:
+
+    def test_raster_image_resized_and_thumbnailed(self, tmp_path):
+        content_dir, dist_dir = tmp_path / "content", tmp_path / "dist"
+        content_dir.mkdir()
+        dist_dir.mkdir()
+        make_jpg(content_dir / "1-image-01.jpg", 2400, 1800)
+        _build_post_images([Image("1-image-01.jpg")], content_dir, dist_dir, _CONFIG)
+        assert (dist_dir / "1-image-01-resized.jpg").exists()
+        assert (dist_dir / "1-image-01-thumb.jpg").exists()
+
+    def test_resized_image_respects_config_dimension_and_quality(self, tmp_path):
+        content_dir, dist_dir = tmp_path / "content", tmp_path / "dist"
+        content_dir.mkdir()
+        dist_dir.mkdir()
+        make_jpg(content_dir / "1-image-01.jpg", 2400, 1800)
+        _build_post_images([Image("1-image-01.jpg")], content_dir, dist_dir, _CONFIG)
+        img = PILImage.open(dist_dir / "1-image-01-resized.jpg")
+        assert max(img.size) <= _CONFIG["image_max_dimension"]
+
+    def test_svg_copied_with_script_stripped_not_resized(self, tmp_path):
+        content_dir, dist_dir = tmp_path / "content", tmp_path / "dist"
+        content_dir.mkdir()
+        dist_dir.mkdir()
+        (content_dir / "1-image-01.svg").write_bytes(b'<svg><script>alert(1)</script><circle r="5"/></svg>')
+        _build_post_images([Image("1-image-01.svg")], content_dir, dist_dir, _CONFIG)
+        svg = (dist_dir / "1-image-01.svg").read_bytes()
+        assert b"<script" not in svg
+        assert b"<circle" in svg
+        assert not (dist_dir / "1-image-01-resized.svg").exists()
+        assert not (dist_dir / "1-image-01-thumb.svg").exists()
+
+    def test_multiple_images_all_processed(self, tmp_path):
+        content_dir, dist_dir = tmp_path / "content", tmp_path / "dist"
+        content_dir.mkdir()
+        dist_dir.mkdir()
+        make_jpg(content_dir / "1-image-01.jpg")
+        make_svg(content_dir / "1-image-02.svg")
+        _build_post_images(
+            [Image("1-image-01.jpg"), Image("1-image-02.svg")], content_dir, dist_dir, _CONFIG,
+        )
+        assert (dist_dir / "1-image-01-resized.jpg").exists()
+        assert (dist_dir / "1-image-02.svg").exists()
 
 
 # ---------------------------------------------------------------------------
