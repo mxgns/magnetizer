@@ -12,14 +12,15 @@ def get_next_post_id(content_dir: Path) -> int:
     return max(ids) + 1 if ids else 1
 
 
-def build_markdown(date_str: str, title: str | None, image_count: int = 0, default_category: str = "") -> str:
+def build_markdown(date_str: str, title: str | None, image_count: int = 0, default_category: str = "", image_alts: list | None = None) -> str:
     lines = ["---", f"date: {date_str}"]
     if title:
         lines.append(f"title: {title}")
     if image_count > 0:
         lines.append("images:")
         for i in range(1, image_count + 1):
-            lines.append(f"  - Image {i}")
+            alt = (image_alts[i - 1] if image_alts else None) or f"Image {i}"
+            lines.append(f"  - {alt}")
     lines.append(f"category: {default_category}")
     lines.append("---")
     lines.append("")

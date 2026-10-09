@@ -49,9 +49,9 @@ Implementation note: factor the orientation-fix + metadata-strip step out of `ma
 - If a `.md` was supplied: body and existing frontmatter are kept verbatim, then:
   - Add `date:` (today, `Europe/London`, via `zoneinfo`) if absent.
   - Add `draft: true` if the filename was underscore-prefixed (see above).
-  - Pad `images:` with generic `Image N` placeholders up to the image count, if the existing list is shorter. Warn (don't error, don't truncate) if the existing list is already longer than the image count.
+  - Pad `images:` up to the image count, if the existing list is shorter. Each new entry uses its source file's own filename as alt text when it looks deliberately chosen (2+ real words — see `_humanize_filename`), falling back to a generic `Image N` placeholder for a camera/screenshot default name (`IMG_1234`, `DSC_0001`, ...) or a single-word filename. Only `_` is treated as a space substitute; `-` is left alone since it can be meaningful grammar. Any `images:` entry already in the supplied `.md` is never touched. Warn (don't error, don't truncate) if the existing list is already longer than the image count.
   - Add `category:` if absent, set to `default_category` from `config.yaml` (empty if not configured).
-- If no `.md` was supplied: generate the same skeleton `new-post.py` would (reusing `build_markdown`), with `draft: true` impossible in this case (see Draft trigger above).
+- If no `.md` was supplied: generate the same skeleton `new-post.py` would (reusing `build_markdown`), with `draft: true` impossible in this case (see Draft trigger above). Image alt text is derived the same way as the padding case above.
 
 ### Numbering and atomicity
 
