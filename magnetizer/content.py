@@ -35,10 +35,21 @@ _TARGET_ATTR_RE = re.compile(r'target\s*=\s*(["\'])(.*?)\1', re.IGNORECASE)
 _REL_ATTR_RE = re.compile(r'rel\s*=\s*(["\'])(.*?)\1', re.IGNORECASE)
 
 _SCRIPT_TAG_RE = re.compile(r'<script\b[^>]*>.*?</script\s*>', re.IGNORECASE | re.DOTALL)
+_SCRIPT_TAG_BYTES_RE = re.compile(rb'<script\b[^>]*>.*?</script\s*>', re.IGNORECASE | re.DOTALL)
 
 
 def _strip_scripts(html_str):
     return _SCRIPT_TAG_RE.sub('', html_str)
+
+
+def _strip_scripts_bytes(data):
+    """Same as _strip_scripts, but operates on raw bytes with no decode/
+    re-encode round-trip -- for a file (e.g. an SVG) whose encoding isn't
+    known or guaranteed to be UTF-8. '<script', '</script', and '>' are
+    ASCII in every encoding SVG/XML is realistically found in, so matching
+    them as bytes strips the same tags without touching -- or needing to
+    understand -- the encoding of anything else in the file."""
+    return _SCRIPT_TAG_BYTES_RE.sub(b'', data)
 
 _FOOTNOTE_ID_RE = re.compile(r'((?:id="|href="#)(?:fnref\d*|fn):)([^"]+)"')
 _FOOTNOTE_REF_RE = re.compile(r'\[\^([^\]]+)\](?!:)')
