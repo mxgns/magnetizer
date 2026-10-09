@@ -20,6 +20,24 @@ _SOURCE_IMAGE_EXT_RE = "|".join(SOURCE_IMAGE_EXTENSIONS)
 _HEIF_EXTENSIONS = {"heic", "heif"}
 
 _NATURAL_KEY_RE = re.compile(r'(\d+)')
+_ALT_TEXT_MIN_WORDS = 2
+
+
+def _humanize_filename(stem: str) -> str | None:
+    """Turn a source image's filename stem into alt text, or None if it looks
+    like a camera/screenshot default rather than something a human typed on
+    purpose. A deliberately-named file ("The Mona Lisa in a crowded room") is
+    almost always several real words; every default naming scheme (IMG_1234,
+    DSC_0001, PXL_20231004_123456789, Screenshot_2023-10-04, ...) is a single
+    word plus digits/separators -- requiring >=2 words rejects those without
+    needing a prefix blocklist to keep up to date. Only '_' is folded into a
+    space (a pure filename-safe space substitute); '-' is left alone since it
+    can be meaningful grammar ("well-known", "state-of-the-art")."""
+    normalized = re.sub(r'_+', ' ', stem).strip()
+    normalized = re.sub(r'\s+', ' ', normalized)
+    if len(re.findall(r'[A-Za-z]+', normalized)) < _ALT_TEXT_MIN_WORDS:
+        return None
+    return normalized
 
 
 def _error(msg) -> NoReturn:
@@ -97,15 +115,22 @@ def is_draft_filename(md_file: Path | None) -> bool:
     return md_file is not None and md_file.name.startswith('_')
 
 
-def build_post_markdown(md_file: Path | None, skeleton_today: str, is_draft: bool, image_count: int, default_category: str = "") -> str:
+def build_post_markdown(md_file: Path | None, skeleton_today: str, is_draft: bool, source_images: list, default_category: str = "") -> str:
     """Build the post's markdown. If a .md was supplied its body and existing
     frontmatter are kept, with date/draft/images/category normalised in --
     its missing-date default uses Europe/London (today_in_london()),
     independent of the system/CI runner's own local timezone. Otherwise a
     fresh skeleton is generated, dated skeleton_today (matching
-    new-post.py's own date.today())."""
+    new-post.py's own date.today()). Any image frontmatter entry this adds
+    (new skeleton, or padding past what's already listed) uses the source
+    file's own name as alt text when it looks deliberately chosen -- see
+    _humanize_filename -- falling back to the generic "Image N" otherwise.
+    An image already listed in a supplied .md is never touched."""
+    image_count = len(source_images)
+
     if md_file is None:
-        return build_markdown(skeleton_today, None, image_count, default_category)
+        image_alts = [_humanize_filename(src.stem) for src in source_images]
+        return build_markdown(skeleton_today, None, image_count, default_category, image_alts)
 
     fm, body = _parse_frontmatter(md_file.read_text(encoding='utf-8'))
     order = list(fm.keys())
@@ -124,7 +149,10 @@ def build_post_markdown(md_file: Path | None, skeleton_today: str, is_draft: boo
         if len(images) < image_count:
             if 'images' not in fm:
                 order.append('images')
-            fm['images'] = images + [f"Image {i}" for i in range(len(images) + 1, image_count + 1)]
+            fm['images'] = images + [
+                _humanize_filename(source_images[i - 1].stem) or f"Image {i}"
+                for i in range(len(images) + 1, image_count + 1)
+            ]
         elif len(images) > image_count:
             print(f"Warning: '{md_file.name}' lists {len(images)} image(s) in frontmatter, but only {image_count} image file(s) were supplied.")
 

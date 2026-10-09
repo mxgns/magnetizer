@@ -63,7 +63,7 @@ def main():
             dest = staging_dir / output_image_filename(post_id, i, src)
             process_image(src, dest, args.max_edge, args.quality)
 
-        markdown = build_post_markdown(md_file, skeleton_today, is_draft, len(images), config["default_category"])
+        markdown = build_post_markdown(md_file, skeleton_today, is_draft, images, config["default_category"])
         (staging_dir / f"{post_id}.md").write_text(markdown, encoding='utf-8')
 
         with tempfile.TemporaryDirectory() as merged:
