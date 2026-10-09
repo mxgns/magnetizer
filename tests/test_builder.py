@@ -183,6 +183,37 @@ class TestImageProcessing:
         build(p)
         assert (p / "dist" / "1-image-01.svg").read_text() == (p / "content" / "1-image-01.svg").read_text()
 
+    def test_svg_is_read_and_written_as_utf8_explicitly(self, tmp_path, monkeypatch):
+        """Reading/writing text without an explicit encoding= falls back to
+        the process locale, not necessarily UTF-8 -- which could corrupt or
+        crash on a non-ASCII SVG (e.g. a <text> label) on a non-UTF-8 system.
+        SVG is XML, which defaults to UTF-8, so the encoding must be pinned
+        explicitly rather than left to the ambient locale."""
+        p = make_project(tmp_path, posts={1: MINIMAL_MD})
+        make_svg(p / "content" / "1-image-01.svg")
+
+        encodings_seen = []
+        real_read_text = Path.read_text
+        real_write_text = Path.write_text
+
+        def tracking_read_text(self, *args, **kwargs):
+            if self.suffix == ".svg":
+                encodings_seen.append(("read", kwargs.get("encoding")))
+            return real_read_text(self, *args, **kwargs)
+
+        def tracking_write_text(self, *args, **kwargs):
+            if self.suffix == ".svg":
+                encodings_seen.append(("write", kwargs.get("encoding")))
+            return real_write_text(self, *args, **kwargs)
+
+        monkeypatch.setattr(Path, "read_text", tracking_read_text)
+        monkeypatch.setattr(Path, "write_text", tracking_write_text)
+
+        build(p)
+
+        assert ("read", "utf-8") in encodings_seen
+        assert ("write", "utf-8") in encodings_seen
+
 
 # ---------------------------------------------------------------------------
 # Thumbnail generation

@@ -34,7 +34,7 @@ _CLASS_ATTR_RE = re.compile(r'class\s*=\s*(["\'])(.*?)\1', re.IGNORECASE)
 _TARGET_ATTR_RE = re.compile(r'target\s*=\s*(["\'])(.*?)\1', re.IGNORECASE)
 _REL_ATTR_RE = re.compile(r'rel\s*=\s*(["\'])(.*?)\1', re.IGNORECASE)
 
-_SCRIPT_TAG_RE = re.compile(r'<script\b[^>]*>.*?</script>', re.IGNORECASE | re.DOTALL)
+_SCRIPT_TAG_RE = re.compile(r'<script\b[^>]*>.*?</script\s*>', re.IGNORECASE | re.DOTALL)
 
 
 def _strip_scripts(html_str):
