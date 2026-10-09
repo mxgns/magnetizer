@@ -5,6 +5,10 @@
 
 ## Released changes
 
+### 9/10/26
+
+- Extracted shared _build_post_images helper, used by both post kinds
+
 ### 8/10/26
 
 - Added default_category config key, used by ingest.py for uncategorised posts

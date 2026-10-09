@@ -26,6 +26,7 @@ The `magnetizer` application directory includes the following:
 
 ```
 new-post.py
+ingest.py
 build.py
 publish.py
 pull.py

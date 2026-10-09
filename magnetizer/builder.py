@@ -160,10 +160,8 @@ def _delete_paginated_files(dist_dir, prefix):
             f.unlink()
 
 
-def _build_post(post, dist_dir, content_dir, config):
-    _delete_post_files(dist_dir, post.id)
-
-    for image in post.images:
+def _build_post_images(images, content_dir, dist_dir, config):
+    for image in images:
         if image.filename.lower().endswith('.svg'):
             svg = (content_dir / image.filename).read_bytes()
             (dist_dir / image.filename).write_bytes(_strip_scripts_bytes(svg))
@@ -181,6 +179,11 @@ def _build_post(post, dist_dir, content_dir, config):
                 max_dimension=config["thumbnail_max_dimension"],
                 quality=config["thumbnail_quality"],
             )
+
+
+def _build_post(post, dist_dir, content_dir, config):
+    _delete_post_files(dist_dir, post.id)
+    _build_post_images(post.images, content_dir, dist_dir, config)
 
 
 def _neighbor_post_ids(post_id, all_post_ids_sorted_desc):
@@ -457,24 +460,7 @@ def _build_special_page(name, content_dir, dist_dir, config, template, values, w
 
     if not skip_images:
         _delete_special_page_image_files(dist_dir, name)
-        for image in post.images:
-            if image.filename.lower().endswith('.svg'):
-                svg = (content_dir / image.filename).read_bytes()
-                (dist_dir / image.filename).write_bytes(_strip_scripts_bytes(svg))
-            else:
-                stem, _, ext = image.filename.rpartition('.')
-                resize_image(
-                    content_dir / image.filename,
-                    dist_dir / f"{stem}-resized.{ext}",
-                    max_dimension=config["image_max_dimension"],
-                    quality=config["image_quality"],
-                )
-                resize_image(
-                    content_dir / image.filename,
-                    dist_dir / f"{stem}-thumb.{ext}",
-                    max_dimension=config["thumbnail_max_dimension"],
-                    quality=config["thumbnail_quality"],
-                )
+        _build_post_images(post.images, content_dir, dist_dir, config)
 
     content_html = render_post_page_content(post, ai_disclosure_html=config["ai_disclosure_html"])
     title = render_page_title(config["site_name"], post_display_text(post), page_num=None)
