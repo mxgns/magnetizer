@@ -28,3 +28,21 @@ def resize_image(src, dest, max_dimension, quality):
 def image_dimensions(path):
     with Image.open(path) as img:
         return img.size
+
+
+_ORIENTATION_TAG = 0x0112
+_SWAPPED_ORIENTATIONS = {5, 6, 7, 8}
+
+
+def source_image_dimensions(path):
+    """Like image_dimensions(), but for a content/ source file rather than an
+    already-resized dist/ one -- so it corrects for EXIF orientation itself,
+    since resize_image() hasn't baked that in yet for this file. Reads the
+    Orientation tag directly and swaps width/height for the four
+    orientations that rotate 90 degrees, rather than calling
+    ImageOps.exif_transpose(), which would decode the full image's pixels
+    just to answer a question its header already has the answer to."""
+    with Image.open(path) as img:
+        w, h = img.size
+        orientation = img.getexif().get(_ORIENTATION_TAG, 1)
+    return (h, w) if orientation in _SWAPPED_ORIENTATIONS else (w, h)

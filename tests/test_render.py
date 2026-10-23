@@ -580,6 +580,26 @@ class TestRenderArticleInlineImagesLinkThrough:
         html = render_article(post, on_index_page=True)
         assert '<figure><a href="1.html"><img src="1-image-01-resized.jpg" alt=""></a></figure>' in html
 
+    def test_paired_image_row_figure_with_style_attribute_still_links_through(self):
+        # A paired {{ image N }} {{ image M }} row's <figure> carries a
+        # style="flex-grow:..." attribute (see builder._apply_image_row_ratios)
+        # -- the link-wrapping regex must tolerate that, not just a bare
+        # <figure> with no attributes.
+        post = make_post(
+            post_id=1,
+            images=["1-image-01.jpg", "1-image-02.jpg"],
+            body_html=(
+                '<div class="image-row">'
+                '<figure style="flex-grow:2.0000"><img src="1-image-01-resized.jpg" alt="First"></figure>'
+                '<figure style="flex-grow:1.0000"><img src="1-image-02-resized.jpg" alt="Second"></figure>'
+                '</div>'
+            ),
+            inline_image_filenames={"1-image-01.jpg", "1-image-02.jpg"},
+        )
+        html = render_article(post, on_index_page=True)
+        assert '<figure style="flex-grow:2.0000"><a href="1.html"><img src="1-image-01-resized.jpg" alt="First"></a></figure>' in html
+        assert '<figure style="flex-grow:1.0000"><a href="1.html"><img src="1-image-02-resized.jpg" alt="Second"></a></figure>' in html
+
 
 # ---------------------------------------------------------------------------
 # render_article — title HTML escaping

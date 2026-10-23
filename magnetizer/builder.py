@@ -18,7 +18,7 @@ from magnetizer.content import (
     thumbnail_filename,
 )
 from magnetizer.dynamic import compute_base_values, compute_word_count, expand_shortcodes, format_int, wrap_scalar
-from magnetizer.image import image_dimensions, resize_image
+from magnetizer.image import image_dimensions, resize_image, source_image_dimensions
 from magnetizer.manifest import (
     get_changed_post_ids,
     get_changed_resource_filenames,
@@ -128,12 +128,63 @@ def _orphan_comment_warnings(content_dir, published_post_ids):
     return warnings
 
 
+_IMAGE_ROW_RE = re.compile(
+    r'<div class="image-row">'
+    r'<figure><img src="([^"]+)"([^>]*)></figure>'
+    r'<figure><img src="([^"]+)"([^>]*)></figure>'
+    r'</div>'
+)
+
+
+def _image_row_aspect_ratio(resized_src, originals_by_resized_name, content_dir):
+    """The real aspect ratio (width/height) of a paired image, keyed by the
+    resized filename its <img src> uses -- or None if it can't be determined
+    (an SVG, whose vector dimensions aren't comparable to a raster image's
+    pixel ones), in which case the pair falls back to an even split."""
+    original = originals_by_resized_name.get(resized_src)
+    if original is None or original.lower().endswith('.svg'):
+        return None
+    w, h = source_image_dimensions(content_dir / original)
+    return w / h
+
+
+def _apply_image_row_ratios(body_html, images, content_dir):
+    """Weight each figure in a paired {{ image N }} {{ image M }} row by its
+    image's own aspect ratio, so -- since height = row_width * ratio /
+    (ratio1 + ratio2) for both figures alike -- the two end up exactly the
+    same height with no cropping, the narrower-ratio image simply rendering
+    narrower. Left alone (even split, via the row's own CSS default) when
+    either image's ratio can't be determined, e.g. an SVG in the pair."""
+    if not body_html or '<div class="image-row">' not in body_html:
+        return body_html
+    originals_by_resized_name = {resized_filename(image.filename): image.filename for image in images}
+
+    def _replace(m):
+        src1, attrs1, src2, attrs2 = m.groups()
+        ratio1 = _image_row_aspect_ratio(src1, originals_by_resized_name, content_dir)
+        ratio2 = _image_row_aspect_ratio(src2, originals_by_resized_name, content_dir)
+        if ratio1 is None or ratio2 is None:
+            return m.group(0)
+        return (
+            f'<div class="image-row">'
+            f'<figure style="flex-grow:{ratio1:.4f}"><img src="{src1}"{attrs1}></figure>'
+            f'<figure style="flex-grow:{ratio2:.4f}"><img src="{src2}"{attrs2}></figure>'
+            f'</div>'
+        )
+
+    return _IMAGE_ROW_RE.sub(_replace, body_html)
+
+
 def _load_post(content_dir, post_id, site_url=""):
     md_path = content_dir / f"{post_id}.md"
     md_text = md_path.read_text()
     images = _image_filenames_for_post(content_dir, post_id)
     comments = _load_comments(content_dir, _comment_filenames_for_post(content_dir, post_id), site_url)
-    return parse_post(md_text, post_id, images, site_url, comments=comments)
+    post = parse_post(md_text, post_id, images, site_url, comments=comments)
+    post.body_html = _apply_image_row_ratios(post.body_html, post.images, content_dir)
+    if post.excerpt_html is not None:
+        post.excerpt_html = _apply_image_row_ratios(post.excerpt_html, post.images, content_dir)
+    return post
 
 
 def _delete_post_files(dist_dir, post_id):
@@ -436,6 +487,9 @@ def _load_special_page_post(content_dir, name, site_url=""):
     images = _special_page_image_filenames(content_dir, name)
     comments = _load_comments(content_dir, _special_page_comment_filenames(content_dir, name), site_url)
     post = parse_post(md_text, name, images, site_url, comments=comments)
+    post.body_html = _apply_image_row_ratios(post.body_html, post.images, content_dir)
+    if post.excerpt_html is not None:
+        post.excerpt_html = _apply_image_row_ratios(post.excerpt_html, post.images, content_dir)
     # draft only applies to regular posts -- parse_post doesn't know the
     # difference, so force it off here rather than leave a stray `draft: true`
     # in a special page's frontmatter silently doing something.

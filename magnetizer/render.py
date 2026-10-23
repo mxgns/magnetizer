@@ -81,9 +81,9 @@ def _link_inline_images(html_content, post):
         if image.filename not in post.inline_image_filenames:
             continue
         resized = _resized_filename(image.filename)
-        pattern = re.compile(r'<figure><img src="' + re.escape(resized) + r'"([^>]*)></figure>')
+        pattern = re.compile(r'(<figure[^>]*>)<img src="' + re.escape(resized) + r'"([^>]*)></figure>')
         html_content = pattern.sub(
-            lambda m, resized=resized: f'<figure><a href="{post.url}"><img src="{resized}"{m.group(1)}></a></figure>',
+            lambda m, resized=resized: f'{m.group(1)}<a href="{post.url}"><img src="{resized}"{m.group(2)}></a></figure>',
             html_content,
         )
     return html_content

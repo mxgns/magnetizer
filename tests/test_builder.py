@@ -8,7 +8,7 @@ from unittest.mock import patch
 import pytest
 from PIL import Image as PILImage
 
-from magnetizer.builder import _build_post_images, build
+from magnetizer.builder import _apply_image_row_ratios, _build_post_images, build
 from magnetizer.content import Image
 from magnetizer.image import image_dimensions
 from conftest import MINIMAL_MD, make_project
@@ -35,6 +35,13 @@ def make_jpg(path, width=800, height=600):
 
 def make_svg(path):
     path.write_text('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><circle cx="5" cy="5" r="5"/></svg>')
+
+
+def make_jpg_with_exif(path, width, height, orientation):
+    img = PILImage.new("RGB", (width, height), color=(100, 150, 200))
+    exif = img.getexif()
+    exif[0x0112] = orientation  # Orientation
+    img.save(path, "JPEG", exif=exif)
 
 
 # ---------------------------------------------------------------------------
@@ -260,6 +267,93 @@ class TestBuildPostImagesHelper:
         )
         assert (dist_dir / "1-image-01-resized.jpg").exists()
         assert (dist_dir / "1-image-02.svg").exists()
+
+
+# ---------------------------------------------------------------------------
+# Paired inline image flex-grow weighting
+# ---------------------------------------------------------------------------
+
+class TestImageRowFlexWeights:
+
+    def test_weights_proportional_to_aspect_ratio(self, tmp_path):
+        content_dir = tmp_path / "content"
+        content_dir.mkdir()
+        make_jpg(content_dir / "1-image-01.jpg", 1600, 800)  # ratio 2.0
+        make_jpg(content_dir / "1-image-02.jpg", 800, 800)   # ratio 1.0
+        images = [Image("1-image-01.jpg"), Image("1-image-02.jpg")]
+        body_html = (
+            '<div class="image-row">'
+            '<figure><img src="1-image-01-resized.jpg" alt=""></figure>'
+            '<figure><img src="1-image-02-resized.jpg" alt=""></figure>'
+            '</div>'
+        )
+        result = _apply_image_row_ratios(body_html, images, content_dir)
+        assert 'style="flex-grow:2.0000"' in result
+        assert 'style="flex-grow:1.0000"' in result
+
+    def test_non_paired_html_is_unchanged(self, tmp_path):
+        content_dir = tmp_path / "content"
+        content_dir.mkdir()
+        body_html = '<figure><img src="1-image-01-resized.jpg" alt=""></figure>'
+        result = _apply_image_row_ratios(body_html, [Image("1-image-01.jpg")], content_dir)
+        assert result == body_html
+
+    def test_svg_in_pair_falls_back_to_no_weighting(self, tmp_path):
+        content_dir = tmp_path / "content"
+        content_dir.mkdir()
+        make_jpg(content_dir / "1-image-01.jpg", 1600, 800)
+        make_svg(content_dir / "1-image-02.svg")
+        images = [Image("1-image-01.jpg"), Image("1-image-02.svg")]
+        body_html = (
+            '<div class="image-row">'
+            '<figure><img src="1-image-01-resized.jpg" alt=""></figure>'
+            '<figure><img src="1-image-02.svg" alt=""></figure>'
+            '</div>'
+        )
+        result = _apply_image_row_ratios(body_html, images, content_dir)
+        assert result == body_html
+
+    def test_rotated_orientation_respected_in_weighting(self, tmp_path):
+        content_dir = tmp_path / "content"
+        content_dir.mkdir()
+        # 2000x1000 raw pixels, but Orientation=6 means it displays portrait
+        # (1000x2000) -- the weighting must follow the displayed shape.
+        make_jpg_with_exif(content_dir / "1-image-01.jpg", 2000, 1000, orientation=6)
+        make_jpg(content_dir / "1-image-02.jpg", 1000, 1000)  # square, ratio 1.0
+        images = [Image("1-image-01.jpg"), Image("1-image-02.jpg")]
+        body_html = (
+            '<div class="image-row">'
+            '<figure><img src="1-image-01-resized.jpg" alt=""></figure>'
+            '<figure><img src="1-image-02-resized.jpg" alt=""></figure>'
+            '</div>'
+        )
+        result = _apply_image_row_ratios(body_html, images, content_dir)
+        assert 'style="flex-grow:0.5000"' in result
+
+
+class TestImageRowFlexWeightsIntegration:
+
+    def test_built_post_html_contains_flex_grow_weights(self, tmp_path):
+        md = "---\ndate: 2026-05-24\n---\n{{ image 1 }} {{ image 2 }}\n"
+        p = make_project(tmp_path, posts={1: md})
+        make_jpg(p / "content" / "1-image-01.jpg", 1600, 800)
+        make_jpg(p / "content" / "1-image-02.jpg", 800, 800)
+        build(p)
+        html = (p / "dist" / "1.html").read_text()
+        assert 'style="flex-grow:2.0000"' in html
+        assert 'style="flex-grow:1.0000"' in html
+
+    def test_refresh_still_applies_weights_without_reprocessing_images(self, tmp_path):
+        md = "---\ndate: 2026-05-24\n---\n{{ image 1 }} {{ image 2 }}\n"
+        p = make_project(tmp_path, posts={1: md})
+        make_jpg(p / "content" / "1-image-01.jpg", 1600, 800)
+        make_jpg(p / "content" / "1-image-02.jpg", 800, 800)
+        build(p)
+        outcome = build(p, refresh=True)
+        kinds = {entry[0] for entry in outcome["log"]}
+        assert "RESIZED" not in kinds
+        html = (p / "dist" / "1.html").read_text()
+        assert 'style="flex-grow:2.0000"' in html
 
 
 # ---------------------------------------------------------------------------

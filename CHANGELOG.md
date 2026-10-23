@@ -5,6 +5,11 @@
 
 ## Released changes
 
+### 23/10/26
+
+- Paired `{{ image N }}` tokens render side by side, same height, uncropped
+- Fixed: paired images didn't link through to the post on index pages
+
 ### 9/10/26
 
 - Extracted shared _build_post_images helper, used by both post kinds

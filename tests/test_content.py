@@ -1111,6 +1111,77 @@ class TestInlineImageTokens:
 
 
 # ---------------------------------------------------------------------------
+# Paired inline image tokens ({{ image N }} {{ image M }})
+# ---------------------------------------------------------------------------
+
+class TestPairedInlineImageTokens:
+
+    def test_two_tokens_same_line_produce_image_row(self):
+        md = (
+            "---\ndate: 2026-05-24\nimages:\n  - First\n  - Second\n---\n"
+            "{{ image 1 }} {{ image 2 }}\n"
+        )
+        post = parse_post(md, 1, ["1-image-01.jpg", "1-image-02.jpg"])
+        assert (
+            '<div class="image-row">'
+            '<figure><img src="1-image-01-resized.jpg" alt="First"></figure>'
+            '<figure><img src="1-image-02-resized.jpg" alt="Second"></figure>'
+            '</div>'
+        ) in post.body_html
+
+    def test_two_tokens_on_separate_lines_with_no_blank_line_also_pairs(self):
+        # A single newline inside a markdown paragraph is just a soft break --
+        # no semantic difference from a space -- so this pairs the same way
+        # as the same-line case above.
+        md = (
+            "---\ndate: 2026-05-24\nimages:\n  - First\n  - Second\n---\n"
+            "{{ image 1 }}\n{{ image 2 }}\n"
+        )
+        post = parse_post(md, 1, ["1-image-01.jpg", "1-image-02.jpg"])
+        assert (
+            '<div class="image-row">'
+            '<figure><img src="1-image-01-resized.jpg" alt="First"></figure>'
+            '<figure><img src="1-image-02-resized.jpg" alt="Second"></figure>'
+            '</div>'
+        ) in post.body_html
+
+    def test_extra_whitespace_between_tokens_still_pairs(self):
+        md = "---\ndate: 2026-05-24\n---\n{{ image 1 }}    {{ image 2 }}\n"
+        post = parse_post(md, 1, ["1-image-01.jpg", "1-image-02.jpg"])
+        assert '<div class="image-row">' in post.body_html
+
+    def test_paired_tokens_both_recorded_as_inline(self):
+        md = "---\ndate: 2026-05-24\n---\n{{ image 1 }} {{ image 2 }}\n"
+        post = parse_post(md, 1, ["1-image-01.jpg", "1-image-02.jpg"])
+        assert post.inline_image_filenames == frozenset({"1-image-01.jpg", "1-image-02.jpg"})
+
+    def test_paired_tokens_keep_source_order(self):
+        md = "---\ndate: 2026-05-24\n---\n{{ image 2 }} {{ image 1 }}\n"
+        post = parse_post(md, 1, ["1-image-01.jpg", "1-image-02.jpg"])
+        first = post.body_html.index("1-image-02-resized.jpg")
+        second = post.body_html.index("1-image-01-resized.jpg")
+        assert first < second
+
+    def test_three_tokens_in_one_block_errors(self):
+        md = (
+            "---\ndate: 2026-05-24\n---\n"
+            "{{ image 1 }} {{ image 2 }} {{ image 3 }}\n"
+        )
+        with pytest.raises(SystemExit):
+            parse_post(md, 1, ["1-image-01.jpg", "1-image-02.jpg", "1-image-03.jpg"])
+
+    def test_two_tokens_with_other_text_in_block_errors(self):
+        md = "---\ndate: 2026-05-24\n---\n{{ image 1 }} {{ image 2 }} plus caption\n"
+        with pytest.raises(SystemExit):
+            parse_post(md, 1, ["1-image-01.jpg", "1-image-02.jpg"])
+
+    def test_paired_token_out_of_range_errors(self):
+        md = "---\ndate: 2026-05-24\n---\n{{ image 1 }} {{ image 2 }}\n"
+        with pytest.raises(SystemExit):
+            parse_post(md, 1, ["1-image-01.jpg"])
+
+
+# ---------------------------------------------------------------------------
 # Comments — parse_comment()
 # ---------------------------------------------------------------------------
 

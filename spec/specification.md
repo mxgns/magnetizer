@@ -907,7 +907,7 @@ Some text before the image.
 Some text after.
 ```
 
-- `{{ image N }}` must appear alone on its own line, separated from surrounding content by blank lines. Using it inline with other text, or sharing a line/paragraph with other content, is a build error.
+- `{{ image N }}` must appear alone in its own block — the markdown blank-line-delimited unit — with nothing else in it. Using it inline with other text, or sharing a block with other content, is a build error.
 - Referencing an image number that doesn't exist for the post (e.g. `{{ image 9 }}` when the post only has 4 images) is a build error.
 - The placeholder is replaced with:
 
@@ -917,6 +917,26 @@ Some text after.
 
 using the same resized filename and frontmatter alt text (see [Alt texts](#alt-texts)) as the top-of-post image strip. This is the form stored in the post's body/excerpt HTML; when rendered on index and category pages, the `<figure>` is additionally wrapped in an `<a>` pointing to the individual post page — `<figure><a href="POST_URL"><img ...></a></figure>` — same as the top-of-post strip (see [Index pages](#index-pages)). On the post's own page it's rendered exactly as shown above, unwrapped, since it's already on the page it would link to.
 - An image used inline this way is excluded from the top-of-post `<div class="post-images">` strip described under [Read more](#read-more), on both index and individual post pages. On index pages, if it falls after a `<!-- more -->` marker (i.e. it isn't part of the shown excerpt), it's counted in the "Read more (+N photo(s))" text — an inline image shown within the excerpt doesn't count, since it's already visible.
+
+#### Paired inline images
+
+Two `{{ image N }}` tokens, and nothing else, in the same block render side by side on wide screens instead of stacked:
+
+```
+{{ image 1 }} {{ image 2 }}
+```
+
+- The two tokens must be separated by whitespace — one or more spaces, or a single line break with no blank line (a soft break inside one markdown block is not a meaningful distinction from a space, so both are treated the same way).
+- Three or more tokens in the same block, or two tokens sharing a block with any other text, is a build error — the same "must appear alone in its own block" rule as a single token, just evaluated for the whole block at once rather than per token. This is a hard limit for now: pairing is only ever two images, not a general N-per-row layout.
+- The pair is replaced with:
+
+```html
+<div class="image-row"><figure style="flex-grow:RATIO_1"><img src="..." alt="..."></figure><figure style="flex-grow:RATIO_2"><img src="..." alt="..."></figure></div>
+```
+
+in source order, using the same per-image rendering (resized filename, alt text, link-wrapping on index/category pages) as a single inline image above. Both images are recorded as inline images the same way a single `{{ image N }}` token's image is.
+- Each figure's `style="flex-grow:RATIO"` is that image's own width/height aspect ratio, read from its source file in `content/` (not the resized `dist/` copy) after correcting for EXIF orientation. Weighting each figure's width by its own ratio this way is what makes the row come out the same height for both images without cropping either one — the narrower-ratio image simply renders narrower, the wider one wider. If either image's ratio can't be determined (currently: an SVG in the pair, since a vector image has no pixel dimensions to compare), neither figure gets a `style` attribute and the pair falls back to an even width split instead.
+- On narrow screens, the pair stacks and renders identically to two images placed inline one after another in the normal way.
 
 ### Read more
 
