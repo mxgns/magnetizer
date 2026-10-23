@@ -249,3 +249,17 @@ class TestSourceImageDimensions:
         path = make_image_with_exif(tmp_path / "img.jpg", 2000, 1000, orientation=6)
         w, h = source_image_dimensions(path)
         assert h > w
+
+    @pytest.mark.parametrize("orientation", [5, 6, 7, 8])
+    def test_orientations_that_rotate_90_degrees_swap_dimensions(self, tmp_path, orientation):
+        path = make_image_with_exif(tmp_path / "img.jpg", 2000, 1000, orientation=orientation)
+        assert source_image_dimensions(path) == (1000, 2000)
+
+    @pytest.mark.parametrize("orientation", [1, 2, 3, 4])
+    def test_orientations_that_only_flip_or_rotate_180_keep_dimensions(self, tmp_path, orientation):
+        path = make_image_with_exif(tmp_path / "img.jpg", 2000, 1000, orientation=orientation)
+        assert source_image_dimensions(path) == (2000, 1000)
+
+    def test_no_orientation_tag_keeps_raw_dimensions(self, tmp_path):
+        path = make_image(tmp_path / "img.jpg", 2000, 1000)
+        assert source_image_dimensions(path) == (2000, 1000)
