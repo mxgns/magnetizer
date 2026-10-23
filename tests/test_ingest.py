@@ -24,7 +24,7 @@ import pillow_heif
 import pytest
 from PIL import Image as PILImage
 
-from magnetizer.inbox import cleanup_inbox_sources, commit_staged_files, today_in_london
+from magnetizer.inbox import _humanize_filename, cleanup_inbox_sources, commit_staged_files, today_in_london
 
 pillow_heif.register_heif_opener()
 
@@ -434,6 +434,58 @@ class TestCleanupInboxSources:
 
 
 # ---------------------------------------------------------------------------
+# _humanize_filename -- deriving alt text from a source filename (#78)
+# ---------------------------------------------------------------------------
+
+class TestHumanizeFilename:
+
+    def test_multi_word_phrase_is_used_as_is(self):
+        assert _humanize_filename("The Mona Lisa in a crowded room") == "The Mona Lisa in a crowded room"
+
+    def test_underscores_become_spaces(self):
+        assert _humanize_filename("Trip_to_Paris_Day_2") == "Trip to Paris Day 2"
+
+    def test_hyphens_are_preserved_not_converted_to_spaces(self):
+        assert _humanize_filename("well-known-landmark") == "well-known-landmark"
+
+    def test_mixed_case_is_preserved(self):
+        assert _humanize_filename("A Trip to the Eiffel Tower") == "A Trip to the Eiffel Tower"
+
+    def test_collapses_multiple_underscores(self):
+        assert _humanize_filename("Trip___to__Paris") == "Trip to Paris"
+
+    def test_strips_leading_and_trailing_underscores(self):
+        assert _humanize_filename("_Trip to Paris_") == "Trip to Paris"
+
+    def test_single_real_word_returns_none(self):
+        """Only one real word is indistinguishable from a deliberate
+        single-word rename ('sunset') -- falls back to the generic
+        placeholder rather than risk showing something low-value."""
+        assert _humanize_filename("sunset") is None
+
+    @pytest.mark.parametrize("stem", [
+        "IMG_1234",
+        "DSC_0001",
+        "DSCN1234",
+        "PXL_20231004_123456789",
+        "Screenshot_2023-10-04-123456",
+        "100_1234",
+        "20231004_123456",
+    ])
+    def test_camera_and_screenshot_default_names_return_none(self, stem):
+        assert _humanize_filename(stem) is None
+
+    def test_known_gap_hyphenated_default_name_with_two_short_tokens(self):
+        """Known limitation: preserving '-' (not folding it into a space, per
+        issue #78 feedback) means a hyphen-separated default name can still
+        clear the >=2-word bar if it happens to have two short alphabetic
+        tokens either side of a hyphen -- e.g. WhatsApp's own default iOS
+        naming scheme. Accepted trade-off for staying prefix-blocklist-free;
+        documented here rather than silently passing."""
+        assert _humanize_filename("IMG-20231004-WA0001") == "IMG-20231004-WA0001"
+
+
+# ---------------------------------------------------------------------------
 # Markdown: no .md supplied -> generated skeleton
 # ---------------------------------------------------------------------------
 
@@ -457,6 +509,18 @@ class TestGeneratedSkeleton:
         run_ingest([], cwd=project_dir)
         text = (project_dir / "content" / "1.md").read_text()
         assert "category: day-to-day" in text
+
+    def test_no_md_skeleton_uses_meaningful_filename_as_alt_text(self, project_dir):
+        make_jpeg(project_dir / "inbox" / "The Mona Lisa in a crowded room.jpg", 100, 80)
+        run_ingest([], cwd=project_dir)
+        text = (project_dir / "content" / "1.md").read_text()
+        assert "The Mona Lisa in a crowded room" in text
+
+    def test_no_md_skeleton_falls_back_for_camera_default_filename(self, project_dir):
+        make_jpeg(project_dir / "inbox" / "IMG_1234.jpg", 100, 80)
+        run_ingest([], cwd=project_dir)
+        text = (project_dir / "content" / "1.md").read_text()
+        assert "Image 1" in text
 
 
 # ---------------------------------------------------------------------------
@@ -527,6 +591,52 @@ class TestMarkdownMerge:
         text = (project_dir / "content" / "1.md").read_text()
         assert "One" in text and "Two" in text and "Three" in text
         assert "warn" in (result.stdout + result.stderr).lower()
+
+    def test_padded_image_uses_meaningful_filename_as_alt_text(self, project_dir):
+        inbox = project_dir / "inbox"
+        (inbox / "post.md").write_text("---\ndate: 2026-02-02\n---\n\nBody.")
+        make_jpeg(inbox / "a.jpg", 10, 10)
+        make_jpeg(inbox / "Sunset over the lake.jpg", 10, 10)
+        run_ingest([], cwd=project_dir)
+        text = (project_dir / "content" / "1.md").read_text()
+        assert "Sunset over the lake" in text
+        assert "Image 2" in text  # a.jpg -> no meaningful words, falls back
+
+    def test_padded_image_falls_back_for_camera_default_filename(self, project_dir):
+        inbox = project_dir / "inbox"
+        (inbox / "post.md").write_text("---\ndate: 2026-02-02\n---\n\nBody.")
+        make_jpeg(inbox / "IMG_1234.jpg", 10, 10)
+        run_ingest([], cwd=project_dir)
+        text = (project_dir / "content" / "1.md").read_text()
+        assert "Image 1" in text
+
+    def test_padded_image_preserves_hyphens_in_meaningful_filename(self, project_dir):
+        inbox = project_dir / "inbox"
+        (inbox / "post.md").write_text("---\ndate: 2026-02-02\n---\n\nBody.")
+        make_jpeg(inbox / "well-known-landmark.jpg", 10, 10)
+        run_ingest([], cwd=project_dir)
+        text = (project_dir / "content" / "1.md").read_text()
+        assert "well-known-landmark" in text
+
+    def test_padded_image_converts_underscores_to_spaces(self, project_dir):
+        inbox = project_dir / "inbox"
+        (inbox / "post.md").write_text("---\ndate: 2026-02-02\n---\n\nBody.")
+        make_jpeg(inbox / "Trip_to_Paris_Day.jpg", 10, 10)
+        run_ingest([], cwd=project_dir)
+        text = (project_dir / "content" / "1.md").read_text()
+        assert "Trip to Paris Day" in text
+
+    def test_existing_images_entries_never_overwritten_by_filename(self, project_dir):
+        """A supplied .md's own captions always win, even for an image whose
+        filename would otherwise produce a humanized alt text -- only the
+        padding for images past what's already listed is ever touched."""
+        inbox = project_dir / "inbox"
+        (inbox / "post.md").write_text("---\ndate: 2026-02-02\nimages:\n  - My own caption\n---\n\nBody.")
+        make_jpeg(inbox / "A meaningful filename.jpg", 10, 10)
+        run_ingest([], cwd=project_dir)
+        text = (project_dir / "content" / "1.md").read_text()
+        assert "My own caption" in text
+        assert "A meaningful filename" not in text
 
 
 # ---------------------------------------------------------------------------

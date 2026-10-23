@@ -8,6 +8,7 @@
 ### 9/10/26
 
 - Extracted shared _build_post_images helper, used by both post kinds
+- ingest.py now derives image alt text from a deliberately-named file
 
 ### 8/10/26
 
