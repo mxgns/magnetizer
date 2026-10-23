@@ -7,7 +7,7 @@
 
 ### 23/10/26
 
-- Two `{{ image N }}` tokens in one paragraph now render as a side-by-side pair
+- Paired `{{ image N }}` tokens render side by side, same height, uncropped
 
 ### 9/10/26
 

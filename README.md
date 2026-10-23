@@ -154,6 +154,8 @@ Two tokens, and nothing else, sharing that same paragraph render side by side on
 
 The two tokens can be separated by a space or a line break — a soft break within one paragraph isn't a meaningful difference from a space. Three or more tokens in the same paragraph, or two tokens sharing it with other text, is a build error the same way a lone token sharing a paragraph with text is; pairing only ever covers exactly two images at a time.
 
+Each image in the pair is weighted by its own aspect ratio (read from its source file, EXIF orientation corrected) so the row renders at one shared height with no cropping — a wide shot renders wider, a narrow one narrower, never stretched or cut to fit. An SVG in the pair has no pixel ratio to weigh, so it falls back to splitting the row evenly instead.
+
 Any link in a post body whose host doesn't match `site_url` is treated as external, and automatically gets `target="_blank" rel="noopener"` plus an `external-link` class, so readers leaving the site open it in a new tab. This applies to Markdown links and raw HTML `<a>` tags alike, and merges into any `class`/`target`/`rel` the tag already has rather than duplicating attributes.
 
 Every full build also checks that internal links resolve to a page that actually exists in `dist/`, warning (not erroring) on anything broken — see [Building the site](#building-the-site) below.

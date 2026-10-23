@@ -28,3 +28,11 @@ def resize_image(src, dest, max_dimension, quality):
 def image_dimensions(path):
     with Image.open(path) as img:
         return img.size
+
+
+def source_image_dimensions(path):
+    """Like image_dimensions(), but for a content/ source file rather than an
+    already-resized dist/ one -- so it corrects for EXIF orientation itself,
+    since resize_image() hasn't baked that in yet for this file."""
+    with Image.open(path) as img:
+        return ImageOps.exif_transpose(img).size

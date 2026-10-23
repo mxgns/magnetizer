@@ -931,10 +931,11 @@ Two `{{ image N }}` tokens, and nothing else, in the same block render side by s
 - The pair is replaced with:
 
 ```html
-<div class="image-row"><figure><img src="..." alt="..."></figure><figure><img src="..." alt="..."></figure></div>
+<div class="image-row"><figure style="flex-grow:RATIO_1"><img src="..." alt="..."></figure><figure style="flex-grow:RATIO_2"><img src="..." alt="..."></figure></div>
 ```
 
 in source order, using the same per-image rendering (resized filename, alt text, link-wrapping on index/category pages) as a single inline image above. Both images are recorded as inline images the same way a single `{{ image N }}` token's image is.
+- Each figure's `style="flex-grow:RATIO"` is that image's own width/height aspect ratio, read from its source file in `content/` (not the resized `dist/` copy) after correcting for EXIF orientation. Weighting each figure's width by its own ratio this way is what makes the row come out the same height for both images without cropping either one — the narrower-ratio image simply renders narrower, the wider one wider. If either image's ratio can't be determined (currently: an SVG in the pair, since a vector image has no pixel dimensions to compare), neither figure gets a `style` attribute and the pair falls back to an even width split instead.
 - On narrow screens, the pair stacks and renders identically to two images placed inline one after another in the normal way.
 
 ### Read more

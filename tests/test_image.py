@@ -3,7 +3,7 @@
 import pytest
 from pathlib import Path
 from PIL import Image as PILImage
-from magnetizer.image import resize_image, image_dimensions
+from magnetizer.image import resize_image, image_dimensions, source_image_dimensions
 
 
 # ---------------------------------------------------------------------------
@@ -230,3 +230,22 @@ class TestImageDimensions:
         dest = tmp_path / "dest.jpg"
         resize_image(src, dest, max_dimension=400, quality=70)
         assert image_dimensions(dest) == (400, 300)
+
+
+# ---------------------------------------------------------------------------
+# source_image_dimensions
+# ---------------------------------------------------------------------------
+
+class TestSourceImageDimensions:
+
+    def test_returns_width_and_height(self, tmp_path):
+        path = make_image(tmp_path / "img.jpg", 400, 267)
+        assert source_image_dimensions(path) == (400, 267)
+
+    def test_rotated_orientation_tag_is_respected(self, tmp_path):
+        # Physical pixel data is landscape (2000x1000), but Orientation=6 means
+        # "rotate 90 CW for display" -- the photo is actually portrait, and the
+        # dimensions should reflect how it actually displays, not the raw file.
+        path = make_image_with_exif(tmp_path / "img.jpg", 2000, 1000, orientation=6)
+        w, h = source_image_dimensions(path)
+        assert h > w
