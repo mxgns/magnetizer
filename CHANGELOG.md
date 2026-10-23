@@ -5,6 +5,10 @@
 
 ## Released changes
 
+### 23/10/26
+
+- Two `{{ image N }}` tokens in one paragraph now render as a side-by-side pair
+
 ### 9/10/26
 
 - Extracted shared _build_post_images helper, used by both post kinds

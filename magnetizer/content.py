@@ -26,6 +26,7 @@ _COMMENT_MARKDOWN_EXTENSIONS = ['pymdownx.mark', 'smarty']
 _COMMENT_NUMBER_RE = re.compile(r'-comment-(\d+)')
 
 _IMAGE_TOKEN_BLOCK_RE = re.compile(r'^\{\{\s*image\s+(\d+)\s*\}\}$')
+_IMAGE_TOKEN_PAIR_RE = re.compile(r'^\{\{\s*image\s+(\d+)\s*\}\}\s+\{\{\s*image\s+(\d+)\s*\}\}$')
 _IMAGE_TOKEN_LOOSE_RE = re.compile(r'\{\{\s*image\s+\d+\s*\}\}')
 
 _A_TAG_RE = re.compile(r'<a\s+([^>]*)>', re.IGNORECASE)
@@ -343,21 +344,33 @@ def parse_comment(md_text, filename, site_url=""):
     )
 
 
+def _render_image_token(n, images, post_id):
+    if not (1 <= n <= len(images)):
+        _error(f"post {post_id} references image {n} via {{{{ image {n} }}}}, but only {len(images)} image(s) exist for this post")
+    image = images[n - 1]
+    alt = html.escape(image.alt, quote=True)
+    return f'<figure><img src="{resized_filename(image.filename)}" alt="{alt}"></figure>', image.filename
+
+
 def _substitute_image_tokens(body, images, post_id):
     blocks = body.split('\n\n')
     used_filenames = set()
 
     for i, block in enumerate(blocks):
-        m = _IMAGE_TOKEN_BLOCK_RE.match(block.strip())
-        if not m:
+        stripped = block.strip()
+        m = _IMAGE_TOKEN_BLOCK_RE.match(stripped)
+        if m:
+            figure, filename = _render_image_token(int(m.group(1)), images, post_id)
+            used_filenames.add(filename)
+            blocks[i] = figure
             continue
-        n = int(m.group(1))
-        if not (1 <= n <= len(images)):
-            _error(f"post {post_id} references image {n} via {{{{ image {n} }}}}, but only {len(images)} image(s) exist for this post")
-        image = images[n - 1]
-        used_filenames.add(image.filename)
-        alt = html.escape(image.alt, quote=True)
-        blocks[i] = f'<figure><img src="{resized_filename(image.filename)}" alt="{alt}"></figure>'
+        m = _IMAGE_TOKEN_PAIR_RE.match(stripped)
+        if m:
+            figure1, filename1 = _render_image_token(int(m.group(1)), images, post_id)
+            figure2, filename2 = _render_image_token(int(m.group(2)), images, post_id)
+            used_filenames.add(filename1)
+            used_filenames.add(filename2)
+            blocks[i] = f'<div class="image-row">{figure1}{figure2}</div>'
 
     new_body = '\n\n'.join(blocks)
     if _IMAGE_TOKEN_LOOSE_RE.search(new_body):
