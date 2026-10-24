@@ -1748,43 +1748,43 @@ class TestCookiesPage:
 
 class TestAboutAndCookiesHeadingWarnings:
 
-    def test_warning_for_h2_heading_in_about_body(self, tmp_path):
-        md = "---\ntitle: About\n---\n\n## A heading\n\nContent.\n"
+    def test_warning_for_h3_heading_in_about_body(self, tmp_path):
+        md = "---\ntitle: About\n---\n\n### A heading\n\nContent.\n"
         p = make_project(tmp_path, posts={1: MINIMAL_MD}, config=_ABOUT_CONFIG)
         (p / "content" / "about.md").write_text(md)
         warnings = build(p)["warnings"]
         assert any(f == "about.html" and "heading" in msg.lower() for f, msg in warnings)
 
-    def test_no_warning_for_h3_heading_in_about_body(self, tmp_path):
-        md = "---\ntitle: About\n---\n\n### A heading\n\nContent.\n"
+    def test_no_warning_for_h2_heading_in_about_body(self, tmp_path):
+        md = "---\ntitle: About\n---\n\n## A heading\n\nContent.\n"
         p = make_project(tmp_path, posts={1: MINIMAL_MD}, config=_ABOUT_CONFIG)
         (p / "content" / "about.md").write_text(md)
         warnings = build(p)["warnings"]
         assert not any(f == "about.html" for f, msg in warnings)
 
-    def test_warning_for_h1_heading_in_cookies_body(self, tmp_path):
-        md = "---\ntitle: Cookie Policy\n---\n\n# A heading\n\nContent.\n"
+    def test_warning_for_h4_heading_in_cookies_body(self, tmp_path):
+        md = "---\ntitle: Cookie Policy\n---\n\n#### A heading\n\nContent.\n"
         p = make_project(tmp_path, posts={1: MINIMAL_MD}, config=_COOKIES_CONFIG)
         (p / "content" / "cookies.md").write_text(md)
         warnings = build(p)["warnings"]
         assert any(f == "cookies.html" and "heading" in msg.lower() for f, msg in warnings)
 
-    def test_no_warning_for_h3_heading_in_cookies_body(self, tmp_path):
-        md = "---\ntitle: Cookie Policy\n---\n\n### A heading\n\nContent.\n"
+    def test_no_warning_for_h2_heading_in_cookies_body(self, tmp_path):
+        md = "---\ntitle: Cookie Policy\n---\n\n## A heading\n\nContent.\n"
         p = make_project(tmp_path, posts={1: MINIMAL_MD}, config=_COOKIES_CONFIG)
         (p / "content" / "cookies.md").write_text(md)
         warnings = build(p)["warnings"]
         assert not any(f == "cookies.html" for f, msg in warnings)
 
     def test_warning_propagated_when_about_built_by_filename(self, tmp_path):
-        md = "---\ntitle: About\n---\n\n## A heading\n\nContent.\n"
+        md = "---\ntitle: About\n---\n\n### A heading\n\nContent.\n"
         p = make_project(tmp_path, posts={1: MINIMAL_MD}, config=_ABOUT_CONFIG)
         (p / "content" / "about.md").write_text(md)
         warnings = build(p, filename="about.md")["warnings"]
         assert any(f == "about.html" and "heading" in msg.lower() for f, msg in warnings)
 
     def test_warning_propagated_when_cookies_built_by_filename(self, tmp_path):
-        md = "---\ntitle: Cookie Policy\n---\n\n# A heading\n\nContent.\n"
+        md = "---\ntitle: Cookie Policy\n---\n\n#### A heading\n\nContent.\n"
         p = make_project(tmp_path, posts={1: MINIMAL_MD}, config=_COOKIES_CONFIG)
         (p / "content" / "cookies.md").write_text(md)
         warnings = build(p, filename="cookies.md")["warnings"]
@@ -2906,27 +2906,27 @@ class TestCategoryWarnings:
 
 class TestHeadingLevelWarnings:
 
-    def test_warning_for_h1_heading_in_post_body(self, tmp_path):
-        md = "---\ndate: 2026-05-24\ntitle: My Post\n---\n\n# A heading\n\nContent.\n"
+    def test_warning_for_h3_heading_in_post_body(self, tmp_path):
+        md = "---\ndate: 2026-05-24\ntitle: My Post\n---\n\n### A heading\n\nContent.\n"
         p = make_project(tmp_path, posts={1: md})
         warnings = build(p)["warnings"]
-        assert any(f == "1.html" and "<h1>" in msg for f, msg in warnings)
+        assert any(f == "1.html" and "<h3>" in msg for f, msg in warnings)
 
-    def test_warning_for_h2_heading_in_post_body(self, tmp_path):
-        md = "---\ndate: 2026-05-24\ntitle: My Post\n---\n\n## A heading\n\nContent.\n"
+    def test_warning_for_h4_heading_in_post_body(self, tmp_path):
+        md = "---\ndate: 2026-05-24\ntitle: My Post\n---\n\n#### A heading\n\nContent.\n"
         p = make_project(tmp_path, posts={1: md})
         warnings = build(p)["warnings"]
-        assert any(f == "1.html" and "<h2>" in msg for f, msg in warnings)
+        assert any(f == "1.html" and "<h4>" in msg for f, msg in warnings)
 
-    def test_warning_lists_both_h1_and_h2_when_both_present(self, tmp_path):
-        md = "---\ndate: 2026-05-24\ntitle: My Post\n---\n\n# One\n\n## Two\n\nContent.\n"
+    def test_warning_lists_both_h3_and_h4_when_both_present(self, tmp_path):
+        md = "---\ndate: 2026-05-24\ntitle: My Post\n---\n\n### One\n\n#### Two\n\nContent.\n"
         p = make_project(tmp_path, posts={1: md})
         warnings = build(p)["warnings"]
         entry = next(msg for f, msg in warnings if f == "1.html")
-        assert "<h1>" in entry and "<h2>" in entry
+        assert "<h3>" in entry and "<h4>" in entry
 
-    def test_no_warning_for_h3_heading_in_post_body(self, tmp_path):
-        md = "---\ndate: 2026-05-24\ntitle: My Post\n---\n\n### A heading\n\nContent.\n"
+    def test_no_warning_for_h2_heading_in_post_body(self, tmp_path):
+        md = "---\ndate: 2026-05-24\ntitle: My Post\n---\n\n## A heading\n\nContent.\n"
         p = make_project(tmp_path, posts={1: md})
         assert not any("heading" in msg.lower() for _, msg in build(p)["warnings"])
 
@@ -3492,9 +3492,9 @@ class TestWarnings:
         warnings = build(p)["warnings"]
         assert any(filename == "1.html" and "unknown" in msg.lower() for filename, msg in warnings)
 
-    def test_high_level_heading_produces_warning(self, tmp_path):
-        h1_md = "---\ndate: 2026-05-24\ntitle: My Post\n---\n\n# Top Level\n\nContent.\n"
-        p = make_project(tmp_path, posts={1: h1_md})
+    def test_deep_heading_produces_warning(self, tmp_path):
+        h3_md = "---\ndate: 2026-05-24\ntitle: My Post\n---\n\n### Too Deep\n\nContent.\n"
+        p = make_project(tmp_path, posts={1: h3_md})
         warnings = build(p)["warnings"]
         assert any(filename == "1.html" and "heading" in msg.lower() for filename, msg in warnings)
 
