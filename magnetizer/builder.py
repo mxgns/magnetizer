@@ -288,14 +288,14 @@ def _warn_if_title_without_image_or_content(post):
     return None
 
 
-_HIGH_HEADING_PATTERN = re.compile(r'<h([12])[ >]')
+_DEEP_HEADING_PATTERN = re.compile(r'<h([3-6])[ >]', re.IGNORECASE)
 
 
-def _warn_if_heading_too_high(post):
-    levels = sorted({int(m.group(1)) for m in _HIGH_HEADING_PATTERN.finditer(post.body_html)})
+def _warn_if_heading_too_deep(post):
+    levels = sorted({int(m.group(1)) for m in _DEEP_HEADING_PATTERN.finditer(post.body_html)})
     if levels:
         tags = ", ".join(f"<h{level}>" for level in levels)
-        return f"High-level headings: {tags}"
+        return f"Deep headings: {tags}"
     return None
 
 
@@ -501,7 +501,7 @@ def _build_special_page(name, content_dir, dist_dir, config, template, values, w
     post = _load_special_page_post(content_dir, name, config["site_url"])
     ws = [
         w for w in [
-            _warn_if_heading_too_high(post),
+            _warn_if_heading_too_deep(post),
             _warn_if_missing_alt_texts(post),
             _warn_if_title_and_name_set(post),
             _warn_if_title_without_image_or_content(post),
@@ -714,7 +714,7 @@ def _prepare_post_for_render(post, page_filename, config, values, pages_dynamic_
             _warn_if_title_without_image_or_content(post),
             _warn_if_missing_category(post, config["categories"]),
             _warn_if_invalid_category(post, config["categories"]),
-            _warn_if_heading_too_high(post),
+            _warn_if_heading_too_deep(post),
         ] if w
     ]
     for msg in post_warnings:

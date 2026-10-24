@@ -104,6 +104,47 @@ class TestRenderArticleStructure:
 
 
 # ---------------------------------------------------------------------------
+# render_article — body heading shift
+# ---------------------------------------------------------------------------
+
+class TestRenderArticleHeadingShift:
+
+    def test_single_post_page_shifts_h1_to_h2(self):
+        html = render_article(make_post(body_html="<h1>Section</h1>"), on_index_page=False)
+        assert "<h2>Section</h2>" in html
+        assert "<h1>Section</h1>" not in html
+
+    def test_single_post_page_shifts_h2_to_h3(self):
+        html = render_article(make_post(body_html="<h2>Sub</h2>"), on_index_page=False)
+        assert "<h3>Sub</h3>" in html
+
+    def test_index_page_shifts_h1_to_h3(self):
+        html = render_article(make_post(body_html="<h1>Section</h1>"), on_index_page=True)
+        assert "<h3>Section</h3>" in html
+        assert "<h1>Section</h1>" not in html
+
+    def test_index_page_shifts_h2_to_h4(self):
+        html = render_article(make_post(body_html="<h2>Sub</h2>"), on_index_page=True)
+        assert "<h4>Sub</h4>" in html
+
+    def test_index_page_shifts_headings_in_excerpt_html_too(self):
+        html = render_article(make_post(excerpt_html="<h1>Intro</h1>"), on_index_page=True)
+        assert "<h3>Intro</h3>" in html
+
+    def test_single_post_page_body_h1_does_not_duplicate_title_h1(self):
+        html = render_article(make_post(title="My Post", body_html="<h1>Section</h1>"), on_index_page=False)
+        assert html.count("<h1") == 1
+        assert "<h2>Section</h2>" in html
+
+    def test_shift_is_case_insensitive_for_raw_html_headings(self):
+        # Raw HTML in a post body (e.g. hand-written <H1>) is uppercase-tolerant
+        # the same way the rest of HTML is -- it must still shift, case preserved.
+        html = render_article(make_post(title="My Post", body_html="<H1>Section</H1>"), on_index_page=False)
+        assert "<H2>Section</H2>" in html
+        assert html.count("<h1") == 1
+
+
+# ---------------------------------------------------------------------------
 # render_article — title
 # ---------------------------------------------------------------------------
 

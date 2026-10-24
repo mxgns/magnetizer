@@ -27,6 +27,7 @@ _COMMENT_NUMBER_RE = re.compile(r'-comment-(\d+)')
 
 _IMAGE_TOKEN_BLOCK_RE = re.compile(r'^\{\{\s*image\s+(\d+)\s*\}\}$')
 _IMAGE_TOKEN_PAIR_RE = re.compile(r'^\{\{\s*image\s+(\d+)\s*\}\}\s+\{\{\s*image\s+(\d+)\s*\}\}$')
+_IMAGE_TOKEN_LINK_RE = re.compile(r'^\[\s*\{\{\s*image\s+(\d+)\s*\}\}\s*\]\(((?:[^()]|\([^()]*\))*)\)$')
 _IMAGE_TOKEN_LOOSE_RE = re.compile(r'\{\{\s*image\s+\d+\s*\}\}')
 
 _A_TAG_RE = re.compile(r'<a\s+([^>]*)>', re.IGNORECASE)
@@ -51,6 +52,21 @@ def _strip_scripts_bytes(data):
     them as bytes strips the same tags without touching -- or needing to
     understand -- the encoding of anything else in the file."""
     return _SCRIPT_TAG_BYTES_RE.sub(b'', data)
+
+
+_HEADING_TAG_RE = re.compile(r'(</?h)([1-6])([ >])', re.IGNORECASE)
+
+
+def _shift_headings(html_str, delta):
+    """Renumber bare <hN>/</hN> tags in already-rendered body HTML by delta
+    levels, clamped to h1-h6. Authors always write a post/special-page body
+    starting at <h1> -- this is purely a render-time concern for wherever
+    the body ends up embedded (its own page, an index/category/notes
+    excerpt, or a feed entry), never something parse_post() itself does."""
+    def repl(m):
+        level = max(1, min(6, int(m.group(2)) + delta))
+        return f'{m.group(1)}{level}{m.group(3)}'
+    return _HEADING_TAG_RE.sub(repl, html_str)
 
 _FOOTNOTE_ID_RE = re.compile(r'((?:id="|href="#)(?:fnref\d*|fn):)([^"]+)"')
 _FOOTNOTE_REF_RE = re.compile(r'\[\^([^\]]+)\](?!:)')
@@ -344,12 +360,15 @@ def parse_comment(md_text, filename, site_url=""):
     )
 
 
-def _render_image_token(n, images, post_id):
+def _render_image_token(n, images, post_id, href=None):
     if not (1 <= n <= len(images)):
         _error(f"post {post_id} references image {n} via {{{{ image {n} }}}}, but only {len(images)} image(s) exist for this post")
     image = images[n - 1]
     alt = html.escape(image.alt, quote=True)
-    return f'<figure><img src="{resized_filename(image.filename)}" alt="{alt}"></figure>', image.filename
+    img = f'<img src="{resized_filename(image.filename)}" alt="{alt}">'
+    if href is not None:
+        img = f'<a href="{html.escape(html.unescape(href), quote=True)}">{img}</a>'
+    return f'<figure>{img}</figure>', image.filename
 
 
 def _substitute_image_tokens(body, images, post_id):
@@ -361,6 +380,12 @@ def _substitute_image_tokens(body, images, post_id):
         m = _IMAGE_TOKEN_BLOCK_RE.match(stripped)
         if m:
             figure, filename = _render_image_token(int(m.group(1)), images, post_id)
+            used_filenames.add(filename)
+            blocks[i] = figure
+            continue
+        m = _IMAGE_TOKEN_LINK_RE.match(stripped)
+        if m:
+            figure, filename = _render_image_token(int(m.group(1)), images, post_id, href=m.group(2))
             used_filenames.add(filename)
             blocks[i] = figure
             continue

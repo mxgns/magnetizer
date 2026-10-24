@@ -1,6 +1,6 @@
 import html as _html
 
-from magnetizer.content import _strip_scripts, resized_filename as _resized_filename
+from magnetizer.content import _shift_headings, _strip_scripts, resized_filename as _resized_filename
 from magnetizer.render import post_display_text
 
 
@@ -41,11 +41,11 @@ def render_feed(posts, config):
         )
         if post.excerpt_html is not None:
             body_content = (
-                f'{_strip_scripts(post.excerpt_html)}'
+                f'{_shift_headings(_strip_scripts(post.excerpt_html), delta=1)}'
                 f'<p><a href="{tracked_url}" class="read-more">Read more</a></p>'
             )
         else:
-            body_content = _strip_scripts(post.body_html)
+            body_content = _shift_headings(_strip_scripts(post.body_html), delta=1)
         lines += [
             '  <entry>',
             f'    <title>{title}</title>',

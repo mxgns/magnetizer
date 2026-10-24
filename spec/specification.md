@@ -447,12 +447,13 @@ Where:
 Notes:
 
 - The heading element is always present, on every post, regardless of type. See [Post types](#post-types) for what text it contains when the post has no `title`. Visually hiding it for untitled posts — so it exists for the document outline and assistive technology without appearing on the page — is the responsibility of the project's own `resources/` CSS, keyed off `POST_TYPE_CLASS`; Magnetizer itself never hides it.
-- On multi-post pages (index and category pages), the heading is an `<h2>` rather than `<h1>`, so that a page listing several posts has only one `<h1>` (used elsewhere on the page, e.g. for a category name). On the individual post page, the heading is an `<h1>`.
+- On multi-post pages (index and category pages), the heading is an `<h2>` rather than `<h1>`, so that a page listing several posts has only one `<h1>` (used elsewhere on the page, e.g. for a category name). On the individual post page, the heading is an `<h1>`. See below for how this interacts with heading tags inside `POST_BODY` itself.
 - If the post is displayed on a multi-post page, the heading and `<time>` contain a link to the post page. On the individual post page, no links are included.
-- Magnetizer prints a warning during the build if a post's Markdown body contains a heading more prominent than `<h3>` (i.e. an `<h1>` or `<h2>`, from `#` or `##`), since the post heading already occupies that level of the document outline:
+- A post or special page's body is authored starting at `#` (top level) and `##` (sub-level) — two levels only, as if the body were its own document, with no need to account for the heading levels `POST_TITLE_TAG` already occupies. At render time, `POST_BODY`'s heading tags are renumbered depending on where the post is shown: by **one level** (`h1`→`h2`, `h2`→`h3`) on the post's own page and in each entry's content in `feed.xml`, so the body never introduces a second `<h1>` alongside `POST_TITLE_TAG`; by **two levels** (`h1`→`h3`, `h2`→`h4`) on a multi-post page (index, category or notes page), since `POST_TITLE_TAG` is already `<h2>` there.
+- Magnetizer prints a warning during the build if a post's Markdown body contains a heading at `<h3>` level or deeper (i.e. `###`, `####`, etc.), since only the two authored levels above (`#`/`##`) are allowed:
 
 ```text
-Warning: Post {post-id} has heading(s) more prominent than <h3> in its body: <h1>, <h2>
+Warning: Post {post-id} has heading(s) at <h3> level or deeper in its body: <h3>, <h4>
 ```
 
 The same warning is printed for each [special page](#special-pages), using its configured name in place of `{post-id}`. The build continues normally — this is a warning, not an error.
@@ -917,6 +918,24 @@ Some text after.
 
 using the same resized filename and frontmatter alt text (see [Alt texts](#alt-texts)) as the top-of-post image strip. This is the form stored in the post's body/excerpt HTML; when rendered on index and category pages, the `<figure>` is additionally wrapped in an `<a>` pointing to the individual post page — `<figure><a href="POST_URL"><img ...></a></figure>` — same as the top-of-post strip (see [Index pages](#index-pages)). On the post's own page it's rendered exactly as shown above, unwrapped, since it's already on the page it would link to.
 - An image used inline this way is excluded from the top-of-post `<div class="post-images">` strip described under [Read more](#read-more), on both index and individual post pages. On index pages, if it falls after a `<!-- more -->` marker (i.e. it isn't part of the shown excerpt), it's counted in the "Read more (+N photo(s))" text — an inline image shown within the excerpt doesn't count, since it's already visible.
+
+#### Linked inline images
+
+Wrapping a single `{{ image N }}` token in a Markdown link, alone in its own block, wraps the resulting `<img>` in that link instead of the usual unwrapped `<figure>`:
+
+```
+[{{ image 3 }}](some-page.html)
+```
+
+renders as:
+
+```html
+<figure><a href="some-page.html"><img src="{post-id}-image-{image-number}-resized.{image-file-extension}" alt="ALT_TEXT"></a></figure>
+```
+
+- The same "alone in its own block" rule applies as a plain token — the link must be the block's only content.
+- The image is still recorded as inline the same way a plain `{{ image N }}` token's image is (excluded from the top-of-post strip, counted the same way toward a "Read more (+N photo(s))" link if it falls after a `<!-- more -->` marker).
+- This form isn't available for a paired row (two tokens in one block) — only a single token may be link-wrapped this way.
 
 #### Paired inline images
 
