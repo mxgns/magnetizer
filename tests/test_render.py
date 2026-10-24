@@ -136,6 +136,13 @@ class TestRenderArticleHeadingShift:
         assert html.count("<h1") == 1
         assert "<h2>Section</h2>" in html
 
+    def test_shift_is_case_insensitive_for_raw_html_headings(self):
+        # Raw HTML in a post body (e.g. hand-written <H1>) is uppercase-tolerant
+        # the same way the rest of HTML is -- it must still shift, case preserved.
+        html = render_article(make_post(title="My Post", body_html="<H1>Section</H1>"), on_index_page=False)
+        assert "<H2>Section</H2>" in html
+        assert html.count("<h1") == 1
+
 
 # ---------------------------------------------------------------------------
 # render_article — title

@@ -288,7 +288,7 @@ def _warn_if_title_without_image_or_content(post):
     return None
 
 
-_DEEP_HEADING_PATTERN = re.compile(r'<h([3-6])[ >]')
+_DEEP_HEADING_PATTERN = re.compile(r'<h([3-6])[ >]', re.IGNORECASE)
 
 
 def _warn_if_heading_too_deep(post):

@@ -2934,6 +2934,14 @@ class TestHeadingLevelWarnings:
         p = make_project(tmp_path, posts={1: MINIMAL_MD})
         assert not any("heading" in msg.lower() for _, msg in build(p)["warnings"])
 
+    def test_warning_for_uppercase_raw_html_h3_heading_in_post_body(self, tmp_path):
+        # Raw HTML passes through untouched -- an uppercase <H3> must still
+        # be caught, the same as a markdown-generated (always lowercase) one.
+        md = "---\ndate: 2026-05-24\ntitle: My Post\n---\n\n<H3>A heading</H3>\n\nContent.\n"
+        p = make_project(tmp_path, posts={1: md})
+        warnings = build(p)["warnings"]
+        assert any(f == "1.html" and "heading" in msg.lower() for f, msg in warnings)
+
 
 # ---------------------------------------------------------------------------
 # Category pages

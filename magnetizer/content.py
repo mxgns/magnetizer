@@ -27,7 +27,7 @@ _COMMENT_NUMBER_RE = re.compile(r'-comment-(\d+)')
 
 _IMAGE_TOKEN_BLOCK_RE = re.compile(r'^\{\{\s*image\s+(\d+)\s*\}\}$')
 _IMAGE_TOKEN_PAIR_RE = re.compile(r'^\{\{\s*image\s+(\d+)\s*\}\}\s+\{\{\s*image\s+(\d+)\s*\}\}$')
-_IMAGE_TOKEN_LINK_RE = re.compile(r'^\[\s*\{\{\s*image\s+(\d+)\s*\}\}\s*\]\(([^)]+)\)$')
+_IMAGE_TOKEN_LINK_RE = re.compile(r'^\[\s*\{\{\s*image\s+(\d+)\s*\}\}\s*\]\(((?:[^()]|\([^()]*\))*)\)$')
 _IMAGE_TOKEN_LOOSE_RE = re.compile(r'\{\{\s*image\s+\d+\s*\}\}')
 
 _A_TAG_RE = re.compile(r'<a\s+([^>]*)>', re.IGNORECASE)
@@ -54,7 +54,7 @@ def _strip_scripts_bytes(data):
     return _SCRIPT_TAG_BYTES_RE.sub(b'', data)
 
 
-_HEADING_TAG_RE = re.compile(r'(</?h)([1-6])([ >])')
+_HEADING_TAG_RE = re.compile(r'(</?h)([1-6])([ >])', re.IGNORECASE)
 
 
 def _shift_headings(html_str, delta):
@@ -367,7 +367,7 @@ def _render_image_token(n, images, post_id, href=None):
     alt = html.escape(image.alt, quote=True)
     img = f'<img src="{resized_filename(image.filename)}" alt="{alt}">'
     if href is not None:
-        img = f'<a href="{html.escape(href, quote=True)}">{img}</a>'
+        img = f'<a href="{html.escape(html.unescape(href), quote=True)}">{img}</a>'
     return f'<figure>{img}</figure>', image.filename
 
 

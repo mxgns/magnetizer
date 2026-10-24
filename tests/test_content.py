@@ -1148,6 +1148,17 @@ class TestLinkedInlineImageTokens:
         post = parse_post(md, 1, ["1-image-01.jpg"])
         assert 'href="beach.html?a=1&amp;b=2"' in post.body_html
 
+    def test_linked_token_href_with_balanced_parentheses(self):
+        md = "---\ndate: 2026-05-24\n---\n[{{ image 1 }}](page_(topic).html)\n"
+        post = parse_post(md, 1, ["1-image-01.jpg"])
+        assert 'href="page_(topic).html"' in post.body_html
+
+    def test_linked_token_href_does_not_double_escape_entities(self):
+        md = "---\ndate: 2026-05-24\n---\n[{{ image 1 }}](beach.html?a=1&amp;b=2)\n"
+        post = parse_post(md, 1, ["1-image-01.jpg"])
+        assert 'href="beach.html?a=1&amp;b=2"' in post.body_html
+        assert "&amp;amp;" not in post.body_html
+
     def test_linked_token_sharing_block_with_other_lines_errors(self):
         md = "---\ndate: 2026-05-24\n---\nIntro text\n[{{ image 1 }}](beach.html)\nmore text\n"
         with pytest.raises(SystemExit):
