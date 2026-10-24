@@ -918,6 +918,24 @@ Some text after.
 using the same resized filename and frontmatter alt text (see [Alt texts](#alt-texts)) as the top-of-post image strip. This is the form stored in the post's body/excerpt HTML; when rendered on index and category pages, the `<figure>` is additionally wrapped in an `<a>` pointing to the individual post page — `<figure><a href="POST_URL"><img ...></a></figure>` — same as the top-of-post strip (see [Index pages](#index-pages)). On the post's own page it's rendered exactly as shown above, unwrapped, since it's already on the page it would link to.
 - An image used inline this way is excluded from the top-of-post `<div class="post-images">` strip described under [Read more](#read-more), on both index and individual post pages. On index pages, if it falls after a `<!-- more -->` marker (i.e. it isn't part of the shown excerpt), it's counted in the "Read more (+N photo(s))" text — an inline image shown within the excerpt doesn't count, since it's already visible.
 
+#### Linked inline images
+
+Wrapping a single `{{ image N }}` token in a Markdown link, alone in its own block, wraps the resulting `<img>` in that link instead of the usual unwrapped `<figure>`:
+
+```
+[{{ image 3 }}](some-page.html)
+```
+
+renders as:
+
+```html
+<figure><a href="some-page.html"><img src="{post-id}-image-{image-number}-resized.{image-file-extension}" alt="ALT_TEXT"></a></figure>
+```
+
+- The same "alone in its own block" rule applies as a plain token — the link must be the block's only content.
+- The image is still recorded as inline the same way a plain `{{ image N }}` token's image is (excluded from the top-of-post strip, counted the same way toward a "Read more (+N photo(s))" link if it falls after a `<!-- more -->` marker).
+- This form isn't available for a paired row (two tokens in one block) — only a single token may be link-wrapped this way.
+
 #### Paired inline images
 
 Two `{{ image N }}` tokens, and nothing else, in the same block render side by side on wide screens instead of stacked:

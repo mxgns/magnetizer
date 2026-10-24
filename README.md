@@ -146,6 +146,8 @@ More text.
 
 It must be on its own line with a blank line before and after (its own paragraph, not just its own line within one) — used inline with other text, or referencing an image number that doesn't exist for the post, is a build error. The image is rendered as `<figure><img src="..." alt="..."></figure>` using its frontmatter alt text, and is excluded from the top-of-post image strip since it's already shown in the body. On index pages, if it falls after a `<!-- more -->` marker (so isn't part of the shown excerpt), it's counted into the "Read more (+N photo(s))" link text — see below. On index and category pages, its `<figure>` links through to the post, same as the top-of-post strip; on the post's own page it's left unlinked.
 
+Wrap a single token in a Markdown link, alone on its own line, to link its `<img>` to an arbitrary URL instead — e.g. `[{{ image 3 }}](some-page.html)` renders `<figure><a href="some-page.html"><img ...></a></figure>`. Same rules as a plain token (own block, still excluded from the top-of-post strip, still counted toward "Read more (+N photo(s))" if past the marker) — just with a link of your choosing instead of the automatic index/category link-through. Only a single token can be linked this way, not a paired row.
+
 Two tokens, and nothing else, sharing that same paragraph render side by side on wide screens and stacked on narrow ones:
 
 ```markdown

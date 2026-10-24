@@ -27,6 +27,7 @@ _COMMENT_NUMBER_RE = re.compile(r'-comment-(\d+)')
 
 _IMAGE_TOKEN_BLOCK_RE = re.compile(r'^\{\{\s*image\s+(\d+)\s*\}\}$')
 _IMAGE_TOKEN_PAIR_RE = re.compile(r'^\{\{\s*image\s+(\d+)\s*\}\}\s+\{\{\s*image\s+(\d+)\s*\}\}$')
+_IMAGE_TOKEN_LINK_RE = re.compile(r'^\[\s*\{\{\s*image\s+(\d+)\s*\}\}\s*\]\(([^)]+)\)$')
 _IMAGE_TOKEN_LOOSE_RE = re.compile(r'\{\{\s*image\s+\d+\s*\}\}')
 
 _A_TAG_RE = re.compile(r'<a\s+([^>]*)>', re.IGNORECASE)
@@ -344,12 +345,15 @@ def parse_comment(md_text, filename, site_url=""):
     )
 
 
-def _render_image_token(n, images, post_id):
+def _render_image_token(n, images, post_id, href=None):
     if not (1 <= n <= len(images)):
         _error(f"post {post_id} references image {n} via {{{{ image {n} }}}}, but only {len(images)} image(s) exist for this post")
     image = images[n - 1]
     alt = html.escape(image.alt, quote=True)
-    return f'<figure><img src="{resized_filename(image.filename)}" alt="{alt}"></figure>', image.filename
+    img = f'<img src="{resized_filename(image.filename)}" alt="{alt}">'
+    if href is not None:
+        img = f'<a href="{html.escape(href, quote=True)}">{img}</a>'
+    return f'<figure>{img}</figure>', image.filename
 
 
 def _substitute_image_tokens(body, images, post_id):
@@ -361,6 +365,12 @@ def _substitute_image_tokens(body, images, post_id):
         m = _IMAGE_TOKEN_BLOCK_RE.match(stripped)
         if m:
             figure, filename = _render_image_token(int(m.group(1)), images, post_id)
+            used_filenames.add(filename)
+            blocks[i] = figure
+            continue
+        m = _IMAGE_TOKEN_LINK_RE.match(stripped)
+        if m:
+            figure, filename = _render_image_token(int(m.group(1)), images, post_id, href=m.group(2))
             used_filenames.add(filename)
             blocks[i] = figure
             continue

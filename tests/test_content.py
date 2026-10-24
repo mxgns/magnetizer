@@ -1111,6 +1111,50 @@ class TestInlineImageTokens:
 
 
 # ---------------------------------------------------------------------------
+# Linked inline image tokens ([{{ image N }}](url))
+# ---------------------------------------------------------------------------
+
+class TestLinkedInlineImageTokens:
+
+    def test_token_wrapped_in_link_renders_anchor(self):
+        md = "---\ndate: 2026-05-24\nimages:\n  - A sunny beach\n---\n[{{ image 1 }}](beach.html)\n"
+        post = parse_post(md, 1, ["1-image-01.jpg"])
+        assert '<figure><a href="beach.html"><img src="1-image-01-resized.jpg" alt="A sunny beach"></a></figure>' in post.body_html
+
+    def test_linked_token_tolerates_extra_whitespace(self):
+        md = "---\ndate: 2026-05-24\nimages:\n  - A sunny beach\n---\n[ {{ image 1}} ](beach.html)\n"
+        post = parse_post(md, 1, ["1-image-01.jpg"])
+        assert '<a href="beach.html">' in post.body_html
+
+    def test_linked_token_recorded_as_inline(self):
+        md = "---\ndate: 2026-05-24\n---\n[{{ image 1 }}](beach.html)\n"
+        post = parse_post(md, 1, ["1-image-01.jpg"])
+        assert post.inline_image_filenames == frozenset({"1-image-01.jpg"})
+
+    def test_linked_token_kept_out_of_top_level_images_strip_count(self):
+        # Same guarantee as a plain {{ image N }} token -- a linked one is
+        # still "used inline", so it's excluded from the top image strip.
+        md = "---\ndate: 2026-05-24\n---\n[{{ image 1 }}](beach.html)\n"
+        post = parse_post(md, 1, ["1-image-01.jpg"])
+        assert post.images[0].filename in post.inline_image_filenames
+
+    def test_linked_token_out_of_range_errors(self):
+        md = "---\ndate: 2026-05-24\n---\n[{{ image 2 }}](beach.html)\n"
+        with pytest.raises(SystemExit):
+            parse_post(md, 1, ["1-image-01.jpg"])
+
+    def test_linked_token_href_is_escaped(self):
+        md = "---\ndate: 2026-05-24\n---\n[{{ image 1 }}](beach.html?a=1&b=2)\n"
+        post = parse_post(md, 1, ["1-image-01.jpg"])
+        assert 'href="beach.html?a=1&amp;b=2"' in post.body_html
+
+    def test_linked_token_sharing_block_with_other_lines_errors(self):
+        md = "---\ndate: 2026-05-24\n---\nIntro text\n[{{ image 1 }}](beach.html)\nmore text\n"
+        with pytest.raises(SystemExit):
+            parse_post(md, 1, ["1-image-01.jpg"])
+
+
+# ---------------------------------------------------------------------------
 # Paired inline image tokens ({{ image N }} {{ image M }})
 # ---------------------------------------------------------------------------
 
