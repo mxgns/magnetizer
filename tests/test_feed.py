@@ -342,6 +342,29 @@ class TestFeedScriptStripping:
 
 
 # ---------------------------------------------------------------------------
+# Heading shift
+# ---------------------------------------------------------------------------
+
+class TestFeedHeadingShift:
+
+    def test_entry_content_shifts_h1_to_h2(self):
+        post = make_post(body_html="<h1>Section</h1>")
+        xml = render_feed([post], CONFIG)
+        assert "<h2>Section</h2>" in xml
+        assert "<h1>Section</h1>" not in xml
+
+    def test_entry_content_shifts_h2_to_h3(self):
+        post = make_post(body_html="<h2>Sub</h2>")
+        xml = render_feed([post], CONFIG)
+        assert "<h3>Sub</h3>" in xml
+
+    def test_entry_content_shifts_headings_in_excerpt_html_too(self):
+        post = make_post(body_html="<p>Full body</p>", excerpt_html="<h1>Intro</h1>")
+        xml = render_feed([post], CONFIG)
+        assert "<h2>Intro</h2>" in xml
+
+
+# ---------------------------------------------------------------------------
 # Read more cutoff
 # ---------------------------------------------------------------------------
 

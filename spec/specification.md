@@ -447,12 +447,13 @@ Where:
 Notes:
 
 - The heading element is always present, on every post, regardless of type. See [Post types](#post-types) for what text it contains when the post has no `title`. Visually hiding it for untitled posts — so it exists for the document outline and assistive technology without appearing on the page — is the responsibility of the project's own `resources/` CSS, keyed off `POST_TYPE_CLASS`; Magnetizer itself never hides it.
-- On multi-post pages (index and category pages), the heading is an `<h2>` rather than `<h1>`, so that a page listing several posts has only one `<h1>` (used elsewhere on the page, e.g. for a category name). On the individual post page, the heading is an `<h1>`.
+- On multi-post pages (index and category pages), the heading is an `<h2>` rather than `<h1>`, so that a page listing several posts has only one `<h1>` (used elsewhere on the page, e.g. for a category name). On the individual post page, the heading is an `<h1>`. See below for how this interacts with heading tags inside `POST_BODY` itself.
 - If the post is displayed on a multi-post page, the heading and `<time>` contain a link to the post page. On the individual post page, no links are included.
-- Magnetizer prints a warning during the build if a post's Markdown body contains a heading more prominent than `<h3>` (i.e. an `<h1>` or `<h2>`, from `#` or `##`), since the post heading already occupies that level of the document outline:
+- A post or special page's body is authored starting at `#` (top level) and `##` (sub-level) — two levels only, as if the body were its own document, with no need to account for the heading levels `POST_TITLE_TAG` already occupies. At render time, `POST_BODY`'s heading tags are renumbered depending on where the post is shown: by **one level** (`h1`→`h2`, `h2`→`h3`) on the post's own page and in each entry's content in `feed.xml`, so the body never introduces a second `<h1>` alongside `POST_TITLE_TAG`; by **two levels** (`h1`→`h3`, `h2`→`h4`) on a multi-post page (index, category or notes page), since `POST_TITLE_TAG` is already `<h2>` there.
+- Magnetizer prints a warning during the build if a post's Markdown body contains a heading at `<h3>` level or deeper (i.e. `###`, `####`, etc.), since only the two authored levels above (`#`/`##`) are allowed:
 
 ```text
-Warning: Post {post-id} has heading(s) more prominent than <h3> in its body: <h1>, <h2>
+Warning: Post {post-id} has heading(s) at <h3> level or deeper in its body: <h3>, <h4>
 ```
 
 The same warning is printed for each [special page](#special-pages), using its configured name in place of `{post-id}`. The build continues normally — this is a warning, not an error.

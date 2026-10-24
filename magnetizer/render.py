@@ -3,7 +3,7 @@ from collections import Counter
 from datetime import date as _date, datetime as _datetime, timedelta as _timedelta
 from html import escape as _escape, unescape as _unescape
 
-from magnetizer.content import resized_filename as _resized_filename
+from magnetizer.content import _shift_headings, resized_filename as _resized_filename
 from magnetizer.dynamic import format_now
 
 _DEFAULT_AI_DISCLOSURE_TEXT = 'The contents of this post have been entirely or partially created using AI.'
@@ -140,13 +140,13 @@ def render_article(post, on_index_page, categories=None, ai_disclosure_html=None
             read_more_label = f'Read more (+{hidden} photo{"s" if hidden != 1 else ""})'
         else:
             read_more_label = 'Read more'
-        excerpt_html = _strip_footnotes(_link_inline_images(post.excerpt_html, post))
+        excerpt_html = _shift_headings(_strip_footnotes(_link_inline_images(post.excerpt_html, post)), delta=2)
         parts.append(f'<div class="post-body">{excerpt_html}<a href="{post.url}" class="read-more">{read_more_label}</a></div>')
     else:
         if on_index_page:
-            body_html = _strip_footnotes(_link_inline_images(post.body_html, post))
+            body_html = _shift_headings(_strip_footnotes(_link_inline_images(post.body_html, post)), delta=2)
         else:
-            body_html = post.body_html
+            body_html = _shift_headings(post.body_html, delta=1)
         parts.append(f'<div class="post-body">{body_html}</div>')
 
     if on_index_page and post.excerpt_html is None and hidden_top > 0:

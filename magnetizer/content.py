@@ -53,6 +53,21 @@ def _strip_scripts_bytes(data):
     understand -- the encoding of anything else in the file."""
     return _SCRIPT_TAG_BYTES_RE.sub(b'', data)
 
+
+_HEADING_TAG_RE = re.compile(r'(</?h)([1-6])([ >])')
+
+
+def _shift_headings(html_str, delta):
+    """Renumber bare <hN>/</hN> tags in already-rendered body HTML by delta
+    levels, clamped to h1-h6. Authors always write a post/special-page body
+    starting at <h1> -- this is purely a render-time concern for wherever
+    the body ends up embedded (its own page, an index/category/notes
+    excerpt, or a feed entry), never something parse_post() itself does."""
+    def repl(m):
+        level = max(1, min(6, int(m.group(2)) + delta))
+        return f'{m.group(1)}{level}{m.group(3)}'
+    return _HEADING_TAG_RE.sub(repl, html_str)
+
 _FOOTNOTE_ID_RE = re.compile(r'((?:id="|href="#)(?:fnref\d*|fn):)([^"]+)"')
 _FOOTNOTE_REF_RE = re.compile(r'\[\^([^\]]+)\](?!:)')
 _FOOTNOTE_DEF_RE = re.compile(r'^\[\^([^\]]+)\]:')

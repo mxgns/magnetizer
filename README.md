@@ -102,7 +102,7 @@ Post body goes here. Standard Markdown is supported.
 
 The `title` field is optional — see [Frontmatter reference](#frontmatter-reference) below for `title` and every other supported key.
 
-The post's heading is rendered as the page's `<h1>` on an individual post page, or `<h2>` when shown alongside other posts (index and category pages). Use `###` (`<h3>`) or lower for any headings inside the post body — the build prints a warning if a post contains a `#` or `##` heading, since those levels are already used by the post's own heading. See [Post types](#post-types) below for what the heading contains when the post has no `title`.
+The post's heading is rendered as the page's `<h1>` on an individual post page, or `<h2>` when shown alongside other posts (index and category pages). Write headings inside the post body starting at `#` and `##`, as if the body were its own document — two levels only, `###` or deeper prints a build warning. The renderer renumbers these automatically wherever the post is embedded, so they never collide with the post's own heading: one level down on the post's own page and in `feed.xml`, two levels down on an index/category/notes listing page. See [Post types](#post-types) below for what the heading contains when the post has no `title`.
 
 Wrap part of a post body in a `<div>` with a fenced container:
 

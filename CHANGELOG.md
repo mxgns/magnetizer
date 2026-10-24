@@ -7,6 +7,7 @@
 
 ### 24/10/26
 
+- Post body headings now start at # and ##, shifted automatically per page
 - Inline images can now link to a custom page via [{{ image N }}](url)
 
 ### 23/10/26
