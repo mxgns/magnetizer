@@ -5,6 +5,10 @@
 
 ## Released changes
 
+### 27/10/26
+
+- Removed `?src=atom` from feed entry/read-more links (tracking decommed)
+
 ### 24/10/26
 
 - Post body headings now start at # and ##, shifted automatically per page

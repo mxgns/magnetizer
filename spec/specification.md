@@ -1532,7 +1532,7 @@ Magnetizer generates an Atom 1.0 feed at `dist/feed.xml` on every full build (in
   <updated>MOST_RECENT_DATE</updated>
   <entry>
     <title>POST_TITLE</title>
-    <link href="POST_URL?src=atom" />
+    <link href="POST_URL" />
     <id>POST_URL</id>
     <updated>POST_DATE</updated>
     <content type="html"><![CDATA[POST_BODY_HTML]]></content>
@@ -1549,9 +1549,9 @@ Where:
 - `MOST_RECENT_DATE` is the date of the most recent post in RFC 3339 format, e.g. `2026-05-24T00:00:00Z`
 - `POST_TITLE` follows the same title/name/date-fallback priority order as the post heading and meta title — see [Post types](#post-types)
 - `POST_URL` is the absolute URL of the post page, e.g. `https://example.github.io/1.html`
-- The entry's `<link>` (as of 2/8/26) is `POST_URL` with a `?src=atom` query param appended — a traffic-source tag for the tracking pixel (see the Blog project's `blog.js`) to attribute clicks from the feed. `<id>`, per the Atom spec, is a stable identifier some readers use for dedup, so it stays as the clean `POST_URL` with no tracking param.
+- The entry's `<link>` and `<id>` are both the plain `POST_URL`, with no query param appended.
 - `POST_DATE` is the post date in RFC 3339 format, e.g. `2026-05-24T00:00:00Z`
-- `POST_BODY_HTML` is the HTML generated from the post's Markdown body — if the post has a `<!-- more -->` marker (see [Read more](#read-more)), this is the excerpt only, followed by a `<a class="read-more">Read more</a>` link (tagged with the same `?src=atom` param as the entry's `<link>`) pointing at the full post; otherwise it's the full body. Any `<script>` tags (and their contents) are stripped from the HTML first, regardless of which is used.
+- `POST_BODY_HTML` is the HTML generated from the post's Markdown body — if the post has a `<!-- more -->` marker (see [Read more](#read-more)), this is the excerpt only, followed by a `<a class="read-more">Read more</a>` link pointing at the full post (plain `POST_URL`, same as the entry's `<link>`); otherwise it's the full body. Any `<script>` tags (and their contents) are stripped from the HTML first, regardless of which is used.
 
 Posts are listed in reverse chronological order (highest post ID first), capped at `feed_max_posts` most-recent dated posts (default `30`) — see [Configuration](#configuration).
 
