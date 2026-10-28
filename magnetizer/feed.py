@@ -32,7 +32,6 @@ def render_feed(posts, config):
 
     for post in dated_posts:
         post_url = f"{site_url}/{post.url}"
-        tracked_url = f"{post_url}?src=atom"
         title = _html.escape(post_display_text(post))
         images_html = ''.join(
             f'<figure><img src="{site_url}/{_resized_filename(img.filename)}"'
@@ -42,14 +41,14 @@ def render_feed(posts, config):
         if post.excerpt_html is not None:
             body_content = (
                 f'{_shift_headings(_strip_scripts(post.excerpt_html), delta=1)}'
-                f'<p><a href="{tracked_url}" class="read-more">Read more</a></p>'
+                f'<p><a href="{post_url}" class="read-more">Read more</a></p>'
             )
         else:
             body_content = _shift_headings(_strip_scripts(post.body_html), delta=1)
         lines += [
             '  <entry>',
             f'    <title>{title}</title>',
-            f'    <link href="{tracked_url}" />',
+            f'    <link href="{post_url}" />',
             f'    <id>{post_url}</id>',
             f'    <updated>{_rfc3339(post.date, post.id)}</updated>',
             f'    <content type="html"><![CDATA[{images_html}{body_content}]]></content>',
