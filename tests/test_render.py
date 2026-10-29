@@ -958,6 +958,14 @@ class TestPostDisplayText:
         post = make_post(title=None, name=None, body_html=f"<p>{text}</p>", images=["1-image-01.jpg"])
         assert post_display_text(post) == "a" * 40 + "…"
 
+    def test_excerpt_truncates_at_newline_within_first_40_chars(self):
+        # A newline inside the first 40 characters must act as a word
+        # boundary too, not just a literal space -- otherwise rsplit(' ', 1)
+        # would cut into the next word instead of stopping at the line break.
+        text = "Short line\nthis continues for a while longer than forty characters"
+        post = make_post(title=None, name=None, body_html=f"<p>{text}</p>", images=["1-image-01.jpg"])
+        assert post_display_text(post) == "Short line this continues for a while…"
+
     def test_excerpt_result_is_not_html_escaped(self):
         post = make_post(title=None, name=None, body_html="<p>A &amp; B</p>", images=["1-image-01.jpg"])
         assert post_display_text(post) == "A & B"

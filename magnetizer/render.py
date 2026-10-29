@@ -50,7 +50,8 @@ def post_display_text(post):
     if post.body_html:
         m = re.search(r'<p\b[^>]*>(.*?)</p>', post.body_html, re.DOTALL | re.IGNORECASE)
         if m:
-            text = _unescape(re.sub(r'<[^>]+>', '', m.group(1))).strip()
+            text = _unescape(re.sub(r'<[^>]+>', '', m.group(1)))
+            text = re.sub(r'\s+', ' ', text).strip()
             if text:
                 if len(text) <= 40:
                     return text

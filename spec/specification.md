@@ -511,7 +511,7 @@ Every post has a non-empty heading (`POST_HEADING` — see [Posts](#posts)) and 
 
     `{date}` is the UK-formatted `date` from frontmatter, e.g. `Photo posted 22 July 2026`.
 
-This is the same priority order used for the archive link text (see [Archive page](#archive-page)) and the feed entry title (see [Feed](#feed)) — all of them share this one fallback chain.
+This is the same priority order used for the archive link text (see [Archive page](#archive-page)) and the feed entry title (see [Atom feed](#atom-feed)) — all of them share this one fallback chain.
 
 ### Container blocks
 

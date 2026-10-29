@@ -1419,6 +1419,20 @@ class TestPostsIndex:
         data = json.loads((p / "dist" / "posts.json").read_text())
         assert data["about"]["title"] == "About"
 
+    def test_special_page_entry_excerpt_uses_expanded_shortcode(self, tmp_path):
+        # The posts.json excerpt must match what the live page shows -- it's
+        # derived from the same (shortcode-expanded) body as the special
+        # page's own heading, not the raw, unexpanded body.
+        p = make_project(tmp_path, posts={1: MINIMAL_MD}, config=_ABOUT_CONFIG)
+        (p / "content" / "about.md").write_text(
+            "---\ndate: 2026-05-24\n---\n\nWe have {{ post_count }} posts.\n"
+        )
+        build(p)
+        html = (p / "dist" / "about.html").read_text()
+        assert '<h1 data-pagefind-meta="title">We have 1 posts.</h1>' in html
+        data = json.loads((p / "dist" / "posts.json").read_text())
+        assert data["about"]["title"] == "We have 1 posts."
+
     def test_noindex_post_still_included(self, tmp_path):
         # Deliberately diverges from sitemap.xml, which excludes noindex pages
         # for SEO reasons — posts.json exists to identify traffic by page_id
