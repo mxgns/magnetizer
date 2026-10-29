@@ -1,0 +1,22 @@
+name: Trigger blog refresh
+
+on:
+  workflow_run:
+    workflows: [Test]
+    types: [completed]
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  trigger:
+    if: github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Dispatch a refresh build on mxgns/blog
+        env:
+          GH_TOKEN: ${{ secrets.BLOG_TRIGGER_TOKEN }}
+        run: |
+          gh workflow run publish.yml -R mxgns/blog \
+            -f refresh=true -f flush=false -f publish=true
