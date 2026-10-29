@@ -37,13 +37,26 @@ _POST_TYPE_CLASS = {"full": "full-post", "image": "image-post", "note": "note"}
 
 
 def post_display_text(post):
-    """The post's title, falling back to its `name`, falling back to a
-    generated label based on top-level image count (inline images excluded).
-    Used for the post heading and the page meta title."""
+    """The post's title, falling back to its `name`, falling back to an
+    excerpt of its own body (the first paragraph, plaintext, truncated to 40
+    characters at a word boundary), falling back to a generated label based
+    on top-level image count (inline images excluded). Used for the post
+    heading, the page meta title, the feed entry title, and the archive
+    link text — they all share this one fallback chain."""
     if post.title:
         return post.title
     if post.name:
         return post.name
+    if post.body_html:
+        m = re.search(r'<p\b[^>]*>(.*?)</p>', post.body_html, re.DOTALL | re.IGNORECASE)
+        if m:
+            text = _unescape(re.sub(r'<[^>]+>', '', m.group(1)))
+            text = re.sub(r'\s+', ' ', text).strip()
+            if text:
+                if len(text) <= 40:
+                    return text
+                truncated = text[:40].rsplit(' ', 1)[0]
+                return truncated + '…'
     return _generated_post_label(post)
 
 
@@ -366,28 +379,8 @@ def canonical_url(site_url, filename):
     return f"{base}/{filename}"
 
 
-def archive_display_text(post):
-    """The archive's title-fallback chain (title -> name -> first-paragraph
-    excerpt, truncated to 40 chars at a word boundary -> generated label) as
-    plain, unescaped text — for non-HTML consumers such as posts.json."""
-    if post.title:
-        return post.title
-    if post.name:
-        return post.name
-    if post.body_html:
-        m = re.search(r'<p\b[^>]*>(.*?)</p>', post.body_html, re.DOTALL | re.IGNORECASE)
-        if m:
-            text = _unescape(re.sub(r'<[^>]+>', '', m.group(1))).strip()
-            if text:
-                if len(text) <= 40:
-                    return text
-                truncated = text[:40].rsplit(' ', 1)[0]
-                return truncated + '…'
-    return _generated_post_label(post)
-
-
 def _archive_description(post):
-    return _escape(archive_display_text(post))
+    return _escape(post_display_text(post))
 
 
 def _archive_item_class(post):

@@ -2,6 +2,7 @@ import re
 import shutil
 import sys
 import time
+from dataclasses import replace as _replace
 from datetime import datetime as _datetime
 from pathlib import Path
 
@@ -28,7 +29,6 @@ from magnetizer.manifest import (
     update_page_dynamic_flag,
 )
 from magnetizer.render import (
-    archive_display_text,
     canonical_url,
     category_page_url,
     gallery_page_url,
@@ -940,9 +940,18 @@ def _write_sitemap_and_robots(published_post_ids_sorted_desc, published_posts_so
     log(("UPDATED", "robots.txt"))
 
 
-def _write_posts_index(published_posts_sorted_desc, config, special_page_posts_by_name, not_found_post, dist_dir, log, photos, metadata=None):
+def _special_page_posts_index_text(post, name, values):
+    """post_display_text() for a special/404 page's posts.json entry, using
+    its body with shortcodes expanded -- matching what _build_special_page()
+    actually renders, so the excerpt fallback never shows a literal
+    shortcode that the live page itself doesn't."""
+    expanded_body, _ = expand_shortcodes(post.body_html, values, f"{name}.md", None)
+    return post_display_text(_replace(post, body_html=expanded_body))
+
+
+def _write_posts_index(published_posts_sorted_desc, config, special_page_posts_by_name, not_found_post, dist_dir, log, photos, values, metadata=None):
     entries = [
-        (post.id, archive_display_text(post), post.category, post.date)
+        (post.id, post_display_text(post), post.category, post.date)
         for post in published_posts_sorted_desc
     ]
 
@@ -975,12 +984,13 @@ def _write_posts_index(published_posts_sorted_desc, config, special_page_posts_b
 
     for name in config["special_pages"]:
         post = special_page_posts_by_name[name]
-        entries.append((name, post_display_text(post), None, post.date))
+        entries.append((name, _special_page_posts_index_text(post, name, values), None, post.date))
 
     not_found_name = _not_found_page_name(config)
     if not_found_name and not_found_post is not None:
         output_filename = config["404-page-output-filename"]
-        entries.append((_page_id(output_filename), post_display_text(not_found_post), None, not_found_post.date))
+        text = _special_page_posts_index_text(not_found_post, not_found_name, values)
+        entries.append((_page_id(output_filename), text, None, not_found_post.date))
 
     (dist_dir / "posts.json").write_text(render_posts_index(entries))
     log(("UPDATED", "posts.json"))
@@ -1132,7 +1142,7 @@ def build(cwd, filename=None, flush=False, resources=False, refresh=False, on_pr
         )
         _write_posts_index(
             published_posts_sorted_desc, config, special_page_posts_by_name, not_found_post, dist_dir, _log, photos,
-            metadata=metadata,
+            values, metadata=metadata,
         )
 
     resources_dir = cwd / "resources"

@@ -503,14 +503,15 @@ Every post has a non-empty heading (`POST_HEADING` — see [Posts](#posts)) and 
 
 1. `title`, if set
 2. `name`, if set
-3. A generated fallback, based on post type and top-level image count:
+3. An excerpt of the post's own first paragraph (plaintext, tags stripped, truncated to 40 characters at the last full word), if its body has one
+4. A generated fallback, based on post type and top-level image count:
     - `Note posted {date}` — no top-level images
     - `Photo posted {date}` — exactly one top-level image
     - `Photos posted {date}` — more than one top-level image
 
     `{date}` is the UK-formatted `date` from frontmatter, e.g. `Photo posted 22 July 2026`.
 
-This is the same priority order used for the archive link text (see [Archive page](#archive-page)), except the archive additionally falls back to an excerpt of the post's own content before reaching the generated fallback text.
+This is the same priority order used for the archive link text (see [Archive page](#archive-page)) and the feed entry title (see [Atom feed](#atom-feed)) — all of them share this one fallback chain.
 
 ### Container blocks
 
