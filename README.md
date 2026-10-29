@@ -202,11 +202,12 @@ Every post gets a non-empty heading and page `<title>`, built from the same prio
 
 1. `title`, if set
 2. `name`, if set — a frontmatter field used only as a fallback label when there's no `title`
-3. Otherwise, a generated fallback based on post type and top-level image count: `Note posted {date}`, `Photo posted {date}` (one image), or `Photos posted {date}` (more than one)
+3. An excerpt of the post's own first paragraph (plaintext, tags stripped, truncated to 40 characters after the last full word), if its body has one
+4. Otherwise, a generated fallback based on post type and top-level image count: `Note posted {date}`, `Photo posted {date}` (one image), or `Photos posted {date}` (more than one)
 
 For an Image post or Note, the heading exists in the HTML (for the document outline and screen readers, since the index/category pages mix titled and untitled posts) but isn't shown visually — hiding it is left to your own `resources/` CSS, keyed off the `full-post`/`image-post`/`note` class on the `<article>`; Magnetizer itself never hides it.
 
-The archive's link text for each post follows the same priority order, except it falls back to an excerpt of the post's own first paragraph (plaintext, tags stripped, truncated to 40 characters after the last full word) before reaching the generated fallback text — see [Archive page](#archive-page).
+The archive's link text and feed entry title for each post follow this same priority order — see [Archive page](#archive-page).
 
 ## Frontmatter reference
 

@@ -6,7 +6,6 @@ from html.parser import HTMLParser
 import pytest
 from magnetizer.content import Image, Post
 from magnetizer.render import (
-    archive_display_text,
     canonical_url,
     category_page_url,
     gallery_page_url,
@@ -167,35 +166,47 @@ class TestRenderArticleTitle:
         assert '<h1 data-pagefind-meta="title">A quiet morning</h1>' in html
 
     def test_h1_fallback_text_uses_generated_note_label_when_no_images(self):
-        html = render_article(make_post(title=None, date_uk="24 May 2026", images=[]), on_index_page=False)
+        html = render_article(
+            make_post(title=None, date_uk="24 May 2026", images=[], body_html=""), on_index_page=False
+        )
         assert '<h1 data-pagefind-meta="title">Note posted 24 May 2026</h1>' in html
 
     def test_h1_fallback_text_uses_generated_photo_label_singular(self):
         html = render_article(
-            make_post(title=None, date_uk="24 May 2026", images=["1-image-01.jpg"]), on_index_page=False
+            make_post(title=None, date_uk="24 May 2026", images=["1-image-01.jpg"], body_html=""),
+            on_index_page=False,
         )
         assert '<h1 data-pagefind-meta="title">Photo posted 24 May 2026</h1>' in html
 
     def test_h1_fallback_text_uses_generated_photos_label_plural(self):
         html = render_article(
-            make_post(title=None, date_uk="24 May 2026", images=["1-image-01.jpg", "1-image-02.jpg"]),
+            make_post(
+                title=None, date_uk="24 May 2026", images=["1-image-01.jpg", "1-image-02.jpg"], body_html=""
+            ),
             on_index_page=False,
         )
         assert '<h1 data-pagefind-meta="title">Photos posted 24 May 2026</h1>' in html
 
     def test_h1_fallback_text_omits_date_when_post_has_no_date(self):
-        html = render_article(make_post(title=None, date_uk=None, images=[]), on_index_page=False)
+        html = render_article(make_post(title=None, date_uk=None, images=[], body_html=""), on_index_page=False)
         assert '<h1 data-pagefind-meta="title">Note</h1>' in html
 
     def test_h1_fallback_text_ignores_inline_only_images(self):
         html = render_article(
             make_post(
-                title=None, date_uk="24 May 2026",
+                title=None, date_uk="24 May 2026", body_html="",
                 images=["1-image-01.jpg"], inline_image_filenames=frozenset({"1-image-01.jpg"}),
             ),
             on_index_page=False,
         )
         assert '<h1 data-pagefind-meta="title">Note posted 24 May 2026</h1>' in html
+
+    def test_h1_fallback_text_uses_excerpt_when_no_title_or_name(self):
+        html = render_article(
+            make_post(title=None, body_html="<p>A short thought.</p>", images=["1-image-01.jpg"]),
+            on_index_page=False,
+        )
+        assert '<h1 data-pagefind-meta="title">A short thought.</h1>' in html
 
     def test_h2_fallback_text_on_index_page_wrapped_in_link(self):
         html = render_article(make_post(post_id=5, title=None, name="A quiet morning"), on_index_page=True)
@@ -913,30 +924,51 @@ class TestPostDisplayText:
         assert post_display_text(post) == "A quiet morning"
 
     def test_generated_note_label_when_no_title_no_name_no_images(self):
-        post = make_post(title=None, name=None, date_uk="24 May 2026", images=[])
+        post = make_post(title=None, name=None, date_uk="24 May 2026", images=[], body_html="")
         assert post_display_text(post) == "Note posted 24 May 2026"
 
     def test_generated_photo_label_singular_for_one_top_level_image(self):
-        post = make_post(title=None, name=None, date_uk="24 May 2026", images=["1-image-01.jpg"])
+        post = make_post(title=None, name=None, date_uk="24 May 2026", images=["1-image-01.jpg"], body_html="")
         assert post_display_text(post) == "Photo posted 24 May 2026"
 
     def test_generated_photos_label_plural_for_multiple_top_level_images(self):
         post = make_post(
             title=None, name=None, date_uk="24 May 2026",
-            images=["1-image-01.jpg", "1-image-02.jpg"],
+            images=["1-image-01.jpg", "1-image-02.jpg"], body_html="",
         )
         assert post_display_text(post) == "Photos posted 24 May 2026"
 
     def test_inline_only_images_dont_count_towards_photo_label(self):
         post = make_post(
-            title=None, name=None, date_uk="24 May 2026",
+            title=None, name=None, date_uk="24 May 2026", body_html="",
             images=["1-image-01.jpg"], inline_image_filenames=frozenset({"1-image-01.jpg"}),
         )
         assert post_display_text(post) == "Note posted 24 May 2026"
 
     def test_generated_label_omits_posted_date_when_no_date(self):
-        post = make_post(title=None, name=None, date_uk=None, images=[])
+        post = make_post(title=None, name=None, date_uk=None, images=[], body_html="")
         assert post_display_text(post) == "Note"
+
+    def test_excerpt_used_when_no_title_or_name(self):
+        post = make_post(title=None, name=None, body_html="<p>A short thought.</p>", images=["1-image-01.jpg"])
+        assert post_display_text(post) == "A short thought."
+
+    def test_excerpt_truncated_over_40_chars(self):
+        text = "a" * 41
+        post = make_post(title=None, name=None, body_html=f"<p>{text}</p>", images=["1-image-01.jpg"])
+        assert post_display_text(post) == "a" * 40 + "…"
+
+    def test_excerpt_result_is_not_html_escaped(self):
+        post = make_post(title=None, name=None, body_html="<p>A &amp; B</p>", images=["1-image-01.jpg"])
+        assert post_display_text(post) == "A & B"
+
+    def test_name_wins_over_excerpt(self):
+        post = make_post(title=None, name="A quiet morning", body_html="<p>Ignored text.</p>")
+        assert post_display_text(post) == "A quiet morning"
+
+    def test_generated_label_used_when_excerpt_empty(self):
+        post = make_post(title=None, name=None, date_uk="24 May 2026", body_html="", images=[])
+        assert post_display_text(post) == "Note posted 24 May 2026"
 
 
 # ---------------------------------------------------------------------------
@@ -2197,46 +2229,6 @@ class TestArchiveDescriptions:
             make_dated_post(1, "2026-05-24", body_html="<p>A &amp; B</p>")
         ])
         assert "A &amp; B" in html
-
-
-# ---------------------------------------------------------------------------
-# archive_display_text — the same title-fallback chain as the archive
-# listing, but as plain text (unescaped) for non-HTML consumers
-# ---------------------------------------------------------------------------
-
-class TestArchiveDisplayText:
-
-    def test_title_used_when_present(self):
-        assert archive_display_text(make_dated_post(1, "2026-05-24", title="My Title")) == "My Title"
-
-    def test_name_used_when_no_title(self):
-        post = make_dated_post(1, "2026-05-24", name="A quiet morning",
-                                images=[Image("1-image-01.jpg")], post_type="image")
-        assert archive_display_text(post) == "A quiet morning"
-
-    def test_title_wins_over_name(self):
-        post = make_dated_post(1, "2026-05-24", title="Real Title", name="Fallback name", post_type="full")
-        assert archive_display_text(post) == "Real Title"
-
-    def test_excerpt_used_when_no_title_or_name(self):
-        post = make_dated_post(1, "2026-05-24", body_html="<p>A short thought.</p>",
-                                images=[Image("1-image-01.jpg")], post_type="image")
-        assert archive_display_text(post) == "A short thought."
-
-    def test_excerpt_truncated_over_40_chars(self):
-        text = "a" * 41
-        post = make_dated_post(1, "2026-05-24", body_html=f"<p>{text}</p>",
-                                images=[Image("1-image-01.jpg")], post_type="image")
-        assert archive_display_text(post) == "a" * 40 + "…"
-
-    def test_generated_label_used_when_no_title_name_or_text(self):
-        post = make_dated_post(1, "2026-05-24", date_uk="24 May 2026",
-                                images=[Image("1-image-01.jpg")], post_type="image")
-        assert archive_display_text(post) == "Photo posted 24 May 2026"
-
-    def test_result_is_not_html_escaped(self):
-        post = make_dated_post(1, "2026-05-24", body_html="<p>A &amp; B</p>")
-        assert archive_display_text(post) == "A & B"
 
 
 # ---------------------------------------------------------------------------

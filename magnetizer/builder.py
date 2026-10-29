@@ -28,7 +28,6 @@ from magnetizer.manifest import (
     update_page_dynamic_flag,
 )
 from magnetizer.render import (
-    archive_display_text,
     canonical_url,
     category_page_url,
     gallery_page_url,
@@ -942,7 +941,7 @@ def _write_sitemap_and_robots(published_post_ids_sorted_desc, published_posts_so
 
 def _write_posts_index(published_posts_sorted_desc, config, special_page_posts_by_name, not_found_post, dist_dir, log, photos, metadata=None):
     entries = [
-        (post.id, archive_display_text(post), post.category, post.date)
+        (post.id, post_display_text(post), post.category, post.date)
         for post in published_posts_sorted_desc
     ]
 

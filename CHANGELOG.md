@@ -5,6 +5,10 @@
 
 ## Released changes
 
+### 29/10/26
+
+- Post heading/meta title now fall back to a body excerpt, same as the archive
+
 ### 27/10/26
 
 - Removed `?src=atom` from feed entry/read-more links (tracking decommed)
