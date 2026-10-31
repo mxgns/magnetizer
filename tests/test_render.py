@@ -9,14 +9,12 @@ from magnetizer.render import (
     canonical_url,
     category_page_url,
     gallery_page_url,
-    notes_page_url,
     post_display_text,
     render_archive_page_content,
     render_article,
     render_category_page_content,
     render_gallery_page_content,
     render_index_page_content,
-    render_notes_page_content,
     render_navigation,
     render_page_meta_description,
     render_page_title,
@@ -1406,12 +1404,12 @@ class TestRenderArchivePageContent:
         )
         assert '<li class="full-post">' in html
 
-    def test_note_post_not_in_monthly_list(self):
+    def test_note_post_included_in_monthly_list(self):
         post = Post(id=1, date="2026-05-24", date_uk="24 May 2026", title=None,
                     url="1.html", body_html="<p>Short text</p>", images=[], post_type="note")
         html = render_archive_page_content([post])
-        assert '<li class="note">' not in html
-        assert 'href="1.html"' not in html
+        assert '<li class="note">' in html
+        assert 'href="1.html"' in html
 
     def test_archive_item_favourite_adds_class(self):
         post = Post(id=1, date="2026-05-24", date_uk="24 May 2026", title="Hello",
@@ -1466,7 +1464,7 @@ class TestRenderContributionCalendar:
         html = render_archive_page_content([make_dated_post(1, "2026-05-24")], build_date=date(2026, 5, 24))
         assert html.index('<h2>Publishing calendar</h2>') < html.index('<p class="calendar-summary">')
 
-    def test_summary_counts_posts_and_notes_separately(self):
+    def test_summary_counts_all_post_types_together(self):
         posts = [
             make_dated_post(1, "2026-05-20", post_type="full"),
             make_dated_post(2, "2026-05-21", post_type="image"),
@@ -1475,8 +1473,7 @@ class TestRenderContributionCalendar:
         html = render_archive_page_content(posts, build_date=date(2026, 5, 24))
         assert (
             '<p class="calendar-summary">I have posted '
-            '<strong><span class="calendar-post-count">2</span> posts</strong> and '
-            '<strong><span class="calendar-note-count">1</span> notes</strong> so far, '
+            '<strong><span class="calendar-post-count">3</span> posts</strong> so far, '
             'and have posted every week for the last '
             '<strong>1 week</strong>.</p>'
         ) in html
@@ -1487,12 +1484,10 @@ class TestRenderContributionCalendar:
         posts = [make_dated_post(1, "2024-12-30")]
         html = render_archive_page_content(posts, build_date=date(2026, 1, 4))
         assert '<span class="calendar-post-count">0</span> posts' in html
-        assert '<span class="calendar-note-count">0</span> notes' in html
 
     def test_empty_posts_list_still_renders_grid(self):
         html = render_archive_page_content([], build_date=date(2026, 5, 24))
         assert '<span class="calendar-post-count">0</span> posts' in html
-        assert '<span class="calendar-note-count">0</span> notes' in html
         assert html.count('<div class="calendar-column">') == 37
 
     def test_grid_has_37_columns(self):
@@ -1580,17 +1575,7 @@ class TestRenderContributionCalendar:
         block = _last_column_block(html)
         assert 'title=' not in block
 
-    def test_tooltip_singular_post_and_note(self):
-        posts = [
-            make_dated_post(1, "2026-05-24", post_type="full"),
-            make_dated_post(2, "2026-05-24", post_type="note"),
-        ]
-        html = render_archive_page_content(posts, build_date=date(2026, 5, 24), posts_per_page=12)
-        block = _last_column_block(html)
-        assert 'data-tooltip="24 May: 1 post + 1 note"' in block
-        assert 'aria-label="24 May: 1 post + 1 note"' in block
-
-    def test_tooltip_plural_posts_and_notes(self):
+    def test_tooltip_counts_all_post_types_together(self):
         posts = [
             make_dated_post(1, "2026-05-24", post_type="full"),
             make_dated_post(2, "2026-05-24", post_type="image"),
@@ -1599,13 +1584,14 @@ class TestRenderContributionCalendar:
         ]
         html = render_archive_page_content(posts, build_date=date(2026, 5, 24), posts_per_page=12)
         block = _last_column_block(html)
-        assert 'data-tooltip="24 May: 2 posts + 2 notes"' in block
+        assert 'data-tooltip="24 May: 4 posts"' in block
+        assert 'aria-label="24 May: 4 posts"' in block
 
-    def test_tooltip_notes_only(self):
+    def test_tooltip_singular_for_one_note(self):
         posts = [make_dated_post(1, "2026-05-24", post_type="note")]
         html = render_archive_page_content(posts, build_date=date(2026, 5, 24), posts_per_page=12)
         block = _last_column_block(html)
-        assert 'data-tooltip="24 May: 1 note"' in block
+        assert 'data-tooltip="24 May: 1 post"' in block
 
     def test_bucketing_caps_at_level_5_for_six_or_more_posts(self):
         posts = [make_dated_post(i, "2026-05-24") for i in range(1, 7)]
@@ -1700,8 +1686,7 @@ class TestPostingStreakSentence:
         assert 'week</strong>' not in html
         assert (
             '<p class="calendar-summary">I have posted '
-            '<strong><span class="calendar-post-count">0</span> posts</strong> and '
-            '<strong><span class="calendar-note-count">0</span> notes</strong> so far.</p>'
+            '<strong><span class="calendar-post-count">0</span> posts</strong> so far.</p>'
         ) in html
 
     def test_absent_when_streak_is_zero(self):
@@ -1721,8 +1706,7 @@ class TestPostingStreakSentence:
         assert '<p class="calendar-streak">' not in html
         assert (
             '<p class="calendar-summary">I have posted '
-            '<strong><span class="calendar-post-count">1</span> posts</strong> and '
-            '<strong><span class="calendar-note-count">0</span> notes</strong> so far, '
+            '<strong><span class="calendar-post-count">1</span> posts</strong> so far, '
             'and have posted every week for the last '
             '<strong>1 week</strong>.</p>'
         ) in html
@@ -1880,7 +1864,7 @@ class TestArchiveCategoriesList:
         html = render_archive_page_content([post], categories=_CATEGORIES)
         assert html.index('<a href="photography.html">') < html.index("<h2>Blog Posts</h2>")
 
-    def test_no_blog_posts_heading_when_no_categories_and_no_notes(self):
+    def test_no_blog_posts_heading_when_no_categories_and_no_photos(self):
         html = render_archive_page_content([make_dated_post(1, "2026-05-24")])
         assert "<h2>Blog Posts</h2>" not in html
 
@@ -1889,39 +1873,6 @@ class TestArchiveCategoriesList:
         html = render_archive_page_content([post], categories={"a-and-b": {"name": "A & B", "description": None}})
         assert "&amp;" in html
         assert ">A & B<" not in html
-
-    def test_notes_section_shown_when_notes_exist(self):
-        post = make_dated_post(1, "2026-05-24", post_type="note")
-        html = render_archive_page_content([post])
-        assert "<h2>Short notes</h2>" in html
-
-    def test_notes_section_links_to_notes_html(self):
-        post = make_dated_post(1, "2026-05-24", post_type="note")
-        html = render_archive_page_content([post])
-        assert '<a href="notes.html">All short notes</a>' in html
-
-    def test_notes_section_not_shown_when_no_notes(self):
-        post = make_dated_post(1, "2026-05-24")
-        html = render_archive_page_content([post])
-        assert "<h2>Short notes</h2>" not in html
-
-    def test_notes_section_after_categories(self):
-        posts = [
-            make_dated_post(1, "2026-05-24", category="photography"),
-            make_dated_post(2, "2026-05-25", post_type="note"),
-        ]
-        html = render_archive_page_content(posts, categories=_CATEGORIES)
-        assert html.index("<h2>Short notes</h2>") > html.index("</ul>")
-
-    def test_blog_posts_heading_shown_when_notes_exist(self):
-        post = make_dated_post(1, "2026-05-24", post_type="note")
-        html = render_archive_page_content([post])
-        assert "<h2>Blog Posts</h2>" in html
-
-    def test_blog_posts_heading_after_notes_section(self):
-        post = make_dated_post(1, "2026-05-24", post_type="note")
-        html = render_archive_page_content([post])
-        assert html.index("<h2>Blog Posts</h2>") > html.index("<h2>Short notes</h2>")
 
     def test_photo_archive_section_shown_when_has_photos(self):
         html = render_archive_page_content([make_dated_post(1, "2026-05-24")], photos=[make_photo()])
@@ -1934,11 +1885,6 @@ class TestArchiveCategoriesList:
     def test_photo_archive_section_not_shown_when_photos_empty(self):
         html = render_archive_page_content([make_dated_post(1, "2026-05-24")], photos=[])
         assert "<h2>Photo archive</h2>" not in html
-
-    def test_photo_archive_section_after_notes_section(self):
-        post = make_dated_post(1, "2026-05-24", post_type="note")
-        html = render_archive_page_content([post], photos=[make_photo()])
-        assert html.index("<h2>Photo archive</h2>") > html.index("<h2>Short notes</h2>")
 
     def test_photo_archive_preview_is_ordered_list(self):
         html = render_archive_page_content([make_dated_post(1, "2026-05-24")], photos=[make_photo()])
@@ -1999,9 +1945,9 @@ class TestArchiveCategoriesList:
 
 class TestArchiveColumnsLayout:
 
-    def test_categories_and_notes_wrapped_in_columns_container(self):
-        post = make_dated_post(1, "2026-05-24", category="photography", post_type="note")
-        html = render_archive_page_content([post], categories=_CATEGORIES)
+    def test_categories_and_photos_wrapped_in_columns_container(self):
+        post = make_dated_post(1, "2026-05-24", category="photography")
+        html = render_archive_page_content([post], categories=_CATEGORIES, photos=[make_photo()])
         assert '<div class="archive-columns">' in html
         assert html.index('<div class="archive-columns">') < html.index("<h2>Categories</h2>")
 
@@ -2010,51 +1956,30 @@ class TestArchiveColumnsLayout:
         html = render_archive_page_content([post], categories=_CATEGORIES)
         assert '<div class="archive-categories">\n<h2>Categories</h2>' in html
 
-    def test_notes_div_wraps_notes_heading_and_list(self):
-        post = make_dated_post(1, "2026-05-24", post_type="note")
-        html = render_archive_page_content([post])
-        assert '<div class="archive-notes">\n<h2>Short notes</h2>' in html
+    def test_photos_div_wraps_photo_archive_heading_and_list(self):
+        html = render_archive_page_content([make_dated_post(1, "2026-05-24")], photos=[make_photo()])
+        assert '<div class="archive-photos">\n<h2>Photo archive</h2>' in html
 
     def test_columns_container_has_both_divs_when_both_present(self):
-        post = make_dated_post(1, "2026-05-24", category="photography", post_type="note")
-        html = render_archive_page_content([post], categories=_CATEGORIES)
+        post = make_dated_post(1, "2026-05-24", category="photography")
+        html = render_archive_page_content([post], categories=_CATEGORIES, photos=[make_photo()])
         assert "archive-categories" in html
-        assert "archive-notes" in html
+        assert "archive-photos" in html
 
     def test_columns_container_present_with_only_categories(self):
         post = make_dated_post(1, "2026-05-24", category="photography")
         html = render_archive_page_content([post], categories=_CATEGORIES)
         assert '<div class="archive-columns">' in html
         assert "archive-categories" in html
-        assert "archive-notes" not in html
-
-    def test_columns_container_present_with_only_notes(self):
-        post = make_dated_post(1, "2026-05-24", post_type="note")
-        html = render_archive_page_content([post])
-        assert '<div class="archive-columns">' in html
-        assert "archive-notes" in html
-        assert "archive-categories" not in html
+        assert "archive-photos" not in html
 
     def test_columns_container_present_with_only_photos(self):
         html = render_archive_page_content([make_dated_post(1, "2026-05-24")], photos=[make_photo()])
         assert '<div class="archive-columns">' in html
-        assert "archive-notes" in html
+        assert "archive-photos" in html
         assert "archive-categories" not in html
 
-    def test_photo_archive_shares_notes_div(self):
-        post = make_dated_post(1, "2026-05-24", post_type="note")
-        html = render_archive_page_content([post], photos=[make_photo()])
-        assert (
-            '<div class="archive-notes">\n'
-            '<h2>Short notes</h2>\n'
-            '<ul>\n'
-            '<li><a href="notes.html">All short notes</a></li>\n'
-            '</ul>\n'
-            '<h2>Photo archive</h2>\n'
-            '<ol class="archive-gallery-preview">\n'
-        ) in html
-
-    def test_no_columns_container_when_neither_categories_nor_notes(self):
+    def test_no_columns_container_when_neither_categories_nor_photos(self):
         html = render_archive_page_content([make_dated_post(1, "2026-05-24")])
         assert "archive-columns" not in html
 
@@ -2068,10 +1993,17 @@ class TestArchiveColumnsLayout:
         html = render_archive_page_content([post], categories=_CATEGORIES)
         assert html.index("<h2>Blog Posts</h2>") < html.index('<div class="archive-months">')
 
-    def test_no_archive_months_div_when_no_dated_blog_posts(self):
-        # A Note has no entry in the monthly list (see test_note_post_not_in_monthly_list),
-        # so there's nothing to wrap.
+    def test_note_post_counts_as_a_dated_blog_post(self):
+        # Notes are no longer excluded from the monthly list (see
+        # test_note_post_included_in_monthly_list), so a note-only archive
+        # still has a months div.
         html = render_archive_page_content([make_dated_post(1, "2026-05-24", post_type="note")])
+        assert "archive-months" in html
+
+    def test_no_archive_months_div_when_no_dated_posts_at_all(self):
+        post = Post(id=1, date=None, date_uk=None, title="No date",
+                     url="1.html", body_html="", images=[])
+        html = render_archive_page_content([post])
         assert "archive-months" not in html
 
 
@@ -2138,8 +2070,6 @@ class TestArchiveDescriptions:
         assert "My Title" in html
 
     def test_name_used_when_no_title(self):
-        # Notes are excluded from the monthly list entirely, so the only untitled
-        # posts that reach _archive_description are Image posts.
         html = render_archive_page_content([
             make_dated_post(1, "2026-05-24", name="A quiet morning",
                             images=[Image("1-image-01.jpg")], post_type="image")
@@ -2420,45 +2350,6 @@ class TestRenderArticleAiDisclosure:
 
 
 # ---------------------------------------------------------------------------
-# render_article — notes footer link
-# ---------------------------------------------------------------------------
-
-class TestRenderArticleNotesLink:
-
-    def test_notes_link_in_footer_for_note(self):
-        html = render_article(make_post(post_type="note", title=None), on_index_page=False)
-        assert 'class="notes"' in html
-
-    def test_no_notes_link_for_non_note_post(self):
-        html = render_article(make_post(post_type="full"), on_index_page=False)
-        assert 'class="notes"' not in html
-
-    def test_notes_link_href_points_to_notes_html(self):
-        html = render_article(make_post(post_type="note", title=None), on_index_page=False)
-        assert 'href="notes.html"' in html
-
-    def test_notes_link_text_is_short_note(self):
-        html = render_article(make_post(post_type="note", title=None), on_index_page=False)
-        assert ">Short note<" in html
-
-    def test_notes_link_inside_footer(self):
-        html = render_article(make_post(post_type="note", title=None), on_index_page=False)
-        footer_start = html.index('<footer>')
-        footer_end = html.index('</footer>')
-        link_pos = html.index('class="notes"')
-        assert footer_start < link_pos < footer_end
-
-    def test_notes_link_before_category_link(self):
-        html = render_article(make_post(post_type="note", title=None, category="photography"),
-                              on_index_page=False, categories=_CATEGORIES)
-        assert html.index('class="notes"') < html.index('class="category"')
-
-    def test_notes_link_appears_on_index_page(self):
-        html = render_article(make_post(post_type="note", title=None), on_index_page=True)
-        assert 'class="notes"' in html
-
-
-# ---------------------------------------------------------------------------
 # render_article — comments section (single-post pages)
 # ---------------------------------------------------------------------------
 
@@ -2583,7 +2474,7 @@ class TestRenderArticleCommentsCountLink:
         footer_start = html.index('<footer>')
         footer_end = html.index('</footer>')
         footer = html[footer_start:footer_end]
-        assert footer.rindex('class="comments"') > footer.rindex('class="category"') > footer.rindex('class="notes"')
+        assert footer.rindex('class="comments"') > footer.rindex('class="category"')
 
     def test_link_inside_footer(self):
         html = render_article(make_post(comments=[make_comment()]), on_index_page=True)
@@ -2675,82 +2566,6 @@ class TestRenderCategoryPage:
         html = render_category_page_content([post], "Photography", "photography", 1, 1,
                                             categories=_CATEGORIES)
         assert 'class="category"' in html
-
-
-# ---------------------------------------------------------------------------
-# notes_page_url
-# ---------------------------------------------------------------------------
-
-class TestNotesPageUrl:
-
-    def test_first_page_is_notes_dot_html(self):
-        assert notes_page_url(1) == "notes.html"
-
-    def test_second_page_has_number_suffix(self):
-        assert notes_page_url(2) == "notes-2.html"
-
-    def test_third_page_has_number_suffix(self):
-        assert notes_page_url(3) == "notes-3.html"
-
-
-# ---------------------------------------------------------------------------
-# render_notes_page_content
-# ---------------------------------------------------------------------------
-
-_NOTE_POST = Post(id=1, date="2026-05-24", date_uk="24 May 2026", title=None,
-                  url="1.html", body_html="<p>Short.</p>", images=[], post_type="note")
-
-
-class TestRenderNotesPage:
-
-    def test_notes_page_has_h1_notes(self):
-        html = render_notes_page_content([_NOTE_POST], 1, 1)
-        assert "<h1>Short notes</h1>" in html
-
-    def test_notes_h1_inside_main(self):
-        html = render_notes_page_content([_NOTE_POST], 1, 1)
-        assert html.index('<main data-pagefind-ignore>') < html.index('<h1>Short notes</h1>') < html.index('</main>')
-
-    def test_notes_h1_before_articles(self):
-        html = render_notes_page_content([_NOTE_POST], 1, 1)
-        assert html.index('<h1>') < html.index('<article')
-
-    def test_notes_page_includes_post_articles(self):
-        p2 = Post(id=2, date="2026-05-25", date_uk="25 May 2026", title=None,
-                  url="2.html", body_html="<p>Another.</p>", images=[], post_type="note")
-        html = render_notes_page_content([_NOTE_POST, p2], 1, 1)
-        assert html.count('<article') == 2
-
-    def test_images_per_post_threaded_to_articles(self):
-        images = [Image(f"1-image-0{n}.jpg") for n in (1, 2, 3)]
-        post = Post(id=1, date="2026-05-24", date_uk="24 May 2026", title=None,
-                    url="1.html", body_html="", images=images, post_type="note")
-        html = render_notes_page_content([post], 1, 1, images_per_post=3)
-        assert html.count("<figure>") == 3
-
-    def test_notes_page_has_back_to_homepage_link(self):
-        html = render_notes_page_content([_NOTE_POST], 1, 1)
-        assert '<a href="index.html">Blog home</a>' in html
-
-    def test_notes_no_pagination_nav_when_single_page(self):
-        html = render_notes_page_content([_NOTE_POST], 1, 1)
-        assert 'notes-2.html' not in html
-
-    def test_notes_older_link_present_on_page_1_of_2(self):
-        html = render_notes_page_content([_NOTE_POST], 1, 2)
-        assert 'href="notes-2.html"' in html
-
-    def test_notes_newer_link_present_on_page_2_of_2(self):
-        html = render_notes_page_content([_NOTE_POST], 2, 2)
-        assert 'href="notes.html"' in html
-
-    def test_notes_no_newer_link_on_page_1(self):
-        html = render_notes_page_content([_NOTE_POST], 1, 2)
-        assert 'class="newer"' not in html
-
-    def test_notes_no_older_link_on_last_page(self):
-        html = render_notes_page_content([_NOTE_POST], 2, 2)
-        assert 'class="older"' not in html
 
 
 # ---------------------------------------------------------------------------
@@ -3004,11 +2819,6 @@ class TestNeverEmitsDecorativeImgOrSvg:
 
     def test_render_category_page_content_with_no_images_has_no_img_or_svg(self):
         html = render_category_page_content([make_post(images=None)], "Travel", "travel", 1, 1)
-        assert '<img' not in html
-        assert '<svg' not in html
-
-    def test_render_notes_page_content_with_no_images_has_no_img_or_svg(self):
-        html = render_notes_page_content([_NOTE_POST], 1, 1)
         assert '<img' not in html
         assert '<svg' not in html
 

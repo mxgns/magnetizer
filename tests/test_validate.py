@@ -592,7 +592,12 @@ class TestValidateConfig:
     def test_passes_with_non_reserved_category_slugs(self):
         validate_config({"site_url": "https://example.github.io", "categories": {"photography": "Photography"}})  # should not raise
 
-    @pytest.mark.parametrize("slug", ["index", "archive", "gallery", "search", "notes"])
+    def test_passes_with_notes_as_category_slug(self):
+        # "notes" is no longer reserved -- there's no generated page at that
+        # slug any more for a category to collide with (#89).
+        validate_config({"site_url": "https://example.github.io", "categories": {"notes": "Notes"}})  # should not raise
+
+    @pytest.mark.parametrize("slug", ["index", "archive", "gallery", "search"])
     def test_fails_when_category_slug_is_reserved(self, slug):
         with pytest.raises(SystemExit):
             validate_config({"site_url": "https://example.github.io", "categories": {slug: "Whatever"}})
@@ -619,11 +624,12 @@ class TestValidateConfig:
         with pytest.raises(SystemExit):
             validate_config({"site_url": "https://example.github.io", "categories": {"gallery-2": "Whatever"}})
 
-    def test_fails_when_category_slug_matches_notes_pagination_pattern(self):
-        with pytest.raises(SystemExit):
-            validate_config({"site_url": "https://example.github.io", "categories": {"notes-2": "Whatever"}})
+    def test_passes_with_category_slug_matching_old_notes_pagination_pattern(self):
+        # "notes"/"notes-N" are no longer reserved -- there's no generated
+        # page at that slug any more for a category to collide with (#89).
+        validate_config({"site_url": "https://example.github.io", "categories": {"notes-2": "Whatever"}})  # should not raise
 
-    @pytest.mark.parametrize("name", ["index", "archive", "gallery", "search", "notes", "gallery-2", "index-2", "notes-2"])
+    @pytest.mark.parametrize("name", ["index", "archive", "gallery", "search", "gallery-2", "index-2"])
     def test_fails_when_special_page_name_is_reserved(self, name):
         with pytest.raises(SystemExit):
             validate_config({"site_url": "https://example.github.io", "special_pages": [name]})
@@ -733,7 +739,7 @@ class TestValidateConfig:
 
 class TestValidateMetadata:
 
-    @pytest.mark.parametrize("key", ["index", "archive", "search", "notes", "gallery"])
+    @pytest.mark.parametrize("key", ["index", "archive", "search", "gallery"])
     def test_passes_with_generated_page_key(self, key):
         validate_metadata({key: {"title": "Custom", "description": None}}, {"categories": {}})  # should not raise
 

@@ -193,20 +193,27 @@ class TestPostType:
         post = parse_post(make_md(body="Just some thoughts."), 1, [])
         assert post.post_type == "note"
 
-    def test_note_regardless_of_length(self):
-        # Notes have no length cap, unlike the old microblog classification.
-        post = parse_post(make_md(body="x" * 500), 1, [])
+    def test_note_at_max_length(self):
+        post = parse_post(make_md(body="x" * 805), 1, [])
         assert post.post_type == "note"
 
-    def test_note_when_only_inline_image_and_text(self):
+    def test_full_when_text_exceeds_note_max_length(self):
+        # A note is only a note while it's short — past the length cap it's
+        # just a normal (untitled) post, like any other.
+        post = parse_post(make_md(body="x" * 806), 1, [])
+        assert post.post_type == "full"
+
+    def test_full_when_only_inline_image_and_text(self):
+        # A note is text-only — any image at all, even an inline one, makes
+        # it a normal (untitled) post instead.
         md = "---\ndate: 2026-05-24\n---\nSome text.\n\n{{ image 1 }}\n"
         post = parse_post(md, 1, ["1-image-01.jpg"])
-        assert post.post_type == "note"
+        assert post.post_type == "full"
 
-    def test_note_when_only_inline_image_and_no_other_text(self):
+    def test_full_when_only_inline_image_and_no_other_text(self):
         md = "---\ndate: 2026-05-24\n---\n{{ image 1 }}\n"
         post = parse_post(md, 1, ["1-image-01.jpg"])
-        assert post.post_type == "note"
+        assert post.post_type == "full"
 
     def test_image_when_top_level_image_alongside_inline_image(self):
         md = "---\ndate: 2026-05-24\n---\n{{ image 1 }}\n"

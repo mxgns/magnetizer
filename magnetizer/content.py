@@ -61,7 +61,7 @@ def _shift_headings(html_str, delta):
     """Renumber bare <hN>/</hN> tags in already-rendered body HTML by delta
     levels, clamped to h1-h6. Authors always write a post/special-page body
     starting at <h1> -- this is purely a render-time concern for wherever
-    the body ends up embedded (its own page, an index/category/notes
+    the body ends up embedded (its own page, an index/category page
     excerpt, or a feed entry), never something parse_post() itself does."""
     def repl(m):
         level = max(1, min(6, int(m.group(2)) + delta))
@@ -140,6 +140,10 @@ def _plain_text(rendered_html):
 
 
 _META_DESCRIPTION_LIMIT = 160
+# A "note" is a compact, untitled, image-free post styled with a slightly
+# bigger font. The cap is 50% over the longest post that previously
+# qualified under the old, uncapped classification (537 characters).
+_NOTE_MAX_CHARS = 806
 _META_DESCRIPTION_MIN_SENTENCE = 100
 _SENTENCE_END_RE = re.compile(r'[.!?]+(?=\s|$)')
 
@@ -461,8 +465,10 @@ def parse_post(md_text, post_id, image_filenames, site_url="", comments=None):
         post_type = "full"
     elif top_level_image_count > 0:
         post_type = "image"
-    elif has_content or has_any_image:
+    elif has_content and not has_any_image and char_count < _NOTE_MAX_CHARS:
         post_type = "note"
+    elif has_content or has_any_image:
+        post_type = "full"
     else:
         # No title, no images (top-level or inline), no content — the caller
         # decides what to do with this (see the build's invalid-post error).
