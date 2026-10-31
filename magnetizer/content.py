@@ -460,7 +460,10 @@ def parse_post(md_text, post_id, image_filenames, site_url="", comments=None):
 
     top_level_image_count = len(images) - len(inline_image_filenames)
     has_content = char_count > 0
-    has_any_image = len(images) > 0
+    # Counts a raw Markdown image (`![alt](url)`) in the body, not just an
+    # attached image file via `{{ image N }}` -- either way it's a real
+    # <img> in the rendered body, which rules out the Note classification.
+    has_any_image = len(images) > 0 or '<img' in body_html
     if title:
         post_type = "full"
     elif top_level_image_count > 0:

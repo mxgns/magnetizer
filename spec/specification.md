@@ -730,7 +730,7 @@ categories:
 
 The display name is used for the category page's `<h1>`, its link text wherever it's shown (post footers, the archive categories list), and as the fallback for its page `<title>`. A blank or missing display name (or a value that isn't a plain string at all — e.g. a `{name: ...}` mapping) is a build error, since there's nothing to display for it.
 
-A category slug is rejected as a build error if it's reserved — `index`, `archive`, `gallery`, `search`, a configured `special_pages` name, purely numeric, or matching the `index-N`/`gallery-N` pagination pattern — since any of these would silently overwrite a generated page.
+A category slug is rejected as a build error if it's reserved — `index`, `archive`, `gallery`, `search`, `notes`, a configured `special_pages` name, purely numeric, or matching the `index-N`/`gallery-N`/`notes-N` pagination pattern — since any of these would silently overwrite a generated page. `notes`/`notes-N` stay reserved even though notes.html is no longer itself a generated page: every build still deletes anything at that path, as one-time cleanup of the old notes.html listing, which would otherwise immediately remove a category or special page written there.
 
 A category page's `<meta name="description">` and `<title>` override come from `metadata.yaml`, keyed by the same slug — see [Page metadata overrides](#page-metadata-overrides).
 
@@ -802,7 +802,7 @@ out-and-about:
   description: Places I've been, things I've seen and stuff I've done.
 ```
 
-Valid keys are `index`, `archive`, `search`, `gallery`, and any slug present in `categories` in `config.yaml`. A key matching neither is a build error — `metadata.yaml entry '{key}' does not match any page or category — check for a typo`. An entry must set at least one of `title`/`description`; a mapping with neither (or a non-mapping value, e.g. a bare string) is also a build error, raised while loading `metadata.yaml` itself, before the page/category cross-check runs.
+Valid keys are `index`, `archive`, `search`, `notes`, `gallery`, and any slug present in `categories` in `config.yaml` — `notes` is accepted but has no effect, since there's no longer a page it could apply to (kept valid only so a pre-existing entry from before notes.html's removal doesn't break validation). A key matching neither is a build error — `metadata.yaml entry '{key}' does not match any page or category — check for a typo`. An entry must set at least one of `title`/`description`; a mapping with neither (or a non-mapping value, e.g. a bare string) is also a build error, raised while loading `metadata.yaml` itself, before the page/category cross-check runs.
 
 If `title` is set, it replaces the page-specific part of the `<title>` tag, the same way a post's own `title`/`name` does (see [Metadata](#metadata)) — `site_name` is still appended the same way. For a category, this only affects the `<title>` tag; its display name from `categories` in `config.yaml` still controls its `<h1>` and every other place its display label appears (post footers, the archive categories list) — the two serve different purposes and don't need to match. If `title` is unset, the page keeps its built-in default title: `Archive`, `Search`, `Photo archive`, or — for the index and for a category — the same fallback as if `metadata.yaml` didn't exist (`site_name` alone for the index; the category's display name for a category).
 

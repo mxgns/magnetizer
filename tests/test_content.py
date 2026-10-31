@@ -215,6 +215,14 @@ class TestPostType:
         post = parse_post(md, 1, ["1-image-01.jpg"])
         assert post.post_type == "full"
 
+    def test_full_when_body_has_raw_markdown_image(self):
+        # A note is text-only -- a standard Markdown image (bypassing the
+        # {{ image N }} / content-dir image-file system entirely) still
+        # counts as an image and rules out the Note classification.
+        md = "---\ndate: 2026-05-24\n---\nCheck this out ![a cat](https://example.com/cat.jpg)\n"
+        post = parse_post(md, 1, [])
+        assert post.post_type == "full"
+
     def test_image_when_top_level_image_alongside_inline_image(self):
         md = "---\ndate: 2026-05-24\n---\n{{ image 1 }}\n"
         post = parse_post(md, 1, ["1-image-01.jpg", "1-image-02.jpg"])
