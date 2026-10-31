@@ -812,9 +812,6 @@ def _write_generated_pages(published_posts_sorted_desc, dist_dir, config, templa
     for slug, _, _, total_cat_pages in _category_pages(published_posts_sorted_desc, categories, per_page):
         for page_num in range(1, total_cat_pages + 1):
             log(("UPDATED", category_page_url(slug, page_num)))
-    # notes.html/notes-N.html no longer exist as a generated page (#89) --
-    # clean up any left over from before that change.
-    _delete_paginated_files(dist_dir, "notes")
     _write_gallery_pages(photos, dist_dir, config, template, metadata=metadata)
     for page_num, _, _ in _gallery_pages(photos, config["gallery_per_page"]):
         log(("UPDATED", gallery_page_url(page_num)))

@@ -248,7 +248,7 @@ categories:
 
 A blank category value is a build error. The display name is used for the category page's `<h1>`, its link text everywhere it's shown (post footers, the archive categories list), and as the fallback for its page `<title>`.
 
-A category slug can't be `index`, `archive`, `gallery`, `search`, `notes`, a configured special page name, purely numeric, or match the `index-N`/`gallery-N`/`notes-N` pagination pattern — any of these would collide with a generated page or the one-time cleanup of the old notes.html listing, and is a build error.
+A category slug can't be `index`, `archive`, `gallery`, `search`, a configured special page name, purely numeric, or match the `index-N`/`gallery-N` pagination pattern — any of these would collide with a generated page, and is a build error.
 
 A category page's `<meta name="description">` and `<title>` override come from `metadata.yaml`, keyed by the same slug — see [Page metadata overrides](#page-metadata-overrides).
 
@@ -258,7 +258,7 @@ A post is assigned to a category via `category` in its frontmatter — see [Fron
 
 `metadata.yaml`, in the project root, sets a custom `<title>` and/or `<meta name="description">` for pages that have no `content/` file of their own to hold frontmatter — the index, the archive, the search page, the gallery, and category pages. A post or a content-backed special page (`about.html`, `cookies.html`, etc.) already has `title`/`description` frontmatter for this — see [Frontmatter reference](#frontmatter-reference) — and isn't affected by `metadata.yaml`.
 
-It's optional; omit the file entirely if you don't need it. Each entry is keyed by the page's slug — `index`, `archive`, `search`, `notes`, `gallery`, or a configured category slug — and may set `title`, `description`, or both:
+It's optional; omit the file entirely if you don't need it. Each entry is keyed by the page's slug — `index`, `archive`, `search`, `gallery`, or a configured category slug — and may set `title`, `description`, or both:
 
 ```yaml
 archive:

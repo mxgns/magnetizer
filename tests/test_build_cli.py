@@ -546,15 +546,22 @@ class TestCLIStalePaginatedPages:
 
         assert not (p / "dist" / "photography-2.html").exists()
 
-    def test_stale_notes_html_from_before_removal_is_deleted(self, tmp_path):
-        # notes.html/notes-N.html no longer exist as a generated page (#89) --
-        # any left over from before that change must be cleaned up on build.
+    def test_stale_notes_html_from_before_removal_untouched_by_ordinary_build(self, tmp_path):
+        # notes.html/notes-N.html no longer exist as a generated page (#89),
+        # but an ordinary (non-flush) build doesn't special-case that path --
+        # a leftover file there is simply never touched again.
         p = make_project(tmp_path, posts={1: NOTE_MD})
         (p / "dist" / "notes.html").write_text("stale")
-        (p / "dist" / "notes-2.html").write_text("stale")
         run_build([], cwd=p)
+        assert (p / "dist" / "notes.html").exists()
+
+    def test_stale_notes_html_removed_by_flush(self, tmp_path):
+        # A one-off --flush after upgrading is what actually clears out
+        # notes.html/notes-N.html left over from before #89.
+        p = make_project(tmp_path, posts={1: NOTE_MD})
+        (p / "dist" / "notes.html").write_text("stale")
+        run_build(["--flush"], cwd=p)
         assert not (p / "dist" / "notes.html").exists()
-        assert not (p / "dist" / "notes-2.html").exists()
 
     def test_gallery_page_removed_when_no_photos_remain(self, tmp_path):
         # A second, image-less post stays around -- content/ can't be
