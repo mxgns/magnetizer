@@ -33,13 +33,11 @@ from magnetizer.render import (
     category_page_url,
     gallery_page_url,
     index_page_url,
-    notes_page_url,
     post_display_text,
     render_archive_page_content,
     render_category_page_content,
     render_gallery_page_content,
     render_index_page_content,
-    render_notes_page_content,
     render_navigation,
     render_page_meta_description,
     render_page_title,
@@ -392,30 +390,6 @@ def _write_category_pages(posts_sorted_desc, dist_dir, config, template, metadat
             (dist_dir / filename).write_text(html)
 
 
-def _write_notes_pages(posts_sorted_desc, dist_dir, config, template, metadata=None):
-    note_posts = [p for p in posts_sorted_desc if p.post_type == "note"]
-    _delete_paginated_files(dist_dir, "notes")
-    if not note_posts:
-        return
-    per_page = config["notes_per_page"]
-    total = len(note_posts)
-    total_pages = max(1, (total + per_page - 1) // per_page)
-    categories = config["categories"]
-    title_text = _metadata_title(metadata, "notes", "Short notes")
-    description = _metadata_description(metadata, "notes")
-    for page_num in range(1, total_pages + 1):
-        slice_ = note_posts[(page_num - 1) * per_page: page_num * per_page]
-        content_html = render_notes_page_content(slice_, page_num, total_pages, categories=categories, ai_disclosure_html=config["ai_disclosure_html"], images_per_post=config["images_per_post"])
-        title = render_page_title(config["site_name"], title_text, page_num=None)
-        filename = notes_page_url(page_num)
-        html = render_template(template, title=title, content=content_html,
-                               canonical=canonical_url(config["site_url"], filename),
-                               meta_description=render_page_meta_description(description, page_num),
-                               navigation=render_navigation(config["navigation"], filename),
-                               page_id=_page_id(filename))
-        (dist_dir / filename).write_text(html)
-
-
 def _gallery_photos(posts_sorted_desc, dist_dir):
     """Every raster photo across all published posts (top-level and inline
     alike — see the Gallery page spec), newest post first, image number
@@ -598,7 +572,7 @@ def _load_content(content_dir, config):
     buildable_posts_sorted_desc = [posts_cache[pid] for pid in buildable_post_ids_sorted_desc]
 
     # Narrows buildable to exclude drafts -- every public-facing listing (index,
-    # category, notes, feed, gallery, sitemap, archive, posts.json, dynamic
+    # category, feed, gallery, sitemap, archive, posts.json, dynamic
     # counts) and next/previous navigation are scoped to this list instead.
     published_post_ids_sorted_desc = [
         pid for pid in buildable_post_ids_sorted_desc
@@ -838,12 +812,6 @@ def _write_generated_pages(published_posts_sorted_desc, dist_dir, config, templa
     for slug, _, _, total_cat_pages in _category_pages(published_posts_sorted_desc, categories, per_page):
         for page_num in range(1, total_cat_pages + 1):
             log(("UPDATED", category_page_url(slug, page_num)))
-    note_posts = [p for p in published_posts_sorted_desc if p.post_type == "note"]
-    _write_notes_pages(published_posts_sorted_desc, dist_dir, config, template, metadata=metadata)
-    notes_per_page = config["notes_per_page"]
-    total_notes_pages = max(1, (len(note_posts) + notes_per_page - 1) // notes_per_page) if note_posts else 0
-    for page_num in range(1, total_notes_pages + 1):
-        log(("UPDATED", notes_page_url(page_num)))
     _write_gallery_pages(photos, dist_dir, config, template, metadata=metadata)
     for page_num, _, _ in _gallery_pages(photos, config["gallery_per_page"]):
         log(("UPDATED", gallery_page_url(page_num)))
@@ -910,16 +878,6 @@ def _write_sitemap_and_robots(published_post_ids_sorted_desc, published_posts_so
             ])
             for page_num in range(1, total_cat_pages + 1):
                 sitemap_pages.append((category_page_url(slug, page_num), cat_lastmod))
-    note_posts_all = [p for p in published_posts_sorted_desc if p.post_type == "note"]
-    if note_posts_all:
-        notes_lastmod = _lastmod(
-            [content_dir / f"{p.id}.md" for p in note_posts_all]
-            + [content_dir / c.filename for p in note_posts_all for c in p.comments]
-        )
-        notes_per_page_sitemap = config["notes_per_page"]
-        total_notes_pages_sitemap = max(1, (len(note_posts_all) + notes_per_page_sitemap - 1) // notes_per_page_sitemap)
-        for page_num in range(1, total_notes_pages_sitemap + 1):
-            sitemap_pages.append((notes_page_url(page_num), notes_lastmod))
     for page_num, photos_slice, _ in _gallery_pages(photos, config["gallery_per_page"]):
         gallery_lastmod = _lastmod([content_dir / photo["source"] for photo in photos_slice])
         sitemap_pages.append((gallery_page_url(page_num), gallery_lastmod))
@@ -967,14 +925,6 @@ def _write_posts_index(published_posts_sorted_desc, config, special_page_posts_b
         for page_num in range(1, total_cat_pages + 1):
             title = display_name if page_num == 1 else f"{display_name} (page {page_num})"
             entries.append((_page_id(category_page_url(slug, page_num)), title, slug, None))
-
-    note_posts = [p for p in published_posts_sorted_desc if p.post_type == "note"]
-    if note_posts:
-        notes_per_page = config["notes_per_page"]
-        total_notes_pages = max(1, (len(note_posts) + notes_per_page - 1) // notes_per_page)
-        for page_num in range(1, total_notes_pages + 1):
-            title = "Short notes" if page_num == 1 else f"Short notes (page {page_num})"
-            entries.append((_page_id(notes_page_url(page_num)), title, None, None))
 
     for page_num, _, _ in _gallery_pages(photos, config["gallery_per_page"]):
         title = "Photo archive" if page_num == 1 else f"Photo archive (page {page_num})"

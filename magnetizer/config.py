@@ -11,7 +11,6 @@ DEFAULTS = {
     "thumbnail_max_dimension": 400,
     "thumbnail_quality": 70,
     "posts_per_page": 12,
-    "notes_per_page": 20,
     "gallery_per_page": 60,
     "images_per_post": 2,
     "feed_max_posts": 30,
@@ -48,8 +47,6 @@ def load_config(path):
             if key in data:
                 config[key] = data[key]
     config["categories"] = _normalize_categories(config["categories"])
-    if config["notes_per_page"] < 1:
-        raise ValueError("notes_per_page must be a positive integer")
     if config["gallery_per_page"] < 1:
         raise ValueError("gallery_per_page must be a positive integer")
     if config["images_per_post"] < 0:
