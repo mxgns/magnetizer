@@ -5,6 +5,10 @@
 
 ## Released changes
 
+### 31/10/26
+
+- Removed "short note" as a public concept: no more tag, count, or notes.html
+
 ### 29/10/26
 
 - Post heading/meta title now fall back to a body excerpt, same as the archive

@@ -41,9 +41,8 @@ manifest.json  Build state (created automatically)
 | `thumbnail_max_dimension` | Long-edge pixel limit when generating gallery thumbnails | `400` |
 | `thumbnail_quality` | JPEG quality for gallery thumbnails (0–95) | `70` |
 | `posts_per_page` | Posts shown per index page | `12` |
-| `notes_per_page` | Notes shown per notes page (`notes.html`, `notes-2.html`, …) | `20` |
 | `gallery_per_page` | Photos shown per gallery page (`gallery.html`, `gallery-2.html`, …) | `60` |
-| `images_per_post` | Top-level images shown per post on multi-post pages (index, category, notes) — `0` shows none. The post's own page always shows all top-level images regardless. Inline images (`{{ image N }}`) aren't counted; use `<!-- more -->` to control those | `2` |
+| `images_per_post` | Top-level images shown per post on multi-post pages (index, category) — `0` shows none. The post's own page always shows all top-level images regardless. Inline images (`{{ image N }}`) aren't counted; use `<!-- more -->` to control those | `2` |
 | `feed_max_posts` | Maximum number of most-recent dated posts included in the Atom feed | `30` |
 | `categories` | Map of category slug to a display name, e.g. `{photography: Photography}` — see [Categories](#categories) | `{}` (no categories) |
 | `default_category` | Category slug `ingest.py` fills in for an inbox post that doesn't set its own `category` — must match a slug in `categories` | Not set — ingested posts are left uncategorised |
@@ -102,7 +101,7 @@ Post body goes here. Standard Markdown is supported.
 
 The `title` field is optional — see [Frontmatter reference](#frontmatter-reference) below for `title` and every other supported key.
 
-The post's heading is rendered as the page's `<h1>` on an individual post page, or `<h2>` when shown alongside other posts (index and category pages). Write headings inside the post body starting at `#` and `##`, as if the body were its own document — two levels only, `###` or deeper prints a build warning. The renderer renumbers these automatically wherever the post is embedded, so they never collide with the post's own heading: one level down on the post's own page and in `feed.xml`, two levels down on an index/category/notes listing page. See [Post types](#post-types) below for what the heading contains when the post has no `title`.
+The post's heading is rendered as the page's `<h1>` on an individual post page, or `<h2>` when shown alongside other posts (index and category pages). Write headings inside the post body starting at `#` and `##`, as if the body were its own document — two levels only, `###` or deeper prints a build warning. The renderer renumbers these automatically wherever the post is embedded, so they never collide with the post's own heading: one level down on the post's own page and in `feed.xml`, two levels down on an index/category listing page. See [Post types](#post-types) below for what the heading contains when the post has no `title`.
 
 Wrap part of a post body in a `<div>` with a fenced container:
 
@@ -132,7 +131,7 @@ A claim that needs backing up[^1].
 [^1]: The source for that claim.
 ```
 
-This renders an inline reference linking down to a footnote list at the end of the body, with a backlink from the list back up to the reference. Since index and category pages can show several posts on one page, each post's footnote ids are prefixed with its post id behind the scenes so they don't collide — this doesn't affect the footnote numbers shown to readers. Footnotes only show up on the post's own individual page — both the reference and the footnote list are stripped out on index, category, and notes pages, so browsing a listing doesn't show a dangling reference number or footnote list out of context.
+This renders an inline reference linking down to a footnote list at the end of the body, with a backlink from the list back up to the reference. Since index and category pages can show several posts on one page, each post's footnote ids are prefixed with its post id behind the scenes so they don't collide — this doesn't affect the footnote numbers shown to readers. Footnotes only show up on the post's own individual page — both the reference and the footnote list are stripped out on index and category pages, so browsing a listing doesn't show a dangling reference number or footnote list out of context.
 
 Place a specific image inline in the body with `{{ image N }}`, where `N` is the image's number from its filename (`{{ image 3 }}` → `{post-id}-image-03.{ext}`):
 
@@ -180,21 +179,21 @@ Everything is validated (reusing the same checks `build.py` runs) against a merg
 
 ## Post types
 
-Every post is one of three types, based on its `title`, top-level images, and body content:
+Every post is one of three types, based on its `title`, its images (top-level and inline), and body content:
 
 | Type | Type class | Criteria |
 |---|---|---|
-| Full post | `full-post` | Has a `title` |
+| Full post | `full-post` | Has a `title` — or doesn't, but has no images and its body is 806+ characters of plain text |
 | Image post | `image-post` | No `title`, one or more top-level images |
-| Note | `note` | No `title`, no top-level images, has body content |
+| Note | `note` | No `title`, no images at all (top-level or inline), has body content under 806 characters |
 
 The type class is appended to the `<article>` alongside its existing `single-post`/`multiple-posts` layout class, not instead of it — e.g. `class="single-post note"` on an individual Note's own page, or `class="multiple-posts image-post"` for an Image post shown on the index.
 
 A blank or whitespace-only `title`, `name`, or body counts as unset for all of this — classification, the warnings/errors below, and the heading/title/archive fallback text. `title: "   "` behaves exactly like no `title` at all.
 
-Images placed inline via `{{ image N }}` don't count as top-level images for this — a post with only inline images and no title is a Note, not an Image post. All in-post features (`<!-- more -->`, `{{ image N }}`, container blocks, dynamic values) work the same way across all three types; Magnetizer doesn't restrict any of them by post type.
+Images placed inline via `{{ image N }}` don't count as top-level images for the Image post criterion, but any image at all — top-level or inline — rules out a Note: an untitled post with only an inline image, whatever its length, is a Full post instead. All in-post features (`<!-- more -->`, `{{ image N }}`, container blocks, dynamic values) work the same way across all three types; Magnetizer doesn't restrict any of them by post type.
 
-Notes replace what used to be called microblog posts. The behaviour is the same except there's no length cap any more, and the paginated listing page is `notes.html` (was `microblog.html`). Notes get a `<a href="notes.html" class="notes">Short note</a>` link in their footer, before the category link if any.
+A Note's 806-character cap is 50% over the longest post that qualified under Magnetizer's previous, uncapped Note classification (537 characters). Past that length, an untitled, image-less post is a Full post: it gets the normal excerpt/"Read more" treatment on multi-post pages, and its heading is shown rather than visually hidden (see below).
 
 A post with no `title`, no images and no content is invalid — the build exits with an error. A post with a `title` but no images and no content triggers a build warning (it doesn't make much use of its own page), as does a post with both `title` and `name` set — the `title` wins and `name` is ignored. ("Images" here means any image, including one used only inline via `{{ image N }}` — unlike the Full/Image/Note classification above, these two checks don't distinguish top-level from inline.)
 
@@ -234,7 +233,7 @@ This is the single reference for every frontmatter key a post or special page ca
 - **`favourite`** — adds an additional `favourite` CSS class to the post's entry in the archive.
 - **`ai_assisted`** — inserts a disclosure banner above the post's heading, wherever it's shown (individual page, and index/category excerpts or full body). The banner text comes from `ai_disclosure_html` in `config.yaml` (raw HTML, so it can include a link) — Magnetizer falls back to a generic sentence if `ai_disclosure_html` isn't set. The banner needs the `.container-brown` and `.ai-disclosure` CSS rules to be present in the project's `resources/` directory — the icon itself is a CSS background image, base64-encoded in the project's own stylesheet, same as every other icon on the site.
 - **`noindex`** — excludes the page from `sitemap.xml` and adds a `<meta name="robots" content="noindex">` tag via `MAGNETIZER_METADATA`, but is otherwise treated normally (still shown on index pages, category pages, the feed, the archive, post navigation, and `posts.json`) — it only affects search indexing. Works the same way on special pages as on posts.
-- **`draft`** — unlike `noindex`, excludes the post from everywhere: index pages, category pages, notes pages, the feed, the gallery, the archive, `sitemap.xml`, `posts.json`, next/previous navigation, and the dynamic post/word/image counts. Also gets `data-pagefind-ignore` and the `noindex` robots meta tag. The post's own page still builds, still rebuilds on change, still refreshes on `--refresh`, and still gets the invalid-post check — it's a normal post in every way except being unlisted, reachable only via its own URL. Shows a `[draft]` label in verbose build output. Posts only, not special pages.
+- **`draft`** — unlike `noindex`, excludes the post from everywhere: index pages, category pages, the feed, the gallery, the archive, `sitemap.xml`, `posts.json`, next/previous navigation, and the dynamic post/word/image counts. Also gets `data-pagefind-ignore` and the `noindex` robots meta tag. The post's own page still builds, still rebuilds on change, still refreshes on `--refresh`, and still gets the invalid-post check — it's a normal post in every way except being unlisted, reachable only via its own URL. Shows a `[draft]` label in verbose build output. Posts only, not special pages.
 - **`description`** — content for the page's own `<meta name="description">` tag via `MAGNETIZER_METADATA`, used verbatim if set. If absent, a description is generated from the post's plain-text body; if the post has no body text at all (e.g. a photo-only post), it's generated from the images' alt texts instead — `{N}-image post with {a photo / photos} showing {alt text}, {alt text}, …`, skipping any image with no alt text. Either way, the source text is truncated to the first 160 characters, preferring a sentence-boundary cut if that leaves a reasonably full description (at least 100 of the 160 characters), otherwise the last complete word before the limit followed by `…`. Never cuts a word or sentence mid-way, except a single word with no spaces longer than 160 characters, which has no word boundary to fall back to and is truncated to make room for `…`. No description is generated at all if there's no body text and no image has alt text. Independent of `metadata.yaml`, which only overrides pages that have no `content/` file of their own — see [Page metadata overrides](#page-metadata-overrides). Works the same way on special pages as on posts.
 
 ## Categories
@@ -249,7 +248,7 @@ categories:
 
 A blank category value is a build error. The display name is used for the category page's `<h1>`, its link text everywhere it's shown (post footers, the archive categories list), and as the fallback for its page `<title>`.
 
-A category slug can't be `index`, `archive`, `gallery`, `search`, `notes`, a configured special page name, purely numeric, or match the `index-N`/`gallery-N`/`notes-N` pagination pattern — any of these would collide with a generated page, and is a build error.
+A category slug can't be `index`, `archive`, `gallery`, `search`, a configured special page name, purely numeric, or match the `index-N`/`gallery-N` pagination pattern — any of these would collide with a generated page, and is a build error.
 
 A category page's `<meta name="description">` and `<title>` override come from `metadata.yaml`, keyed by the same slug — see [Page metadata overrides](#page-metadata-overrides).
 
@@ -257,9 +256,9 @@ A post is assigned to a category via `category` in its frontmatter — see [Fron
 
 ## Page metadata overrides
 
-`metadata.yaml`, in the project root, sets a custom `<title>` and/or `<meta name="description">` for pages that have no `content/` file of their own to hold frontmatter — the index, the archive, the search page, the notes listing, the gallery, and category pages. A post or a content-backed special page (`about.html`, `cookies.html`, etc.) already has `title`/`description` frontmatter for this — see [Frontmatter reference](#frontmatter-reference) — and isn't affected by `metadata.yaml`.
+`metadata.yaml`, in the project root, sets a custom `<title>` and/or `<meta name="description">` for pages that have no `content/` file of their own to hold frontmatter — the index, the archive, the search page, the gallery, and category pages. A post or a content-backed special page (`about.html`, `cookies.html`, etc.) already has `title`/`description` frontmatter for this — see [Frontmatter reference](#frontmatter-reference) — and isn't affected by `metadata.yaml`.
 
-It's optional; omit the file entirely if you don't need it. Each entry is keyed by the page's slug — `index`, `archive`, `search`, `notes`, `gallery`, or a configured category slug — and may set `title`, `description`, or both:
+It's optional; omit the file entirely if you don't need it. Each entry is keyed by the page's slug — `index`, `archive`, `search`, `gallery`, or a configured category slug — and may set `title`, `description`, or both:
 
 ```yaml
 archive:
@@ -273,9 +272,9 @@ out-and-about:
 
 A key that doesn't match a real page or a configured category slug is a build error — there's no silent typo. An entry must set at least one of `title`/`description`; an empty entry is also a build error.
 
-If `title` is set, it replaces the page-specific part of the `<title>` tag — `site_name` is still appended the same way it is everywhere else (e.g. `Everything - My Blog`). For a category, this only affects the `<title>` tag; its display name from `categories` in `config.yaml` still controls its `<h1>` and every other place its display label appears. If `title` is unset, the page keeps its usual title (`Archive`, `Search`, `Short notes`, `Photo archive`, or the category's display name).
+If `title` is set, it replaces the page-specific part of the `<title>` tag — `site_name` is still appended the same way it is everywhere else (e.g. `Everything - My Blog`). For a category, this only affects the `<title>` tag; its display name from `categories` in `config.yaml` still controls its `<h1>` and every other place its display label appears. If `title` is unset, the page keeps its usual title (`Archive`, `Search`, `Photo archive`, or the category's display name).
 
-If `description` is set, it becomes the page's `<meta name="description">` content, the same way a post's `description` frontmatter does — including a ` (Page N)` suffix on page 2 and beyond for a page family that paginates (the index, notes, gallery, and category pages). If unset, the page gets no meta description; there's no auto-generated fallback, since none of these pages has a single body of text to summarise.
+If `description` is set, it becomes the page's `<meta name="description">` content, the same way a post's `description` frontmatter does — including a ` (Page N)` suffix on page 2 and beyond for a page family that paginates (the index, gallery, and category pages). If unset, the page gets no meta description; there's no auto-generated fallback, since none of these pages has a single body of text to summarise.
 
 Setting only one of `title`/`description` leaves the other at whatever it would otherwise have been — they're independent.
 
@@ -296,7 +295,7 @@ I have now published the [second part](13.html).
 
 Both `date` and `author` are required — the build errors if either is missing. The body is Markdown, with the same automatic external-link handling as a post body, but no container blocks, `{{ image N }}` tokens, or `{{ shortcode }}` values.
 
-Comments show up only on the post's or special page's own page, inside `<section class="comments" id="comments">`, oldest first — regardless of the comment's own date. Index, category, and notes pages instead get a `N comment(s)` link in the post's footer, pointing at `{post-id}.html#comments`.
+Comments show up only on the post's or special page's own page, inside `<section class="comments" id="comments">`, oldest first — regardless of the comment's own date. Index and category pages instead get a `N comment(s)` link in the post's footer, pointing at `{post-id}.html#comments`.
 
 Each comment's author name is slugified into a `class="author author-{slug}"`, shared by its `<h4>` and by a `<div class="avatar author-{slug}" data-initial="{INITIAL}" aria-hidden="true"></div>` placed just before it — `{INITIAL}` is the upper-cased first character of the author's name. Magnetizer renders no avatar styling itself; a project's own CSS decides what that `<div>` looks like, typically the initial shown via `content: attr(data-initial)` on a pseudo-element for a default "no photo" look, with a specific commenter's `author-{slug}` class overridden to show a real image instead.
 
@@ -319,7 +318,7 @@ Resource file changes (CSS, JS) are picked up automatically on the next build �
 
 Every full build (not a single-file preview build) also scans the whole of `dist/` for internal links — from Markdown or raw HTML — pointing at a page that no longer exists, warning `Broken internal link: '{href}'` against the page the link is on. It checks the entire site each time, not just pages rebuilt this run, since a link can go stale because the page it pointed to was deleted or renamed elsewhere.
 
-Every full build also generates `dist/sitemap.xml` (all published posts and special pages that aren't `noindex`, excluding drafts, plus index, category, notes, gallery, and archive pages, with `lastmod` dates) and `dist/robots.txt` (pointing to the sitemap). These are not generated on single-file preview builds.
+Every full build also generates `dist/sitemap.xml` (all published posts and special pages that aren't `noindex`, excluding drafts, plus index, category, gallery, and archive pages, with `lastmod` dates) and `dist/robots.txt` (pointing to the sitemap). These are not generated on single-file preview builds.
 
 Every full build also generates `dist/posts.json` — an id-keyed lookup of every page's title, category, and date, for an external consumer like the Magnalytics analytics UI to resolve a raw `page_id` (see `MAGNETIZER_PAGE_ID`) into something readable. Unlike the sitemap, it includes `noindex` pages and the 404 page, since it's for identifying traffic, not search indexing — but it excludes drafts, which aren't meant to be found or shared at all. Also not generated on single-file preview builds.
 
@@ -333,10 +332,10 @@ Magnetizer uses a single template file: `templates/index.html`. It must contain 
 
 | Placeholder | Required | Replaced with |
 |---|---|---|
-| `MAGNETIZER_METADATA` | Yes | A block of `<head>` metadata tags: `<title>`, an optional `<meta name="description">` (index/archive/search/notes/gallery/category pages from `metadata.yaml` — see [Page metadata overrides](#page-metadata-overrides); individual posts/special pages from their `description` frontmatter or an auto-generated fallback — see the `description` entry in [Frontmatter reference](#frontmatter-reference)), a `<link rel="canonical">`, and — for posts or special pages with `noindex: true`, or posts with `draft: true` — a `<meta name="robots" content="noindex">`. Each line is present only when applicable. Paginated index/category/notes/gallery pages append ` (Page N)` to their configured description from page 2 onward. |
+| `MAGNETIZER_METADATA` | Yes | A block of `<head>` metadata tags: `<title>`, an optional `<meta name="description">` (index/archive/search/gallery/category pages from `metadata.yaml` — see [Page metadata overrides](#page-metadata-overrides); individual posts/special pages from their `description` frontmatter or an auto-generated fallback — see the `description` entry in [Frontmatter reference](#frontmatter-reference)), a `<link rel="canonical">`, and — for posts or special pages with `noindex: true`, or posts with `draft: true` — a `<meta name="robots" content="noindex">`. Each line is present only when applicable. Paginated index/category/gallery pages append ` (Page N)` to their configured description from page 2 onward. |
 | `MAGNETIZER_CONTENT` | Yes | The generated page content |
 | `MAGNETIZER_BUILD_ID` | No | A Unix timestamp, useful for cache-busting: `style.css?v=MAGNETIZER_BUILD_ID` |
-| `MAGNETIZER_PAGE_ID` | No | The current page's bare id, e.g. `56` for a post, `about` for a special page, `photography` for a category page, `index`/`index-2`/`notes`/`archive`/`search` otherwise. Never includes `.html`. Not used by Magnetizer itself — useful for e.g. a per-page tracking pixel. |
+| `MAGNETIZER_PAGE_ID` | No | The current page's bare id, e.g. `56` for a post, `about` for a special page, `photography` for a category page, `index`/`index-2`/`archive`/`search` otherwise. Never includes `.html`. Not used by Magnetizer itself — useful for e.g. a per-page tracking pixel. |
 | `MAGNETIZER_PAGE_SCRIPTS` | No | Empty on every page except `search.html`, where it's a `<script>` tag loading `resources/search.js`. Place it just before `</body>` so only the search page pays for that script. |
 
 Example `templates/index.html`:
@@ -424,12 +423,12 @@ Because a page like this can go stale purely from *other* content changing (a ne
 
 ## Archive page
 
-The archive page (`dist/archive.html`) lists all dated blog posts grouped by month (Notes are excluded from this list). It opens with an `<h1>Archive</h1>` heading, immediately followed by a GitHub-style contribution calendar — a rolling 370-day grid of every published post (Notes included this time), split into 37 columns of 10 days each, coloured by how many posts fell on each day (`level-0` for none up to `level-5` for five or more). Unlike a calendar-week-aligned grid, a column here is just "10 consecutive days" with no weekday meaning — the very last cell of the very last column is always the build date itself, whatever day of the week that is, so today always sits in the same (bottom-right) spot in the grid. Because the window always ends exactly on the build date, every one of the 370 cells is always a real day — there's no "hasn't happened yet" case to render as blank space. Clicking a filled-in day links to the newest post from that day, at its anchor on `index.html` (or whichever paginated index page it falls on); a day with one or more posts carries a `data-tooltip` attribute describing it (plus `aria-label` on its link), e.g. `25 August: 1 post + 2 notes` — deliberately a data attribute rather than `title`, since Magnetizer emits data only and a project's own CSS renders the actual tooltip. A day with no posts has no tooltip. The `<h2>Publishing calendar</h2>` heading carries no number itself; a summary paragraph below it states the same window's total in prose, split by type: `I have posted 248 posts and 12 notes so far.` When there's a current posting streak, that same paragraph continues with a second clause reporting it in Monday-Sunday calendar weeks (not a rolling 7-day period, so a post on the Monday of one week and the Sunday of the next still counts as two consecutive weeks): `I have posted 248 posts and 12 notes so far, and have posted every week for the last 6 weeks.` — the clause (and its leading comma) is omitted entirely, not just shown as zero, when there's no current streak. Nested at the end of the same `<section>`, a `<p class="last-updated">` states when the page was built, e.g. `The last update was at 2.43 pm on 24 September 2026.`, using the same date/time format as the `{{ now }}` shortcode above — it lives inside `.contribution-calendar` (rather than after it) so a project's CSS can size the heading, summary, and this line all from one selector on the section, instead of repeating a font-size per element. The categories/notes/monthly-list sections described below follow, in the same order as before:
+The archive page (`dist/archive.html`) lists all dated posts grouped by month, Notes included. It opens with an `<h1>Archive</h1>` heading, immediately followed by a GitHub-style contribution calendar — a rolling 370-day grid of every published post, split into 37 columns of 10 days each, coloured by how many posts fell on each day (`level-0` for none up to `level-5` for five or more). Unlike a calendar-week-aligned grid, a column here is just "10 consecutive days" with no weekday meaning — the very last cell of the very last column is always the build date itself, whatever day of the week that is, so today always sits in the same (bottom-right) spot in the grid. Because the window always ends exactly on the build date, every one of the 370 cells is always a real day — there's no "hasn't happened yet" case to render as blank space. Clicking a filled-in day links to the newest post from that day, at its anchor on `index.html` (or whichever paginated index page it falls on); a day with one or more posts carries a `data-tooltip` attribute describing it (plus `aria-label` on its link), e.g. `25 August: 3 posts` — deliberately a data attribute rather than `title`, since Magnetizer emits data only and a project's own CSS renders the actual tooltip. A day with no posts has no tooltip. The `<h2>Publishing calendar</h2>` heading carries no number itself; a summary paragraph below it states the same window's total in prose: `I have posted 248 posts so far.` When there's a current posting streak, that same paragraph continues with a second clause reporting it in Monday-Sunday calendar weeks (not a rolling 7-day period, so a post on the Monday of one week and the Sunday of the next still counts as two consecutive weeks): `I have posted 248 posts so far, and have posted every week for the last 6 weeks.` — the clause (and its leading comma) is omitted entirely, not just shown as zero, when there's no current streak. Nested at the end of the same `<section>`, a `<p class="last-updated">` states when the page was built, e.g. `The last update was at 2.43 pm on 24 September 2026.`, using the same date/time format as the `{{ now }}` shortcode above — it lives inside `.contribution-calendar` (rather than after it) so a project's CSS can size the heading, summary, and this line all from one selector on the section, instead of repeating a font-size per element. The categories/photo-archive/monthly-list sections described below follow, in the same order as before:
 
 ```html
 <section class="contribution-calendar">
   <h2>Publishing calendar</h2>
-  <p class="calendar-summary">I have posted <strong><span class="calendar-post-count">248</span> posts</strong> and <strong><span class="calendar-note-count">12</span> notes</strong> so far, and have posted every week for the last <strong>6 weeks</strong>.</p>
+  <p class="calendar-summary">I have posted <strong><span class="calendar-post-count">248</span> posts</strong> so far, and have posted every week for the last <strong>6 weeks</strong>.</p>
   <div class="calendar">
     <div class="calendar-months">
       <span class="calendar-month">Aug</span>
@@ -469,9 +468,9 @@ As with everything else Magnetizer generates, this is bare structure only — no
 
 Each month heading is an `<h3>`, one level below the page's own `<h2>Blog Posts</h2>` — it's a subsection of the monthly list, not a sibling heading. Every month `<section>` is wrapped in a single `<div class="archive-months">`, so a project's CSS can flow them across multiple columns on wide viewports via `column-count` — see [Archive column layout](spec/specification.md#archive-column-layout) in the spec for the full detail. Magnetizer itself doesn't decide which months land in which column; the browser balances them.
 
-Each `<li>` gets the post's type class (`full-post` or `image-post` — Notes never appear here) and its link text follows the title → `name` → excerpt → generated-fallback priority order described in [Post types](#post-types).
+Each `<li>` gets the post's type class (`full-post`, `image-post`, or `note`) and its link text follows the title → `name` → excerpt → generated-fallback priority order described in [Post types](#post-types).
 
-If `categories` is configured and at least one category has a matching post, a categories list is inserted after the contribution calendar. If any Notes exist, a `<h2>Short notes</h2>` section with a link to `notes.html` is inserted after the categories. When either (or both) sections appear, a `<h2>Blog Posts</h2>` heading is shown before the monthly sections:
+If `categories` is configured and at least one category has a matching post, a categories list is inserted after the contribution calendar. When that list, a photo archive section (see below), or both appear, a `<h2>Blog Posts</h2>` heading is shown before the monthly sections:
 
 ```html
 <main>
@@ -484,11 +483,9 @@ If `categories` is configured and at least one category has a matching post, a c
         <li><a href="travel.html">Travel</a> (12)</li>
       </ul>
     </div>
-    <div class="archive-notes">
-      <h2>Short notes</h2>
-      <ul>
-        <li><a href="notes.html">All short notes</a></li>
-      </ul>
+    <div class="archive-photos">
+      <h2>Photo archive</h2>
+      ...
     </div>
   </div>
   <h2>Blog Posts</h2>
@@ -498,14 +495,10 @@ If `categories` is configured and at least one category has a matching post, a c
 
 Each category link shows the number of posts in that category in parentheses. Categories are listed in descending order of post count, and only if they have at least one matching post.
 
-If the blog has at least one qualifying photo (see [Gallery page](#gallery-page)), a `<h2>Photo archive</h2>` section is inserted into `archive-notes` too, after the short notes list (or on its own if there are no Notes) — it never gets its own column. It shows up to the 5 most recent photos as thumbnails, each linking to its own post, followed by a single link to the gallery with a camera icon and the total photo count:
+If the blog has at least one qualifying photo (see [Gallery page](#gallery-page)), a `<div class="archive-photos">` section is inserted alongside the categories. It shows up to the 5 most recent photos as thumbnails, each linking to its own post, followed by a single link to the gallery with a camera icon and the total photo count:
 
 ```html
-<div class="archive-notes">
-  <h2>Short notes</h2>
-  <ul>
-    <li><a href="notes.html">All short notes</a></li>
-  </ul>
+<div class="archive-photos">
   <h2>Photo archive</h2>
   <ol class="archive-gallery-preview">
     <li><a href="42.html"><img src="42-image-01-thumb.jpg" alt="Sunset over the bay" width="400" height="400" loading="lazy"></a></li>
@@ -517,7 +510,7 @@ If the blog has at least one qualifying photo (see [Gallery page](#gallery-page)
 
 Each thumbnail uses the same thumbnail file, alt text, and dimensions as on the gallery page itself, newest first, and links to the post that photo belongs to (not to `gallery.html`). Fewer than 5 thumbnails appear if the blog has fewer than 5 photos in total. The `<p class="archive-gallery-count">` link always follows the list and always links to `gallery.html`; its count reflects every qualifying photo on the site, not just the ones shown as thumbnails. Magnetizer emits no icon here — same as the `favourite` class's star — any icon is added entirely by the project's own CSS.
 
-`archive-categories` and `archive-notes` sit side by side inside `archive-columns` — whichever of the two exist; if only one does, it's the sole child. Like `archive-months`, this is bare structure for a project's CSS to lay out on wide viewports (e.g. a two-column flex row); Magnetizer ships no default column CSS or breakpoint of its own.
+`archive-categories` and `archive-photos` sit side by side inside `archive-columns` — whichever of the two exist; if only one does, it's the sole child. Like `archive-months`, this is bare structure for a project's CSS to lay out on wide viewports (e.g. a two-column flex row); Magnetizer ships no default column CSS or breakpoint of its own.
 
 The page always ends with a `<h2>Browse all posts by page</h2>` section linking to every paginated index page by number, middle-dot separated:
 
@@ -526,7 +519,7 @@ The page always ends with a `<h2>Browse all posts by page</h2>` section linking 
 <p class="archive-index-pages"><a href="index.html">1</a> · <a href="index-2.html">2</a> · <a href="index-3.html">3</a></p>
 ```
 
-Unlike the index pages' own "Newer/Older" nav, this always lists every page and never omits or marks the current one — the archive isn't itself one of the paginated pages, so there's no "current page" to skip. It's always shown, even when there's only a single index page (just a lone `1`), and the page count is driven by `posts_per_page`, counting every published post the same way the index pages themselves do (Notes included).
+Unlike the index pages' own "Newer/Older" nav, this always lists every page and never omits or marks the current one — the archive isn't itself one of the paginated pages, so there's no "current page" to skip. It's always shown, even when there's only a single index page (just a lone `1`), and the page count is driven by `posts_per_page`, counting every published post the same way the index pages themselves do.
 
 ## Gallery page
 
@@ -556,7 +549,7 @@ Every full build generates `dist/search.html` — a static shell (heading, acces
 
 Every build — including single-file preview builds, not just full ones — also runs Pagefind indexing over `dist/` (via a pinned `npx pagefind@1.5.2`, so a bare `npx pagefind` can't silently pick up a newer release and change the index between builds) after all pages are written. This requires Node and network access to resolve the `pagefind` package (cached after the first run); a nonzero exit, a timeout, or a missing `npx` binary aborts the build with a red `ERROR`.
 
-To avoid indexing the same article twice (once on its own page, once again embedded in an index/category/notes/archive/gallery listing) and to keep chrome out of results, Magnetizer marks listing pages' `<main>` with `data-pagefind-ignore` — only a post's own canonical page is indexed. On that canonical page, the post's `<h1>` carries `data-pagefind-meta="title"` and its `<time>` carries `data-pagefind-meta="date"`, so Pagefind's result metadata doesn't have to be scraped from the `{post_title} - {site_name}` `<title>` tag. `search.html` itself is also `data-pagefind-ignore`d, and so is any post, special page, or the 404 page when it has `noindex: true`, or any post with `draft: true` — a page excluded from `sitemap.xml` is excluded from the site's own search too. A project's own template is responsible for excluding its own repeated chrome (header, footer, nav) the same way — Magnetizer only controls the content it generates.
+To avoid indexing the same article twice (once on its own page, once again embedded in an index/category/archive/gallery listing) and to keep chrome out of results, Magnetizer marks listing pages' `<main>` with `data-pagefind-ignore` — only a post's own canonical page is indexed. On that canonical page, the post's `<h1>` carries `data-pagefind-meta="title"` and its `<time>` carries `data-pagefind-meta="date"`, so Pagefind's result metadata doesn't have to be scraped from the `{post_title} - {site_name}` `<title>` tag. `search.html` itself is also `data-pagefind-ignore`d, and so is any post, special page, or the 404 page when it has `noindex: true`, or any post with `draft: true` — a page excluded from `sitemap.xml` is excluded from the site's own search too. A project's own template is responsible for excluding its own repeated chrome (header, footer, nav) the same way — Magnetizer only controls the content it generates.
 
 ## Publishing
 

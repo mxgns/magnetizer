@@ -13,7 +13,6 @@ DEFAULTS = {
     "thumbnail_max_dimension": 400,
     "thumbnail_quality": 70,
     "posts_per_page": 12,
-    "notes_per_page": 20,
     "gallery_per_page": 60,
     "images_per_post": 2,
     "feed_max_posts": 30,
@@ -56,9 +55,6 @@ class TestDefaults:
 
     def test_posts_per_page_default(self, tmp_path):
         assert load_config(tmp_path / "config.yaml")["posts_per_page"] == 12
-
-    def test_notes_per_page_default(self, tmp_path):
-        assert load_config(tmp_path / "config.yaml")["notes_per_page"] == 20
 
     def test_gallery_per_page_default(self, tmp_path):
         assert load_config(tmp_path / "config.yaml")["gallery_per_page"] == 60
@@ -110,10 +106,6 @@ class TestCustomValues:
         p = write_config(tmp_path, "posts_per_page: 6\n")
         assert load_config(p)["posts_per_page"] == 6
 
-    def test_notes_per_page_overridden(self, tmp_path):
-        p = write_config(tmp_path, "notes_per_page: 10\n")
-        assert load_config(p)["notes_per_page"] == 10
-
     def test_gallery_per_page_overridden(self, tmp_path):
         p = write_config(tmp_path, "gallery_per_page: 30\n")
         assert load_config(p)["gallery_per_page"] == 30
@@ -144,7 +136,6 @@ class TestCustomValues:
             "image_max_dimension: 1400\n"
             "image_quality: 68\n"
             "posts_per_page: 8\n"
-            "notes_per_page: 15\n"
             "images_per_post: 3\n"
         ))
         config = load_config(p)
@@ -152,7 +143,6 @@ class TestCustomValues:
         assert config["image_max_dimension"] == 1400
         assert config["image_quality"] == 68
         assert config["posts_per_page"] == 8
-        assert config["notes_per_page"] == 15
         assert config["images_per_post"] == 3
 
     def test_partial_override_keeps_other_defaults(self, tmp_path):
@@ -167,16 +157,6 @@ class TestCustomValues:
         p = write_config(tmp_path, "unknown_key: whatever\n")
         config = load_config(p)
         assert set(config.keys()) == set(DEFAULTS.keys())
-
-    def test_notes_per_page_zero_raises_error(self, tmp_path):
-        p = write_config(tmp_path, "notes_per_page: 0\n")
-        with pytest.raises(ValueError):
-            load_config(p)
-
-    def test_notes_per_page_negative_raises_error(self, tmp_path):
-        p = write_config(tmp_path, "notes_per_page: -1\n")
-        with pytest.raises(ValueError):
-            load_config(p)
 
     def test_gallery_per_page_zero_raises_error(self, tmp_path):
         p = write_config(tmp_path, "gallery_per_page: 0\n")

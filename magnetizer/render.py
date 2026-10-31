@@ -25,10 +25,6 @@ def category_page_url(slug, page_num):
     return f"{slug}.html" if page_num == 1 else f"{slug}-{page_num}.html"
 
 
-def notes_page_url(page_num):
-    return "notes.html" if page_num == 1 else f"notes-{page_num}.html"
-
-
 def gallery_page_url(page_num):
     return "gallery.html" if page_num == 1 else f"gallery-{page_num}.html"
 
@@ -174,8 +170,6 @@ def render_article(post, on_index_page, categories=None, ai_disclosure_html=None
             date_content = post.date_uk
             time_attrs = ' data-pagefind-meta="date"'
         footer_parts = [f'<time datetime="{post.date}"{time_attrs}>{date_content}</time>']
-        if post.post_type == "note":
-            footer_parts.append('<a href="notes.html" class="notes">Short note</a>')
         if post.category and categories and post.category in categories:
             display_name = _escape(categories[post.category]["name"])
             footer_parts.append(f'<a href="{post.category}.html" class="category">{display_name}</a>')
@@ -238,24 +232,6 @@ def render_category_page_content(posts, category_name, category_slug, page_num, 
             nav_items.append(f'<li class="newer"><a href="{prev_url}">Newer posts</a></li>')
         if page_num < total_pages:
             next_url = category_page_url(category_slug, page_num + 1)
-            nav_items.append(f'<li class="older"><a href="{next_url}">Older posts</a></li>')
-        content += f'\n<nav><ul>{"".join(nav_items)}</ul></nav>'
-
-    content += '\n<nav><a href="index.html">Blog home</a></nav>'
-    return content
-
-
-def render_notes_page_content(posts, page_num, total_pages, categories=None, ai_disclosure_html=None, images_per_post=2):
-    articles = '\n'.join(render_article(p, on_index_page=True, categories=categories, ai_disclosure_html=ai_disclosure_html, images_per_post=images_per_post) for p in posts)
-    content = f'<main data-pagefind-ignore>\n<h1>Short notes</h1>\n{articles}\n</main>'
-
-    if total_pages > 1:
-        nav_items = []
-        if page_num > 1:
-            prev_url = notes_page_url(page_num - 1)
-            nav_items.append(f'<li class="newer"><a href="{prev_url}">Newer posts</a></li>')
-        if page_num < total_pages:
-            next_url = notes_page_url(page_num + 1)
             nav_items.append(f'<li class="older"><a href="{next_url}">Older posts</a></li>')
         content += f'\n<nav><ul>{"".join(nav_items)}</ul></nav>'
 
@@ -418,14 +394,8 @@ def _calendar_month_labels(start_date):
 
 def _calendar_day_tooltip(d, day_posts):
     date_str = f"{d.day} {d.strftime('%B')}"
-    posts_n = sum(1 for p in day_posts if p.post_type != "note")
-    notes_n = sum(1 for p in day_posts if p.post_type == "note")
-    counts = []
-    if posts_n:
-        counts.append(f'{posts_n} post{"" if posts_n == 1 else "s"}')
-    if notes_n:
-        counts.append(f'{notes_n} note{"" if notes_n == 1 else "s"}')
-    return f'{date_str}: {" + ".join(counts)}'
+    n = len(day_posts)
+    return f'{date_str}: {n} post{"" if n == 1 else "s"}'
 
 
 def _posting_streak_weeks(posts, build_date):
@@ -468,16 +438,14 @@ def _render_contribution_calendar(posts, build_date, posts_per_page, last_update
         if start_date <= _date.fromisoformat(date_str) < start_date + _timedelta(days=_CALENDAR_DAYS)
         for p in day_posts
     ]
-    post_count = sum(1 for p in posts_in_window if p.post_type != "note")
-    note_count = sum(1 for p in posts_in_window if p.post_type == "note")
+    post_count = len(posts_in_window)
 
     month_labels = _calendar_month_labels(start_date)
 
     streak = _posting_streak_weeks(posts, build_date)
     summary = (
         '<p class="calendar-summary">I have posted '
-        f'<strong><span class="calendar-post-count">{post_count}</span> posts</strong> and '
-        f'<strong><span class="calendar-note-count">{note_count}</span> notes</strong> so far'
+        f'<strong><span class="calendar-post-count">{post_count}</span> posts</strong> so far'
     )
     if streak:
         week_word = "week" if streak == 1 else "weeks"
@@ -523,15 +491,13 @@ def _render_contribution_calendar(posts, build_date, posts_per_page, last_update
 
 
 def render_archive_page_content(posts, categories=None, build_date=None, build_datetime=None, posts_per_page=12, photos=None):
-    blog_posts = [p for p in posts if p.date and p.post_type != "note"]
+    blog_posts = [p for p in posts if p.date]
 
     months = {}
     for post in blog_posts:
         d = _date.fromisoformat(post.date)
         key = (d.year, d.month)
         months.setdefault(key, []).append(post)
-
-    notes_count = sum(1 for p in posts if p.post_type == "note")
 
     last_updated_html = f'<p class="last-updated">The last update was at {format_now(build_datetime or _datetime.now())}.</p>'
 
@@ -552,15 +518,6 @@ def render_archive_page_content(posts, categories=None, build_date=None, build_d
                 category_block.append(f'<li><a href="{slug}.html">{_escape(name)}</a> ({count})</li>')
             category_block.append('</ul>')
 
-    notes_block = []
-    if notes_count:
-        notes_block = [
-            '<h2>Short notes</h2>',
-            '<ul>',
-            '<li><a href="notes.html">All short notes</a></li>',
-            '</ul>',
-        ]
-
     photos_block = []
     if photos:
         preview_items = []
@@ -580,7 +537,7 @@ def render_archive_page_content(posts, categories=None, build_date=None, build_d
             f'<span>{len(photos)}</span> photos in the archive</a></p>',
         ]
 
-    has_sections = bool(category_block) or bool(notes_block) or bool(photos_block)
+    has_sections = bool(category_block) or bool(photos_block)
 
     if has_sections:
         parts.append('<div class="archive-columns">')
@@ -588,9 +545,8 @@ def render_archive_page_content(posts, categories=None, build_date=None, build_d
             parts.append('<div class="archive-categories">')
             parts.extend(category_block)
             parts.append('</div>')
-        if notes_block or photos_block:
-            parts.append('<div class="archive-notes">')
-            parts.extend(notes_block)
+        if photos_block:
+            parts.append('<div class="archive-photos">')
             parts.extend(photos_block)
             parts.append('</div>')
         parts.append('</div>')

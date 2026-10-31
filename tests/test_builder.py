@@ -1369,19 +1369,6 @@ class TestPostsIndex:
         data = json.loads((p / "dist" / "posts.json").read_text())
         assert "travel" not in data
 
-    def test_notes_page_entry_present(self, tmp_path):
-        note_md = "---\ndate: 2026-05-24\n---\n\nA quick note.\n"
-        p = make_project(tmp_path, posts={1: note_md})
-        build(p)
-        data = json.loads((p / "dist" / "posts.json").read_text())
-        assert data["notes"]["title"] == "Short notes"
-
-    def test_notes_page_entry_absent_when_no_notes(self, tmp_path):
-        p = make_project(tmp_path, posts={1: TITLED_MD})
-        build(p)
-        data = json.loads((p / "dist" / "posts.json").read_text())
-        assert "notes" not in data
-
     def test_gallery_page_entry_present(self, tmp_path):
         p = make_project(tmp_path, posts={1: MINIMAL_MD})
         make_jpg(p / "content" / "1-image-01.jpg")
@@ -2287,12 +2274,6 @@ class TestPageId:
         build(p)
         assert '<span id="page-id">photography</span>' in (p / "dist" / "photography.html").read_text()
 
-    def test_notes_page_id_is_notes(self, tmp_path):
-        p = make_project(tmp_path, posts={1: MINIMAL_MD, 2: "---\ndate: 2026-05-24\n---\n\nJust a note.\n"})
-        (p / "templates" / "index.html").write_text(PAGE_ID_TEMPLATE)
-        build(p)
-        assert '<span id="page-id">notes</span>' in (p / "dist" / "notes.html").read_text()
-
     def test_special_page_id_is_page_name(self, tmp_path):
         p = make_project(tmp_path, posts={1: MINIMAL_MD}, config=_ABOUT_CONFIG)
         (p / "content" / "about.md").write_text(ABOUT_MD)
@@ -2766,7 +2747,7 @@ class TestNoteDetection:
         (p / "content" / "4.md").write_text("---\ndate: 2026-06-06\ntitle: Normal Post\n---\n\nUpdated\n")
         build(p)
 
-        assert '<h2>Short notes</h2>' in (p / "dist" / "archive.html").read_text()
+        assert '<li class="note">' in (p / "dist" / "archive.html").read_text()
 
 
 # ---------------------------------------------------------------------------
@@ -3140,39 +3121,6 @@ class TestSearchMetadata:
         assert '<meta name="description" content="Search every post on the site.">' in (p / "dist" / "search.html").read_text()
 
 
-class TestNotesMetadata:
-
-    _NOTE_MD = "---\ndate: 2026-05-24\n---\n\nJust a quick note.\n"
-
-    def test_notes_title_overridden_by_metadata(self, tmp_path):
-        metadata = "notes:\n  title: Quick Thoughts\n"
-        p = make_project(tmp_path, posts={1: self._NOTE_MD}, metadata=metadata)
-        build(p)
-        assert "<title>Quick Thoughts - Test Blog</title>" in (p / "dist" / "notes.html").read_text()
-
-    def test_notes_title_defaults_when_no_metadata(self, tmp_path):
-        p = make_project(tmp_path, posts={1: self._NOTE_MD})
-        build(p)
-        assert "<title>Short notes - Test Blog</title>" in (p / "dist" / "notes.html").read_text()
-
-    def test_notes_description_overridden_by_metadata(self, tmp_path):
-        metadata = "notes:\n  description: Short thoughts and updates.\n"
-        p = make_project(tmp_path, posts={1: self._NOTE_MD}, metadata=metadata)
-        (p / "templates" / "index.html").write_text(META_DESCRIPTION_TEMPLATE)
-        build(p)
-        assert '<meta name="description" content="Short thoughts and updates.">' in (p / "dist" / "notes.html").read_text()
-
-    def test_second_notes_page_description_has_page_suffix(self, tmp_path):
-        config = "site_name: Test Blog\nsite_url: https://example.github.io\nnotes_per_page: 1\n"
-        metadata = "notes:\n  description: Short thoughts and updates.\n"
-        posts = {i: self._NOTE_MD for i in range(1, 3)}
-        p = make_project(tmp_path, posts=posts, config=config, metadata=metadata)
-        (p / "templates" / "index.html").write_text(META_DESCRIPTION_TEMPLATE)
-        build(p)
-        html = (p / "dist" / "notes-2.html").read_text()
-        assert '<meta name="description" content="Short thoughts and updates. (Page 2)">' in html
-
-
 class TestGalleryMetadata:
 
     def test_gallery_title_overridden_by_metadata(self, tmp_path):
@@ -3368,11 +3316,11 @@ class TestDraftPosts:
         build(p)
         assert not (p / "dist" / "photography.html").exists()
 
-    def test_draft_post_excluded_from_notes_page(self, tmp_path):
+    def test_draft_note_excluded_from_archive(self, tmp_path):
         draft_note = "---\ndate: 2026-05-24\ndraft: true\n---\n\nA draft note.\n"
         p = make_project(tmp_path, posts={1: draft_note, 2: "---\ndate: 2026-05-24\n---\n\nA real note.\n"})
         build(p)
-        assert "A draft note" not in (p / "dist" / "notes.html").read_text()
+        assert "A draft note" not in (p / "dist" / "archive.html").read_text()
 
     def test_draft_post_excluded_from_gallery(self, tmp_path):
         p = make_project(tmp_path, posts={1: _DRAFT_MD})
@@ -3619,14 +3567,6 @@ class TestNavigation:
         p = make_project(tmp_path, posts={1: md}, config=config)
         build(p)
         html = (p / "dist" / "photography.html").read_text()
-        assert '<a href="index.html" class="nav-index">Home</a>' in html
-        assert '<a href="archive.html" class="nav-archive">Archive</a>' in html
-        assert 'current' not in html
-
-    def test_navigation_rendered_on_notes_page(self, tmp_path):
-        p = make_project(tmp_path, posts={1: MINIMAL_MD}, config=_NAVIGATION_CONFIG)
-        build(p)
-        html = (p / "dist" / "notes.html").read_text()
         assert '<a href="index.html" class="nav-index">Home</a>' in html
         assert '<a href="archive.html" class="nav-archive">Archive</a>' in html
         assert 'current' not in html
@@ -4100,14 +4040,6 @@ class TestCommentsOnPostPage:
         build(p)
         assert "Great post!" not in (p / "dist" / "index.html").read_text()
 
-    def test_comment_count_link_on_notes_page(self, tmp_path):
-        p = make_project(tmp_path, posts={1: MINIMAL_MD})
-        (p / "content" / "1-comment-01.md").write_text(COMMENT_MD)
-        build(p)
-        html = (p / "dist" / "notes.html").read_text()
-        assert 'href="1.html#comments" class="comments"' in html
-
-
 class TestCommentsOnSpecialPage:
 
     def test_comment_appears_on_special_page(self, tmp_path):
@@ -4257,25 +4189,6 @@ class TestCommentSitemapLastmod:
         build(p)
         sitemap_after = (p / "dist" / "sitemap.xml").read_text()
         assert "<loc>https://example.github.io/index.html</loc>\n    <lastmod>2022-01-01</lastmod>" in sitemap_after
-
-    def test_new_comment_bumps_notes_lastmod(self, tmp_path):
-        # MINIMAL_MD (untitled, imageless, with body text) is a Note, so it
-        # appears on notes.html — that page's lastmod must move too.
-        import os
-        p = make_project(tmp_path, posts={1: MINIMAL_MD})
-        md_mtime = 1609459200.0  # 2021-01-01
-        os.utime(p / "content" / "1.md", (md_mtime, md_mtime))
-        build(p)
-        sitemap_before = (p / "dist" / "sitemap.xml").read_text()
-        assert "<loc>https://example.github.io/notes.html</loc>\n    <lastmod>2021-01-01</lastmod>" in sitemap_before
-
-        comment_mtime = 1640995200.0  # 2022-01-01
-        (p / "content" / "1-comment-01.md").write_text(COMMENT_MD)
-        os.utime(p / "content" / "1-comment-01.md", (comment_mtime, comment_mtime))
-        build(p)
-        sitemap_after = (p / "dist" / "sitemap.xml").read_text()
-        assert "<loc>https://example.github.io/notes.html</loc>\n    <lastmod>2022-01-01</lastmod>" in sitemap_after
-
 
 class TestCommentFrontmatterErrors:
 

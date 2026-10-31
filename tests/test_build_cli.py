@@ -501,40 +501,7 @@ class TestCLIDeletedPost:
         assert "1.html" not in result.stdout
 
 
-# ---------------------------------------------------------------------------
-# Notes pages
-# ---------------------------------------------------------------------------
-
 NOTE_MD = "---\ndate: 2026-05-24\n---\n\nShort note post.\n"
-TITLED_MD = "---\ndate: 2026-05-24\ntitle: A Regular Post\n---\n\nThis is a regular post.\n"
-
-class TestCLINotesPages:
-
-    def test_notes_html_created_when_notes_exist(self, tmp_path):
-        p = make_project(tmp_path, posts={1: NOTE_MD})
-        run_build([], cwd=p)
-        assert (p / "dist" / "notes.html").exists()
-
-    def test_notes_html_not_created_when_no_notes(self, tmp_path):
-        p = make_project(tmp_path, posts={1: TITLED_MD})
-        run_build([], cwd=p)
-        assert not (p / "dist" / "notes.html").exists()
-
-    def test_notes_page_2_created_when_more_posts_than_per_page(self, tmp_path):
-        config = (
-            "site_name: Test Blog\nsite_url: https://example.github.io\n"
-            "posts_per_page: 10\nnotes_per_page: 1\n"
-        )
-        p = make_project(tmp_path, posts={1: NOTE_MD, 2: NOTE_MD}, config=config)
-        run_build([], cwd=p)
-        assert (p / "dist" / "notes-2.html").exists()
-
-    def test_notes_html_contains_note_body(self, tmp_path):
-        p = make_project(tmp_path, posts={1: NOTE_MD})
-        run_build([], cwd=p)
-        content = (p / "dist" / "notes.html").read_text()
-        assert "Short note post." in content
-
 
 # ---------------------------------------------------------------------------
 # Stale paginated pages when post count shrinks (#58)
@@ -579,31 +546,22 @@ class TestCLIStalePaginatedPages:
 
         assert not (p / "dist" / "photography-2.html").exists()
 
-    def test_notes_page_removed_when_no_notes_remain(self, tmp_path):
-        # A second, non-note post stays around -- content/ can't be emptied
-        # out entirely, that's its own unrelated validation error.
-        p = make_project(tmp_path, posts={1: NOTE_MD, 2: TITLED_MD})
+    def test_stale_notes_html_from_before_removal_untouched_by_ordinary_build(self, tmp_path):
+        # notes.html/notes-N.html no longer exist as a generated page (#89),
+        # but an ordinary (non-flush) build doesn't special-case that path --
+        # a leftover file there is simply never touched again.
+        p = make_project(tmp_path, posts={1: NOTE_MD})
+        (p / "dist" / "notes.html").write_text("stale")
         run_build([], cwd=p)
         assert (p / "dist" / "notes.html").exists()
 
-        (p / "content" / "1.md").unlink()
-        run_build([], cwd=p)
-
+    def test_stale_notes_html_removed_by_flush(self, tmp_path):
+        # A one-off --flush after upgrading is what actually clears out
+        # notes.html/notes-N.html left over from before #89.
+        p = make_project(tmp_path, posts={1: NOTE_MD})
+        (p / "dist" / "notes.html").write_text("stale")
+        run_build(["--flush"], cwd=p)
         assert not (p / "dist" / "notes.html").exists()
-
-    def test_notes_page_2_removed_when_note_count_shrinks(self, tmp_path):
-        config = (
-            "site_name: Test Blog\nsite_url: https://example.github.io\n"
-            "posts_per_page: 10\nnotes_per_page: 1\n"
-        )
-        p = make_project(tmp_path, posts={1: NOTE_MD, 2: NOTE_MD}, config=config)
-        run_build([], cwd=p)
-        assert (p / "dist" / "notes-2.html").exists()
-
-        (p / "content" / "2.md").unlink()
-        run_build([], cwd=p)
-
-        assert not (p / "dist" / "notes-2.html").exists()
 
     def test_gallery_page_removed_when_no_photos_remain(self, tmp_path):
         # A second, image-less post stays around -- content/ can't be
