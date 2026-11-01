@@ -101,6 +101,65 @@ class TestRenderArticleStructure:
 
 
 # ---------------------------------------------------------------------------
+# render_article — updated date
+# ---------------------------------------------------------------------------
+
+class TestRenderArticleUpdatedDate:
+
+    def test_date_only_unchanged(self):
+        html = render_article(make_post(date_uk="24 May 2026"), on_index_page=False)
+        assert "<time" in html
+        assert "24 May 2026</time>" in html or "24 May 2026</a></time>" in html
+
+    def test_updated_only_shows_prefixed_long_form(self):
+        post = make_post(date=None, date_uk=None, updated="2026-09-06", updated_uk="6 September 2026")
+        html = render_article(post, on_index_page=False)
+        assert "Updated 6 September 2026" in html
+
+    def test_updated_only_footer_not_omitted(self):
+        post = make_post(date=None, date_uk=None, updated="2026-09-06", updated_uk="6 September 2026")
+        html = render_article(post, on_index_page=False)
+        assert "<footer>" in html
+
+    def test_date_and_updated_combined(self):
+        post = make_post(
+            date="2026-05-24", date_uk="24 May 2026",
+            updated="2026-09-07", updated_uk_short="7/9/26",
+        )
+        html = render_article(post, on_index_page=False)
+        assert "24 May 2026 (updated 7/9/26)" in html
+
+    def test_time_datetime_attribute_is_date_when_both_set(self):
+        post = make_post(
+            date="2026-05-24", date_uk="24 May 2026",
+            updated="2026-09-07", updated_uk_short="7/9/26",
+        )
+        html = render_article(post, on_index_page=False)
+        assert 'datetime="2026-05-24"' in html
+
+    def test_time_datetime_attribute_is_updated_when_no_date(self):
+        post = make_post(date=None, date_uk=None, updated="2026-09-06", updated_uk="6 September 2026")
+        html = render_article(post, on_index_page=False)
+        assert 'datetime="2026-09-06"' in html
+
+    def test_updated_only_wrapped_in_link_on_index_page(self):
+        post = make_post(
+            post_id=3, date=None, date_uk=None,
+            updated="2026-09-06", updated_uk="6 September 2026",
+        )
+        html = render_article(post, on_index_page=True)
+        assert '<a href="3.html">Updated 6 September 2026</a>' in html
+
+    def test_combined_date_wrapped_in_link_on_index_page(self):
+        post = make_post(
+            post_id=3, date="2026-05-24", date_uk="24 May 2026",
+            updated="2026-09-07", updated_uk_short="7/9/26",
+        )
+        html = render_article(post, on_index_page=True)
+        assert '<a href="3.html">24 May 2026 (updated 7/9/26)</a>' in html
+
+
+# ---------------------------------------------------------------------------
 # render_article — body heading shift
 # ---------------------------------------------------------------------------
 
