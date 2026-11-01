@@ -16,7 +16,11 @@ def render_feed(posts, config):
     site_name = _html.escape(config["site_name"])
     feed_url = f"{site_url}/feed.xml"
     dated_posts = [p for p in posts if p.date]
-    most_recent_date = _rfc3339(dated_posts[0].date, dated_posts[0].id) if dated_posts else ""
+    if dated_posts:
+        most_recent_post = max(dated_posts, key=lambda p: (p.updated or p.date, p.id))
+        most_recent_date = _rfc3339(most_recent_post.updated or most_recent_post.date, most_recent_post.id)
+    else:
+        most_recent_date = ""
     dated_posts = dated_posts[:config.get("feed_max_posts", 30)]
 
     lines = [
@@ -50,7 +54,7 @@ def render_feed(posts, config):
             f'    <title>{title}</title>',
             f'    <link href="{post_url}" />',
             f'    <id>{post_url}</id>',
-            f'    <updated>{_rfc3339(post.date, post.id)}</updated>',
+            f'    <updated>{_rfc3339(post.updated or post.date, post.id)}</updated>',
             f'    <content type="html"><![CDATA[{images_html}{body_content}]]></content>',
             '  </entry>',
         ]

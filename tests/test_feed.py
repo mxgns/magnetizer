@@ -76,6 +76,14 @@ class TestFeedStructure:
         root = parse([make_post(post_id=1, date="2026-03-15")])
         assert _req(root.find(el("updated"))).text == "2026-03-15T00:00:01Z"
 
+    def test_feed_updated_considers_updated_frontmatter(self):
+        posts = [
+            make_post(post_id=3, date="2026-05-24"),
+            make_post(post_id=1, date="2026-01-01", updated="2026-09-10"),
+        ]
+        root = parse(posts)
+        assert _req(root.find(el("updated"))).text == "2026-09-10T00:00:01Z"
+
 
 # ---------------------------------------------------------------------------
 # Entry count and order
@@ -156,6 +164,11 @@ class TestEntryStructure:
         root = parse([make_post(post_id=1, date="2026-03-01")])
         entry = _req(root.find(el("entry")))
         assert _req(entry.find(el("updated"))).text == "2026-03-01T00:00:01Z"
+
+    def test_entry_updated_prefers_updated_frontmatter_over_date(self):
+        root = parse([make_post(post_id=1, date="2026-03-01", updated="2026-08-30")])
+        entry = _req(root.find(el("entry")))
+        assert _req(entry.find(el("updated"))).text == "2026-08-30T00:00:01Z"
 
     def test_entry_content_type_is_html(self):
         root = parse([make_post()])

@@ -8,13 +8,15 @@ from magnetizer.content import Post, parse_post, Comment, parse_comment, special
 # Helpers
 # ---------------------------------------------------------------------------
 
-def make_md(date="2026-05-24", title=None, body="", category=None):
+def make_md(date="2026-05-24", title=None, body="", category=None, updated=None):
     """Build a minimal markdown string with frontmatter."""
     lines = ["---", f"date: {date}"]
     if title:
         lines.append(f"title: {title}")
     if category is not None:
         lines.append(f"category: {category}")
+    if updated is not None:
+        lines.append(f"updated: {updated}")
     lines.append("---")
     if body:
         lines.append("")
@@ -533,6 +535,48 @@ class TestOptionalDate:
     def test_date_uk_is_none_when_not_in_frontmatter(self):
         post = parse_post("---\n---\n", 1, [])
         assert post.date_uk is None
+
+
+# ---------------------------------------------------------------------------
+# Updated date
+# ---------------------------------------------------------------------------
+
+class TestUpdatedDate:
+
+    def test_updated_extracted(self):
+        post = parse_post(make_md(updated="2026-08-30"), 1, [])
+        assert post.updated == "2026-08-30"
+
+    def test_updated_is_none_when_not_in_frontmatter(self):
+        post = parse_post(make_md(), 1, [])
+        assert post.updated is None
+
+    def test_updated_uk_is_none_when_not_in_frontmatter(self):
+        post = parse_post(make_md(), 1, [])
+        assert post.updated_uk is None
+
+    def test_updated_uk_short_is_none_when_not_in_frontmatter(self):
+        post = parse_post(make_md(), 1, [])
+        assert post.updated_uk_short is None
+
+    def test_updated_uk_long_format(self):
+        post = parse_post(make_md(updated="2026-09-06"), 1, [])
+        assert post.updated_uk == "6 September 2026"
+
+    def test_updated_uk_short_format(self):
+        post = parse_post(make_md(updated="2026-09-07"), 1, [])
+        assert post.updated_uk_short == "7/9/26"
+
+    def test_updated_uk_short_no_leading_zeros(self):
+        post = parse_post(make_md(updated="2026-01-04"), 1, [])
+        assert post.updated_uk_short == "4/1/26"
+
+    def test_updated_allowed_on_special_pages_too(self, capsys):
+        # parse_post() is shared by posts and special pages (see
+        # _load_special_page_post()), so 'updated' is valid frontmatter for
+        # both without needing a separate allow-list.
+        parse_post("---\nupdated: 2026-08-30\n---\nHello\n", "about", [])
+        assert "unknown frontmatter key" not in capsys.readouterr().out
 
 
 # ---------------------------------------------------------------------------

@@ -438,8 +438,12 @@ Where:
 - `POST_URL` is the URL of the individual post page, e.g. `1.html`
 - `POST_TITLE_TAG` is `h2` when the post is displayed on a multi-post page (index or category page), or `h1` on the individual post page
 - `POST_HEADING` is the post's heading text — see [Post types](#post-types) for how it's derived
-- `POST_DATE` is the `date` from the Markdown frontmatter
-- `POST_DATE_UK` is the human-readable version of the `date`, e.g. “24 May 2026”
+- `POST_DATE` is the `date` from the Markdown frontmatter, or — if `date` is absent but `updated` is set — the `updated` date instead
+- `POST_DATE_UK` is the human-readable date text shown inside `<time>`:
+  - `date` only: the UK-formatted `date`, e.g. “24 May 2026”
+  - `updated` only (no `date`): “Updated: ” followed by the UK-formatted `updated` date, e.g. “Updated: 6 September 2026”
+  - Both set: the UK-formatted `date`, followed by the UK-formatted `updated` date in short `D/M/YY` form, in parentheses, e.g. “24 May 2026 (updated 7/9/26)”
+  - Neither set: the `<footer>` (and `<time>` element) is omitted entirely, same as when `date` alone was absent before `updated` existed
 - `POST_BODY` is the HTML generated from the Markdown
 - `CATEGORY_URL` / `CATEGORY_NAME` — see [Categories](#categories). The `<a class="category">` link is omitted if the post has no category, or its category isn't configured.
 
@@ -592,6 +596,7 @@ This is the single overview of every frontmatter key a post or special page can 
 | Key | Applies to | Format | Default | Details |
 | --- | --- | --- | --- | --- |
 | `date` | Posts (required), special pages (optional) | `YYYY-MM-DD` | — | [Posts](#posts) |
+| `updated` | Posts, special pages | `YYYY-MM-DD` | Not set | [Posts](#posts) |
 | `title` | Posts, special pages | Plain text | Not set | [Post types](#post-types) |
 | `name` | Posts, special pages | Plain text | Not set | [Post types](#post-types) |
 | `images` | Posts, special pages | List of alt text strings, one per image file, in file order | `[]` | [Alt texts](#alt-texts) |
@@ -1053,7 +1058,7 @@ special_pages:
 
 For each name in `special_pages`, Magnetizer requires a matching `content/{name}.md` file and generates `dist/{name}.html` on every full build — the build exits with an error if a configured special page's `.md` file is missing. A `.md` file matching the `{name}-image-NN.ext` convention that isn't listed in `special_pages` is treated as an unrecognised file (see [Input content model](#input-content-model)) — special pages are exempted from that check only when configured.
 
-A special page supports the same frontmatter fields (`date`, `title`, `name`) and image conventions as posts, and is classified into a post type ([Post types](#post-types)) the same way. Unlike posts, `date` is optional — if omitted, no date footer is rendered. On a full or partial build, it is rebuilt whenever its `.md` file or any of its images change. Single-file preview builds (e.g. `build.py about.md`) are also supported — a single-file build only ever touches the one page named by `FILENAME`, never any other special page, even one whose own file also changed since the last build.
+A special page supports the same frontmatter fields (`date`, `updated`, `title`, `name`) and image conventions as posts, and is classified into a post type ([Post types](#post-types)) the same way. Unlike posts, `date` is optional — if both `date` and `updated` are omitted, no date footer is rendered (see [Posts](#posts) for what's shown when only one, or both, are set). On a full or partial build, it is rebuilt whenever its `.md` file or any of its images change. Single-file preview builds (e.g. `build.py about.md`) are also supported — a single-file build only ever touches the one page named by `FILENAME`, never any other special page, even one whose own file also changed since the last build.
 
 Special pages are not automatically linked to from anywhere (add an entry to `navigation` to link one from the masthead — see [Navigation](#navigation)) and are not included in index pages, category pages, the archive, the feed, or the newer/older post navigation.
 
@@ -1507,11 +1512,11 @@ Where:
 - `SITE_TITLE` is `site_name` from config
 - `SITE_URL` is `site_url` from config
 - `FEED_URL` is `site_url + "/feed.xml"`
-- `MOST_RECENT_DATE` is the date of the most recent post in RFC 3339 format, e.g. `2026-05-24T00:00:00Z`
+- `MOST_RECENT_DATE` is the latest `updated` (if set) or `date` across all dated posts, in RFC 3339 format, e.g. `2026-05-24T00:00:00Z`
 - `POST_TITLE` follows the same title/name/date-fallback priority order as the post heading and meta title — see [Post types](#post-types)
 - `POST_URL` is the absolute URL of the post page, e.g. `https://example.github.io/1.html`
 - The entry's `<link>` and `<id>` are both the plain `POST_URL`, with no query param appended.
-- `POST_DATE` is the post date in RFC 3339 format, e.g. `2026-05-24T00:00:00Z`
+- `POST_DATE` is the post's `updated` frontmatter date if set, otherwise its `date`, in RFC 3339 format, e.g. `2026-05-24T00:00:00Z`
 - `POST_BODY_HTML` is the HTML generated from the post's Markdown body — if the post has a `<!-- more -->` marker (see [Read more](#read-more)), this is the excerpt only, followed by a `<a class="read-more">Read more</a>` link pointing at the full post (plain `POST_URL`, same as the entry's `<link>`); otherwise it's the full body. Any `<script>` tags (and their contents) are stripped from the HTML first, regardless of which is used.
 
 Posts are listed in reverse chronological order (highest post ID first), capped at `feed_max_posts` most-recent dated posts (default `30`) — see [Configuration](#configuration).
@@ -1535,7 +1540,7 @@ The [404 page](#404-page) is never included, regardless of configuration.
 
 ### lastmod dates
 
-Each `<url>` entry includes a `<lastmod>` date derived from the most recent file modification time among the source files for that page (e.g. the `.md` file and any associated images). Index pages and the archive use the most recent modification time across all posts. Category pages use the most recent modification time among the posts in that category. A gallery page's `lastmod` is scoped to that specific page — the most recent modification time across the source image files of the photos it contains, not the whole gallery.
+Each `<url>` entry includes a `<lastmod>` date derived from the most recent file modification time among the source files for that page (e.g. the `.md` file and any associated images). Index pages and the archive use the most recent modification time across all posts. Category pages use the most recent modification time among the posts in that category. A gallery page's `lastmod` is scoped to that specific page — the most recent modification time across the source image files of the photos it contains, not the whole gallery. This is unaffected by a post's `updated` frontmatter — editing `updated:` is itself a file edit, so it's already reflected here via the file's modification time, same as any other content change.
 
 ### Sitemap format
 

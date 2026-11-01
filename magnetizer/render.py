@@ -162,14 +162,24 @@ def render_article(post, on_index_page, categories=None, ai_disclosure_html=None
         label = f'{hidden_top} more photo{"s" if hidden_top != 1 else ""}'
         parts.append(f'<a href="{post.url}" class="more-photos">{label}</a>')
 
-    if post.date:
+    if post.date and post.updated:
+        date_text = f"{post.date_uk} (updated {post.updated_uk_short})"
+    elif post.date:
+        date_text = post.date_uk
+    elif post.updated:
+        date_text = f"Updated: {post.updated_uk}"
+    else:
+        date_text = None
+
+    if date_text:
+        time_value = post.date or post.updated
         if on_index_page:
-            date_content = f'<a href="{post.url}">{post.date_uk}</a>'
+            date_content = f'<a href="{post.url}">{date_text}</a>'
             time_attrs = ''
         else:
-            date_content = post.date_uk
+            date_content = date_text
             time_attrs = ' data-pagefind-meta="date"'
-        footer_parts = [f'<time datetime="{post.date}"{time_attrs}>{date_content}</time>']
+        footer_parts = [f'<time datetime="{time_value}"{time_attrs}>{date_content}</time>']
         if post.category and categories and post.category in categories:
             display_name = _escape(categories[post.category]["name"])
             footer_parts.append(f'<a href="{post.category}.html" class="category">{display_name}</a>')

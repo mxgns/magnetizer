@@ -5,6 +5,10 @@
 
 ## Released changes
 
+### 01/11/26
+
+- Added `updated` frontmatter: revision date shown in footer and feed
+
 ### 31/10/26
 
 - Removed "short note" as a public concept: no more tag, count, or notes.html

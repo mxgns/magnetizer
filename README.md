@@ -215,6 +215,7 @@ This is the single reference for every frontmatter key a post or special page ca
 | Key | Applies to | Format | Default |
 |---|---|---|---|
 | `date` | Posts (required), special pages (optional) | `YYYY-MM-DD` | — |
+| `updated` | Posts, special pages | `YYYY-MM-DD` | Not set |
 | `title` | Posts, special pages | Plain text | Not set |
 | `name` | Posts, special pages | Plain text | Not set |
 | `images` | Posts, special pages | List of alt text strings, one per image file, in file order | `[]` |
@@ -226,6 +227,7 @@ This is the single reference for every frontmatter key a post or special page ca
 | `description` | Posts, special pages | Plain text | Not set |
 
 - **`date`** — publish date. Required on posts; optional on special pages (omit it and no date footer is rendered). Shown in the footer as `D Month YYYY` and used for the Atom feed, sitemap `lastmod`, and archive month grouping.
+- **`updated`** — the date content was last revised. Optional on both posts and special pages, and may be set with or without `date`. Shown in the footer alongside `date` as `D Month YYYY (updated D/M/YY)`, or on its own as `Updated: D Month YYYY` if there's no `date`. Also feeds the Atom feed's `<updated>` element (per entry, and for the feed as a whole) in place of `date` — it does not affect sitemap `lastmod`, which is already derived from file modification time.
 - **`title`** — rendered as the page's `<h1>` on its own page, or `<h2>` when shown alongside other posts (index and category pages). Omit it for an Image post or a Note — see [Post types](#post-types).
 - **`name`** — fallback label for a post with no `title` (an Image post or a Note), used for the heading and page `<title>`, and as the archive link text immediately after `title` — it wins over an excerpt of the post's own content, not just when there's no content to excerpt. Ignored (with a build warning) if `title` is also set. See [Post types](#post-types).
 - **`images`** — alt text for each image file belonging to the post (`{post-id}-image-{nn}.*`), matched to image files in filename order. If the list is absent or has fewer entries than image files, the remaining images get `alt=""` (decorative). An incomplete list triggers a "Missing alt text" build warning.

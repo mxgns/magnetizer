@@ -19,7 +19,7 @@ def special_page_image_pattern(name):
 def special_page_comment_pattern(name):
     return re.compile(rf'^{re.escape(name)}-comment-(\d{{2}})\.md$')
 
-_ALLOWED_FRONTMATTER_KEYS = frozenset({'date', 'title', 'name', 'images', 'favourite', 'category', 'ai_assisted', 'noindex', 'draft', 'description'})
+_ALLOWED_FRONTMATTER_KEYS = frozenset({'date', 'updated', 'title', 'name', 'images', 'favourite', 'category', 'ai_assisted', 'noindex', 'draft', 'description'})
 _MARKDOWN_EXTENSIONS = ['pymdownx.mark', 'smarty', 'tables', 'footnotes', 'magnetizer.containers']
 _COMMENT_ALLOWED_FRONTMATTER_KEYS = frozenset({'date', 'author'})
 _COMMENT_MARKDOWN_EXTENSIONS = ['pymdownx.mark', 'smarty']
@@ -104,6 +104,9 @@ class Post:
     url: str
     body_html: str
     images: list
+    updated: str | None = None
+    updated_uk: str | None = None
+    updated_uk_short: str | None = None
     excerpt_html: str | None = None
     name: str | None = None
     post_type: str | None = None
@@ -248,6 +251,11 @@ def _parse_frontmatter(text):
 def _format_date_uk(date_str):
     d = _date.fromisoformat(date_str)
     return f"{d.day} {d.strftime('%B %Y')}"
+
+
+def _format_date_short(date_str):
+    d = _date.fromisoformat(date_str)
+    return f"{d.day}/{d.month}/{d:%y}"
 
 
 def _slugify(text):
@@ -416,6 +424,7 @@ def parse_post(md_text, post_id, image_filenames, site_url="", comments=None):
             print(f"Warning: Post {post_id} has unknown frontmatter key: '{key}'")
 
     date_str = fm.get('date') or None
+    updated_str = fm.get('updated') or None
     title = fm.get('title') or None
     name = fm.get('name') or None
     alt_texts = fm.get('images') or []
@@ -486,6 +495,9 @@ def parse_post(md_text, post_id, image_filenames, site_url="", comments=None):
         id=post_id,
         date=date_str,
         date_uk=_format_date_uk(date_str) if date_str else None,
+        updated=updated_str,
+        updated_uk=_format_date_uk(updated_str) if updated_str else None,
+        updated_uk_short=_format_date_short(updated_str) if updated_str else None,
         title=title,
         url=f"{post_id}.html",
         body_html=body_html,
