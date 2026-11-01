@@ -167,7 +167,7 @@ def render_article(post, on_index_page, categories=None, ai_disclosure_html=None
     elif post.date:
         date_text = post.date_uk
     elif post.updated:
-        date_text = f"Updated: {post.updated_uk}"
+        date_text = f"Updated {post.updated_uk}"
     else:
         date_text = None
 

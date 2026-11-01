@@ -114,7 +114,7 @@ class TestRenderArticleUpdatedDate:
     def test_updated_only_shows_prefixed_long_form(self):
         post = make_post(date=None, date_uk=None, updated="2026-09-06", updated_uk="6 September 2026")
         html = render_article(post, on_index_page=False)
-        assert "Updated: 6 September 2026" in html
+        assert "Updated 6 September 2026" in html
 
     def test_updated_only_footer_not_omitted(self):
         post = make_post(date=None, date_uk=None, updated="2026-09-06", updated_uk="6 September 2026")
@@ -148,7 +148,7 @@ class TestRenderArticleUpdatedDate:
             updated="2026-09-06", updated_uk="6 September 2026",
         )
         html = render_article(post, on_index_page=True)
-        assert '<a href="3.html">Updated: 6 September 2026</a>' in html
+        assert '<a href="3.html">Updated 6 September 2026</a>' in html
 
     def test_combined_date_wrapped_in_link_on_index_page(self):
         post = make_post(

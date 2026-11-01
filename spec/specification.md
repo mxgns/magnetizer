@@ -441,7 +441,7 @@ Where:
 - `POST_DATE` is the `date` from the Markdown frontmatter, or — if `date` is absent but `updated` is set — the `updated` date instead
 - `POST_DATE_UK` is the human-readable date text shown inside `<time>`:
   - `date` only: the UK-formatted `date`, e.g. “24 May 2026”
-  - `updated` only (no `date`): “Updated: ” followed by the UK-formatted `updated` date, e.g. “Updated: 6 September 2026”
+  - `updated` only (no `date`): “Updated ” followed by the UK-formatted `updated` date, e.g. “Updated 6 September 2026”
   - Both set: the UK-formatted `date`, followed by the UK-formatted `updated` date in short `D/M/YY` form, in parentheses, e.g. “24 May 2026 (updated 7/9/26)”
   - Neither set: the `<footer>` (and `<time>` element) is omitted entirely, same as when `date` alone was absent before `updated` existed
 - `POST_BODY` is the HTML generated from the Markdown
