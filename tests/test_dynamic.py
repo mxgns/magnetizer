@@ -11,6 +11,7 @@ from magnetizer.dynamic import (
     format_now,
     format_today,
     render_ai_post_list,
+    render_favourite_post_list,
     wrap_scalar,
 )
 
@@ -162,6 +163,71 @@ class TestRenderAiPostList:
 
 
 # ---------------------------------------------------------------------------
+# render_favourite_post_list
+# ---------------------------------------------------------------------------
+
+class TestRenderFavouritePostList:
+
+    def test_empty_when_no_matching_posts(self):
+        posts = [make_post(post_id=1, is_favourite=False)]
+        assert render_favourite_post_list(posts) == '<ul class="favourite-post-list"><li>(none)</li></ul>'
+
+    def test_single_matching_post(self):
+        posts = [make_post(post_id=1, title="My Post", is_favourite=True)]
+        result = render_favourite_post_list(posts)
+        assert result == '<ul class="favourite-post-list"><li><a href="1.html">My Post</a></li></ul>'
+
+    def test_newest_first_by_date(self):
+        posts = [
+            make_post(post_id=1, date="2026-01-01", title="Older", is_favourite=True),
+            make_post(post_id=2, date="2026-06-01", title="Newer", is_favourite=True),
+        ]
+        result = render_favourite_post_list(posts)
+        assert result.index("Newer") < result.index("Older")
+
+    def test_ties_broken_by_descending_filename_number(self):
+        posts = [
+            make_post(post_id=5, date="2026-01-01", title="Five", is_favourite=True),
+            make_post(post_id=9, date="2026-01-01", title="Nine", is_favourite=True),
+        ]
+        result = render_favourite_post_list(posts)
+        assert result.index("Nine") < result.index("Five")
+
+    def test_non_matching_posts_excluded(self):
+        posts = [
+            make_post(post_id=1, title="Yes", is_favourite=True),
+            make_post(post_id=2, title="No", is_favourite=False),
+        ]
+        result = render_favourite_post_list(posts)
+        assert "No" not in result
+        assert "Yes" in result
+
+    def test_title_html_escaped(self):
+        posts = [make_post(post_id=1, title="A & B <em>", is_favourite=True)]
+        result = render_favourite_post_list(posts)
+        assert "A &amp; B &lt;em&gt;" in result
+        assert "<em>" not in result.replace('href="1.html"', '')
+
+    def test_url_attribute_escaped(self):
+        posts = [make_post(post_id=1, title="Post", is_favourite=True)]
+        posts[0].url = '1.html?x="&y'
+        result = render_favourite_post_list(posts)
+        assert 'href="1.html?x=&quot;&amp;y"' in result
+
+    def test_special_page_with_string_id_included(self):
+        special_page = make_post(post_id="syntax", title="Syntax Guide", is_favourite=True)
+        result = render_favourite_post_list([special_page])
+        assert result == '<ul class="favourite-post-list"><li><a href="syntax.html">Syntax Guide</a></li></ul>'
+
+    def test_mixed_int_and_string_ids_sorted_without_crashing(self):
+        post = make_post(post_id=1, date="2026-01-01", title="Post", is_favourite=True)
+        special_page = make_post(post_id="syntax", date="2026-01-01", title="Syntax", is_favourite=True)
+        result = render_favourite_post_list([post, special_page])
+        assert "Post" in result
+        assert "Syntax" in result
+
+
+# ---------------------------------------------------------------------------
 # compute_base_values
 # ---------------------------------------------------------------------------
 
@@ -203,6 +269,7 @@ class TestComputeBaseValues:
         assert values["post_count"] == '<span class="post-count">0</span>'
         assert values["image_count"] == '<span class="image-count">0</span>'
         assert values["ai_post_list"] == '<ul class="ai-post-list"><li>(none)</li></ul>'
+        assert values["favourite_post_list"] == '<ul class="favourite-post-list"><li>(none)</li></ul>'
 
     def test_ai_post_list_candidates_defaults_to_published_posts(self):
         posts = [make_post(post_id=1, title="Post", is_ai_assisted=True)]
@@ -224,6 +291,35 @@ class TestComputeBaseValues:
         values = compute_base_values(
             posts, date(2026, 7, 17), datetime(2026, 7, 17, 14, 43), lambda msg: None,
             ai_post_list_candidates=posts + [special_page],
+        )
+        assert values["post_count"] == '<span class="post-count">1</span>'
+        assert values["image_count"] == '<span class="image-count">0</span>'
+
+    def test_favourite_post_list_present(self):
+        posts = [make_post(post_id=1, title="Post", is_favourite=True)]
+        values = compute_base_values(posts, date(2026, 7, 17), datetime(2026, 7, 17, 14, 43), lambda msg: None)
+        assert values["favourite_post_list"] == '<ul class="favourite-post-list"><li><a href="1.html">Post</a></li></ul>'
+
+    def test_favourite_post_list_candidates_defaults_to_published_posts(self):
+        posts = [make_post(post_id=1, title="Post", is_favourite=True)]
+        values = compute_base_values(posts, date(2026, 7, 17), datetime(2026, 7, 17, 14, 43), lambda msg: None)
+        assert "Post" in values["favourite_post_list"]
+
+    def test_favourite_post_list_candidates_used_when_given(self):
+        posts = [make_post(post_id=1, is_favourite=False)]
+        special_page = make_post(post_id="about", title="About Page", is_favourite=True)
+        values = compute_base_values(
+            posts, date(2026, 7, 17), datetime(2026, 7, 17, 14, 43), lambda msg: None,
+            favourite_post_list_candidates=posts + [special_page],
+        )
+        assert "About Page" in values["favourite_post_list"]
+
+    def test_counts_unaffected_by_extra_favourite_post_list_candidates(self):
+        posts = [make_post(post_id=1)]
+        special_page = make_post(post_id="about", is_favourite=True, images=["about-image-01.jpg"])
+        values = compute_base_values(
+            posts, date(2026, 7, 17), datetime(2026, 7, 17, 14, 43), lambda msg: None,
+            favourite_post_list_candidates=posts + [special_page],
         )
         assert values["post_count"] == '<span class="post-count">1</span>'
         assert values["image_count"] == '<span class="image-count">0</span>'

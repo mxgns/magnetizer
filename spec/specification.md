@@ -601,7 +601,7 @@ This is the single overview of every frontmatter key a post or special page can 
 | `name` | Posts, special pages | Plain text | Not set | [Post types](#post-types) |
 | `images` | Posts, special pages | List of alt text strings, one per image file, in file order | `[]` | [Alt texts](#alt-texts) |
 | `category` | Posts | A slug from `categories` in `config.yaml` | Not set | [Categories](#categories) |
-| `favourite` | Posts | `true` / `false` | `false` | [Favourite posts](#favourite-posts) |
+| `favourite` | Posts, special pages | `true` / `false` | `false` | [Favourite posts](#favourite-posts) |
 | `ai_assisted` | Posts, special pages | `true` / `false` | `false` | [AI-assisted disclosure](#ai-assisted-disclosure) |
 | `noindex` | Posts, special pages | `true` / `false` | `false` | [Noindex posts](#noindex-posts) |
 | `draft` | Posts | `true` / `false` | `false` | [Draft posts](#draft-posts) |
@@ -625,6 +625,8 @@ When a post is a favourite, its `<li>` element in the archive page gets an addit
 ```
 
 The `favourite` class is appended after the post-type class (`full-post`, `image-post`, or `note` — see [Post types](#post-types)). If `favourite` is absent or `false`, no additional class is added.
+
+A special page can be marked as a favourite the same way. It has no archive `<li>` entry to add a class to, so `favourite: true` on a special page has no visible effect there — but it does make the special page eligible for `{{ favourite_post_list }}` and the archive's "Personal Picks" section (see [Dynamic shortcodes](#dynamic-shortcodes), [Archive page](#archive-page)), the same as `ai_assisted` makes a special page eligible for `{{ ai_post_list }}`.
 
 ### AI-assisted disclosure
 
@@ -692,7 +694,7 @@ draft: true
 ---
 ```
 
-Unlike `noindex` (which only affects search engines, and leaves a post fully visible everywhere else), a draft post is excluded from index pages, category pages, the Atom feed, the gallery, the archive, `sitemap.xml`, `posts.json`, next/previous post navigation, and the dynamic `{{ post_count }}`, `{{ word_count }}`, `{{ image_count }}`, and `{{ ai_post_list }}` values. It also gets `data-pagefind-ignore` and a `<meta name="robots" content="noindex">` tag, the same as a `noindex` post — a draft doesn't need its own separate `noindex: true` to get that treatment.
+Unlike `noindex` (which only affects search engines, and leaves a post fully visible everywhere else), a draft post is excluded from index pages, category pages, the Atom feed, the gallery, the archive, `sitemap.xml`, `posts.json`, next/previous post navigation, and the dynamic `{{ post_count }}`, `{{ word_count }}`, `{{ image_count }}`, `{{ ai_post_list }}`, and `{{ favourite_post_list }}` values. It also gets `data-pagefind-ignore` and a `<meta name="robots" content="noindex">` tag, the same as a `noindex` post — a draft doesn't need its own separate `noindex: true` to get that treatment.
 
 A draft post's own page is still generated on every build, at its normal URL (`{post-id}.html`), and still gets rebuilt when its content changes, re-rendered on `--refresh`, and checked by the invalid-post error (no title, no images, no content) — it's a completely normal post in every respect except for being excluded from the listing surfaces above. It is reachable only by navigating directly to its URL; nothing generated links to it. Its own page has no next/previous post navigation (there's nothing in the published sequence to link to or from).
 
@@ -1087,7 +1089,7 @@ Both keys are optional, but if either is set, both must be set — the build exi
 
 The `content/404.md` reservation can't be bypassed by naming the 404 page's own input file `404.md`, or by adding `"404"` to `special_pages` — either configuration still exits with an error, since it would defeat the purpose of the reservation.
 
-In every other respect the 404 page behaves exactly like a special page — same frontmatter/image support, same rebuild-on-change behavior, same single-file preview build support (e.g. `build.py error-404.md`), same exclusion from index pages, category pages, the archive, the feed, `{{ ai_post_list }}`, and the newer/older post navigation. The one difference: **it's also excluded from `sitemap.xml`**, since it's an error page, not real content.
+In every other respect the 404 page behaves exactly like a special page — same frontmatter/image support, same rebuild-on-change behavior, same single-file preview build support (e.g. `build.py error-404.md`), same exclusion from index pages, category pages, the archive, the feed, `{{ ai_post_list }}`, `{{ favourite_post_list }}`, and the newer/older post navigation. The one difference: **it's also excluded from `sitemap.xml`**, since it's an error page, not real content.
 
 ### Dynamic values
 
@@ -1113,12 +1115,13 @@ An unknown shortcode name (matching the `{{ ... }}` pattern but not one of the n
 | `{{ today }}` | date string | The build date, formatted `D/M/YY` (no leading zeros on day/month, two-digit year), e.g. `17/7/26` |
 | `{{ now }}` | date/time string | The build date and time, formatted `H.MM am/pm on D Month YYYY` (no leading zeros on hour/day, two-digit minute, lowercase am/pm), e.g. `2.43 pm on 24 September 2026` |
 | `{{ ai_post_list }}` | HTML block | `<ul>` of posts with `ai_assisted: true`, newest first |
+| `{{ favourite_post_list }}` | HTML block | `<ul>` of posts with `favourite: true`, newest first |
 
 `post_count`, `word_count` and `image_count` draw only from **published posts**: markdown files that render to an individual post page. Special pages and generated pages (index, category, archive) are never counted by these three.
 
-`{{ ai_post_list }}` is the one exception: a special page with `ai_assisted: true` also appears in the list (sorted alongside qualifying posts by the same rules), even though it's never counted by `post_count` or any other value. Generated pages (index, category, archive) never contribute to it regardless.
+`{{ ai_post_list }}` and `{{ favourite_post_list }}` are the exceptions: a special page with `ai_assisted: true` or `favourite: true` also appears in the corresponding list (sorted alongside qualifying posts by the same rules), even though it's never counted by `post_count` or any other value. Generated pages (index, category, archive) never contribute to either regardless.
 
-`word_count` expands every other recognised shortcode in a post's body first (so e.g. a title shown via `{{ ai_post_list }}` counts towards the total), and treats any `{{ word_count }}` occurrence in the body as empty, to avoid circularity. `image_count` sums each published post's image count. `{{ ai_post_list }}` sorts newest-first by frontmatter date, ties broken by descending filename number, and renders `<ul class="ai-post-list"><li>(none)</li></ul>` if no post qualifies.
+`word_count` expands every other recognised shortcode in a post's body first (so e.g. a title shown via `{{ ai_post_list }}` counts towards the total), and treats any `{{ word_count }}` occurrence in the body as empty, to avoid circularity. `image_count` sums each published post's image count. `{{ ai_post_list }}` and `{{ favourite_post_list }}` each sort newest-first by frontmatter date, ties broken by descending filename number, and render `<ul class="ai-post-list"><li>(none)</li></ul>` / `<ul class="favourite-post-list"><li>(none)</li></ul>` respectively if no post qualifies.
 
 Integers are formatted with a comma thousands-separator for values of 1,000 and above (e.g. `12,345`), matching ordinary UK usage.
 
@@ -1130,7 +1133,7 @@ Every expanded shortcode is wrapped in an element carrying a class derived from 
 <span class="post-count">42</span>
 ```
 
-`{{ ai_post_list }}` applies its class directly to the `<ul>` rather than adding an extra wrapper. When it's the *sole* non-whitespace content of a `<p>` (as it typically is, written on its own line), the whole `<p>` is replaced by the `<ul>` — avoiding invalid `<p><ul>...</ul></p>` markup. Used inline alongside other paragraph content, it's left as literal text with a warning instead.
+`{{ ai_post_list }}` and `{{ favourite_post_list }}` each apply their class directly to the `<ul>` rather than adding an extra wrapper. When either is the *sole* non-whitespace content of a `<p>` (as it typically is, written on its own line), the whole `<p>` is replaced by the `<ul>` — avoiding invalid `<p><ul>...</ul></p>` markup. Used inline alongside other paragraph content, either is left as literal text with a warning instead.
 
 #### Rebuilding
 
@@ -1171,6 +1174,11 @@ The `MAGNETIZER_CONTENT` has the following structure:
 <p class="archive-gallery-count"><a href="gallery.html"><span>N</span> photos in the archive</a></p>
 </div>
 </div>
+<h2>Personal Picks</h2>
+<ul class="favourite-post-list">
+  <li><a href="POST_URL">POST_TITLE</a></li>
+  ...
+</ul>
 <h2>Blog Posts</h2>
 <div class="archive-months">
   <section>
@@ -1196,7 +1204,8 @@ Where:
 - The `<h2>Photo archive</h2>` heading, its `<ol class="archive-gallery-preview">`, and the `<p class="archive-gallery-count">` after it, together in `<div class="archive-photos">`, are only included when at least one photo qualifies for the gallery (see [Gallery page](#gallery-page)) — the same condition that decides whether `gallery.html` itself is generated.
 - `<ol class="archive-gallery-preview">` shows the most recent photos first (the same order as [the gallery page](#gallery-page)), as up to 5 `<li>` thumbnails. Fewer than 5 appear if fewer than 5 photos exist in total. Each thumbnail's `<a>` links to `POST_URL` — the post that photo belongs to, same as on [the gallery page](#gallery-page) — not to `gallery.html` itself. `THUMB`, `ALT_TEXT`, `W`, and `H` are the same thumbnail file, alt text, and pixel dimensions used for that photo on the gallery page.
 - `<p class="archive-gallery-count">` is a single link to `gallery.html`, always present whenever the photo archive section is shown: `<span>N</span> photos in the archive`, where `N` (wrapped in its own `<span>` for numeric styling, the same convention as the contribution calendar's counts — see [Contribution calendar](#contribution-calendar)) is the total count of qualifying photos across the whole site, not just those shown as thumbnails. Magnetizer emits no icon markup here — like `favourite` (see [Favourite posts](#favourite-posts)), any icon is purely a project CSS concern, added via its own selector rather than baked into the generated HTML.
-- The `<h2>Blog Posts</h2>` heading is only included when the categories list, the photo archive section, or both, are shown.
+- The `<h2>Personal Picks</h2>` heading and its `<ul class="favourite-post-list">`, placed below `archive-columns` (i.e. below the photo archive and categories, if either is shown), are only included when at least one post or favourited special page qualifies (`favourite: true`) — omitted entirely otherwise, not shown with an `<li>(none)</li>` fallback. The list is exactly `{{ favourite_post_list }}`'s output (see [Dynamic shortcodes](#dynamic-shortcodes)): newest-first by frontmatter date, ties broken by descending filename number, favourited special pages included alongside favourited posts.
+- The `<h2>Blog Posts</h2>` heading is only included when the categories list, the photo archive section, or both, are shown — independently of whether "Personal Picks" is shown.
 - `<div class="archive-months">` wraps every month `<section>`, so a project's CSS can flow them across multiple columns on wide viewports (see [Archive column layout](#archive-column-layout)). It's included whenever at least one dated post exists, and omitted when there are none.
 - Each month heading is an `<h3>` — one level below `<h2>Blog Posts</h2>` — since it's a subsection of the monthly list, not a sibling of it.
 - `DAY` is the day of the month with no leading zero, e.g. `16`

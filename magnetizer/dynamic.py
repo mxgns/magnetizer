@@ -7,7 +7,7 @@ from html import escape as _escape
 from magnetizer.content import _plain_text
 
 SCALAR_NAMES = {"post_count", "word_count", "image_count", "today", "now"}
-BLOCK_NAMES = {"ai_post_list"}
+BLOCK_NAMES = {"ai_post_list", "favourite_post_list"}
 KNOWN_NAMES = SCALAR_NAMES | BLOCK_NAMES
 
 _SHORTCODE_RE = re.compile(r'\{\{\s*([a-z][a-z0-9_]*)\s*\}\}')
@@ -45,14 +45,14 @@ def format_now(build_datetime) -> str:
     return f"{time_str} on {build_datetime.day} {build_datetime:%B} {build_datetime.year}"
 
 
-def render_ai_post_list(published_posts) -> str:
-    matching = [p for p in published_posts if p.is_ai_assisted]
+def _render_post_list(matching, css_class) -> str:
     if not matching:
-        return '<ul class="ai-post-list"><li>(none)</li></ul>'
+        return f'<ul class="{css_class}"><li>(none)</li></ul>'
     # Special pages carry a string id (their name) rather than an int post id, so a
     # plain (date, id) key would raise when sorting a mix of the two — group by
     # id-type first (only ever compared within the same type) as a tie-break.
-    matching.sort(
+    matching = sorted(
+        matching,
         key=lambda p: (p.date or "", 1, p.id) if isinstance(p.id, int) else (p.date or "", 0, p.id),
         reverse=True,
     )
@@ -60,15 +60,29 @@ def render_ai_post_list(published_posts) -> str:
         f'<li><a href="{_escape(p.url, quote=True)}">{_escape(p.title or "")}</a></li>'
         for p in matching
     )
-    return f'<ul class="ai-post-list">{items}</ul>'
+    return f'<ul class="{css_class}">{items}</ul>'
 
 
-def compute_base_values(published_posts, build_date, build_datetime, warn, ai_post_list_candidates=None) -> dict:
-    # ai_post_list is the one dynamic value that also draws on special pages (an
-    # about/now/etc. page can be ai_assisted too) — every other value stays scoped
-    # to published posts only, per the post-inclusion rules.
+def render_ai_post_list(published_posts) -> str:
+    return _render_post_list([p for p in published_posts if p.is_ai_assisted], "ai-post-list")
+
+
+def render_favourite_post_list(published_posts) -> str:
+    return _render_post_list([p for p in published_posts if p.is_favourite], "favourite-post-list")
+
+
+def compute_base_values(
+    published_posts, build_date, build_datetime, warn,
+    ai_post_list_candidates=None, favourite_post_list_candidates=None,
+) -> dict:
+    # ai_post_list and favourite_post_list are the dynamic values that also draw on
+    # special pages (an about/now/etc. page can be ai_assisted or a favourite too) —
+    # every other value stays scoped to published posts only, per the post-inclusion
+    # rules.
     if ai_post_list_candidates is None:
         ai_post_list_candidates = published_posts
+    if favourite_post_list_candidates is None:
+        favourite_post_list_candidates = published_posts
     post_count = len(published_posts)
     image_count = sum(len(p.images) for p in published_posts)
     return {
@@ -77,6 +91,7 @@ def compute_base_values(published_posts, build_date, build_datetime, warn, ai_po
         "today": wrap_scalar("today", format_today(build_date)),
         "now": wrap_scalar("now", format_now(build_datetime)),
         "ai_post_list": render_ai_post_list(ai_post_list_candidates),
+        "favourite_post_list": render_favourite_post_list(favourite_post_list_candidates),
     }
 
 

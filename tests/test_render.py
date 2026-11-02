@@ -1357,10 +1357,10 @@ class TestRenderArticleFootnotesIndexPage:
 # ---------------------------------------------------------------------------
 
 def make_dated_post(id, date, title=None, name=None, body_html="", images=None, category=None,
-                     post_type=None, date_uk=""):
+                     post_type=None, date_uk="", is_favourite=False):
     return Post(id=id, date=date, date_uk=date_uk, title=title, name=name,
                 url=f"{id}.html", body_html=body_html, images=images or [], category=category,
-                post_type=post_type)
+                post_type=post_type, is_favourite=is_favourite)
 
 
 class TestRenderArchivePageContent:
@@ -2064,6 +2064,60 @@ class TestArchiveColumnsLayout:
                      url="1.html", body_html="", images=[])
         html = render_archive_page_content([post])
         assert "archive-months" not in html
+
+
+# ---------------------------------------------------------------------------
+# render_archive_page_content — "Personal Picks" favourites section
+# ---------------------------------------------------------------------------
+
+class TestArchivePersonalPicks:
+
+    def test_heading_shown_when_a_favourite_exists(self):
+        post = make_dated_post(1, "2026-05-24", title="Hello", is_favourite=True)
+        html = render_archive_page_content([post])
+        assert "<h2>Personal Picks</h2>" in html
+
+    def test_heading_not_shown_when_no_favourites(self):
+        post = make_dated_post(1, "2026-05-24", title="Hello", is_favourite=False)
+        html = render_archive_page_content([post])
+        assert "<h2>Personal Picks</h2>" not in html
+
+    def test_list_uses_favourite_post_list_class(self):
+        post = make_dated_post(1, "2026-05-24", title="Hello", is_favourite=True)
+        html = render_archive_page_content([post])
+        assert '<ul class="favourite-post-list"><li><a href="1.html">Hello</a></li></ul>' in html
+
+    def test_non_favourite_posts_excluded_from_list(self):
+        posts = [
+            make_dated_post(1, "2026-05-24", title="Favourite", is_favourite=True),
+            make_dated_post(2, "2026-05-25", title="Not favourite", is_favourite=False),
+        ]
+        html = render_archive_page_content(posts)
+        assert "Not favourite" not in html.split("<h2>Personal Picks</h2>")[1].split("</ul>")[0]
+
+    def test_favourited_special_page_included(self):
+        post = make_dated_post(1, "2026-05-24", title="Hello", is_favourite=False)
+        special_page = Post(id="about", date=None, date_uk=None, title="About Page",
+                             url="about.html", body_html="", images=[], is_favourite=True)
+        html = render_archive_page_content([post], special_pages=[special_page])
+        assert '<a href="about.html">About Page</a>' in html
+
+    def test_non_favourited_special_page_excluded(self):
+        post = make_dated_post(1, "2026-05-24", title="Hello", is_favourite=False)
+        special_page = Post(id="about", date=None, date_uk=None, title="About Page",
+                             url="about.html", body_html="", images=[], is_favourite=False)
+        html = render_archive_page_content([post], special_pages=[special_page])
+        assert "<h2>Personal Picks</h2>" not in html
+
+    def test_section_appears_after_photo_archive_section(self):
+        post = make_dated_post(1, "2026-05-24", title="Hello", is_favourite=True)
+        html = render_archive_page_content([post], photos=[make_photo()])
+        assert html.index("<h2>Photo archive</h2>") < html.index("<h2>Personal Picks</h2>")
+
+    def test_section_appears_before_blog_posts_heading(self):
+        post = make_dated_post(1, "2026-05-24", title="Hello", category="photography", is_favourite=True)
+        html = render_archive_page_content([post], categories=_CATEGORIES)
+        assert html.index("<h2>Personal Picks</h2>") < html.index("<h2>Blog Posts</h2>")
 
 
 # ---------------------------------------------------------------------------

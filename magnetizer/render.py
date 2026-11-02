@@ -4,7 +4,7 @@ from datetime import date as _date, datetime as _datetime, timedelta as _timedel
 from html import escape as _escape, unescape as _unescape
 
 from magnetizer.content import _shift_headings, resized_filename as _resized_filename
-from magnetizer.dynamic import format_now
+from magnetizer.dynamic import format_now, render_favourite_post_list
 
 _DEFAULT_AI_DISCLOSURE_TEXT = 'The contents of this post have been entirely or partially created using AI.'
 
@@ -500,7 +500,7 @@ def _render_contribution_calendar(posts, build_date, posts_per_page, last_update
     return '\n'.join(parts)
 
 
-def render_archive_page_content(posts, categories=None, build_date=None, build_datetime=None, posts_per_page=12, photos=None):
+def render_archive_page_content(posts, categories=None, build_date=None, build_datetime=None, posts_per_page=12, photos=None, special_pages=None):
     blog_posts = [p for p in posts if p.date]
 
     months = {}
@@ -560,6 +560,11 @@ def render_archive_page_content(posts, categories=None, build_date=None, build_d
             parts.extend(photos_block)
             parts.append('</div>')
         parts.append('</div>')
+
+    favourite_candidates = [p for p in posts + (special_pages or []) if p.is_favourite]
+    if favourite_candidates:
+        parts.append('<h2>Personal Picks</h2>')
+        parts.append(render_favourite_post_list(favourite_candidates))
 
     if has_sections:
         parts.append('<h2>Blog Posts</h2>')
