@@ -31,14 +31,30 @@ def gallery_page_url(page_num):
 
 _POST_TYPE_CLASS = {"full": "full-post", "image": "image-post", "note": "note"}
 
+_EMOJI_RE = re.compile(
+    '['
+    '\U0001F1E6-\U0001F1FF'  # regional indicators (flag letters)
+    '\U0001F300-\U0001F5FF'  # misc symbols & pictographs
+    '\U0001F600-\U0001F64F'  # emoticons
+    '\U0001F680-\U0001F6FF'  # transport & map
+    '\U0001F700-\U0001FAFF'  # alchemical through extended-A pictographs
+    '\U00002600-\U000026FF'  # misc symbols (e.g. ☀)
+    '\U00002700-\U000027BF'  # dingbats
+    '\U0000FE0F'              # variation selector-16 (emoji presentation)
+    '\U0000200D'              # zero-width joiner
+    ']+'
+)
+
 
 def post_display_text(post):
     """The post's title, falling back to its `name`, falling back to an
-    excerpt of its own body (the first paragraph, plaintext, truncated to 40
-    characters at a word boundary), falling back to a generated label based
-    on top-level image count (inline images excluded). Used for the post
-    heading, the page meta title, the feed entry title, and the archive
-    link text — they all share this one fallback chain."""
+    excerpt of its own body (the first paragraph, plaintext, with any emoji
+    stripped, truncated to 40 characters at a word boundary), falling back
+    to a generated label based on top-level image count (inline images
+    excluded). Used for the post heading, the page meta title, the feed
+    entry title, and the archive link text — they all share this one
+    fallback chain. Only the generated excerpt is stripped of emoji — an
+    explicit title or name is the author's own text and is left alone."""
     if post.title:
         return post.title
     if post.name:
@@ -48,6 +64,7 @@ def post_display_text(post):
         if m:
             text = _unescape(re.sub(r'<[^>]+>', '', m.group(1)))
             text = re.sub(r'\s+', ' ', text).strip()
+            text = re.sub(r'\s+', ' ', _EMOJI_RE.sub('', text)).strip()
             if text:
                 if len(text) <= 40:
                     return text

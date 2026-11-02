@@ -500,7 +500,7 @@ Every post has a non-empty heading (`POST_HEADING` — see [Posts](#posts)) and 
 
 1. `title`, if set
 2. `name`, if set
-3. An excerpt of the post's own first paragraph (plaintext, tags stripped, truncated to 40 characters at the last full word), if its body has one
+3. An excerpt of the post's own first paragraph (plaintext, tags stripped, emoji stripped, truncated to 40 characters at the last full word), if its body has any non-emoji content
 4. A generated fallback, based on post type and top-level image count:
     - `Note posted {date}` — no top-level images
     - `Photo posted {date}` — exactly one top-level image
@@ -509,6 +509,8 @@ Every post has a non-empty heading (`POST_HEADING` — see [Posts](#posts)) and 
     `{date}` is the UK-formatted `date` from frontmatter, e.g. `Photo posted 22 July 2026`.
 
 This is the same priority order used for the archive link text (see [Archive page](#archive-page)) and the feed entry title (see [Atom feed](#atom-feed)) — all of them share this one fallback chain.
+
+Emoji stripping only applies to the generated excerpt (step 3) — `title` and `name` are the author's own explicit text and are never altered. A paragraph consisting entirely of emoji, once stripped, has no non-whitespace content left and falls through to step 4, the same as an empty paragraph would.
 
 ### Container blocks
 
@@ -1215,7 +1217,7 @@ Where:
 - `POST_LINK_TEXT` is derived using this priority order:
     1. `title`, if set
     2. `name`, if set
-    3. The post's first `<p>` element, converted to plaintext with tags stripped, if it has any non-whitespace content — truncated to 40 characters after the last full word, with a trailing `…`, if longer than 40
+    3. The post's first `<p>` element, converted to plaintext with tags and emoji stripped, if it has any non-whitespace content left — truncated to 40 characters after the last full word, with a trailing `…`, if longer than 40
     4. Otherwise, the same generated fallback text used for the heading and meta title (see [Post types](#post-types)): `Photo posted {date}`, `Photos posted {date}`, or `Note posted {date}`
 - `<h2>Browse all posts by page</h2>` and the `<p class="archive-index-pages">` after it are always present, as the last thing in `<main>`, regardless of whether any other optional section above is shown. Unlike `<h2>Blog Posts</h2>`, this section's presence is unconditional.
 - `<p class="archive-index-pages">` holds one `<a>` per paginated index page (see [Index pages](#index-pages)), in ascending order, link text `1`, `2`, `3`... matching the page number, each `·`-separated (a literal middle dot plus surrounding spaces between consecutive `<a>` tags, not inside them). The page count is `ceil(total published posts / posts_per_page)`, counting every published post the same way the index pages themselves are paginated. There's always at least one link (`1`, pointing at `index.html`) even with zero posts, and the section is shown even when there's only one page — unlike the index pages' own prev/next nav, there's no "current page" to omit here, since the archive page is never itself one of the paginated pages.

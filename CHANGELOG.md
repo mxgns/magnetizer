@@ -8,6 +8,7 @@
 ### 02/11/26
 
 - Added `{{ favourite_post_list }}`, ranked by `updated`, and archive picks
+- Generated post excerpts (titleless posts) now strip emoji
 
 ### 01/11/26
 

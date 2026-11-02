@@ -1035,6 +1035,37 @@ class TestPostDisplayText:
         post = make_post(title=None, name=None, date_uk="24 May 2026", body_html="", images=[])
         assert post_display_text(post) == "Note posted 24 May 2026"
 
+    def test_excerpt_strips_trailing_emoji(self):
+        post = make_post(title=None, name=None, body_html="<p>A recap of the summer so far ☀️</p>", images=["1-image-01.jpg"])
+        assert post_display_text(post) == "A recap of the summer so far"
+
+    def test_excerpt_strips_emoji_and_collapses_resulting_whitespace(self):
+        post = make_post(title=None, name=None, body_html="<p>Great day \U0001F389 at the park</p>", images=["1-image-01.jpg"])
+        assert post_display_text(post) == "Great day at the park"
+
+    def test_excerpt_strips_multiple_leading_emoji(self):
+        post = make_post(title=None, name=None, body_html="<p>\U0001F389\U0001F38A Party time</p>", images=["1-image-01.jpg"])
+        assert post_display_text(post) == "Party time"
+
+    def test_title_emoji_not_stripped(self):
+        # Emoji stripping only applies to the generated body-excerpt fallback --
+        # a title is the author's own explicit text and is left untouched.
+        post = make_post(title="A recap ☀️", name=None)
+        assert post_display_text(post) == "A recap ☀️"
+
+    def test_name_emoji_not_stripped(self):
+        post = make_post(title=None, name="A quiet morning \U0001F319")
+        assert post_display_text(post) == "A quiet morning \U0001F319"
+
+    def test_generated_label_used_when_excerpt_is_emoji_only(self):
+        post = make_post(title=None, name=None, date_uk="24 May 2026", body_html="<p>\U0001F389\U0001F38A</p>", images=["1-image-01.jpg"])
+        assert post_display_text(post) == "Photo posted 24 May 2026"
+
+    def test_excerpt_not_truncated_when_under_40_chars_only_after_stripping_emoji(self):
+        text = "a" * 38 + " \U0001F389"
+        post = make_post(title=None, name=None, body_html=f"<p>{text}</p>", images=["1-image-01.jpg"])
+        assert post_display_text(post) == "a" * 38
+
 
 # ---------------------------------------------------------------------------
 # render_navigation
