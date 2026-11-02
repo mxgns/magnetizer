@@ -1714,7 +1714,7 @@ The archive page (see [Archive page](#archive-page)) carries a link to `random.h
 <p class="archive-random"><a href="random.html">Jump to a random post →</a></p>
 ```
 
-It sits where the "Blog Posts" `<h2>` sits — immediately after it when categories, the photo archive, or favourites are shown above the monthly list (so the heading exists), and in that same position relative to the monthly list when none of those are shown and the heading is therefore absent. Either way, it's always before the monthly post list, and always present regardless of how many (if any) dated posts exist.
+It sits where the "Blog Posts" `<h2>` sits — immediately after it when categories or the photo archive are shown above the monthly list (so the heading exists; favourites alone don't trigger that heading — see [Archive page](#archive-page)), and in that same position relative to the monthly list when none of those are shown and the heading is therefore absent. Either way, it's always before the monthly post list, and always present regardless of how many (if any) dated posts exist.
 
 ## GitHub integration
 

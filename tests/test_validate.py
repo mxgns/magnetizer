@@ -732,6 +732,25 @@ class TestValidateConfig:
             "404-page-output-filename": "not-found.html",
         })  # should not raise — configurable output name, just no path separators
 
+    def test_fails_when_404_page_output_filename_is_random_html(self):
+        # random.html is Magnetizer's own generated page -- letting the 404
+        # page claim that filename too would make the two overwrite each other.
+        with pytest.raises(SystemExit):
+            validate_config({
+                "site_url": "https://example.github.io",
+                "404-page-input-filename": "error-404.md",
+                "404-page-output-filename": "random.html",
+            })
+
+    def test_error_message_mentions_random_html_collision(self, capsys):
+        with pytest.raises(SystemExit):
+            validate_config({
+                "site_url": "https://example.github.io",
+                "404-page-input-filename": "error-404.md",
+                "404-page-output-filename": "random.html",
+            })
+        assert "random.html" in capsys.readouterr().err
+
 
 # ---------------------------------------------------------------------------
 # validate_metadata — metadata.yaml keys match a real page or category
