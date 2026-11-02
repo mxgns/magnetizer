@@ -2144,6 +2144,16 @@ class TestArchivePersonalPicks:
         html = render_archive_page_content([post], categories=_CATEGORIES)
         assert html.index("<h2>Personal Picks</h2>") < html.index("<h2>Blog Posts</h2>")
 
+    def test_no_blog_posts_heading_when_favourites_are_the_only_section(self):
+        post = make_dated_post(1, "2026-05-24", title="Hello", is_favourite=True)
+        html = render_archive_page_content([post])
+        assert "<h2>Blog Posts</h2>" not in html
+
+    def test_archive_columns_still_shown_when_favourites_are_the_only_section(self):
+        post = make_dated_post(1, "2026-05-24", title="Hello", is_favourite=True)
+        html = render_archive_page_content([post])
+        assert '<div class="archive-columns">' in html
+
 
 # ---------------------------------------------------------------------------
 # render_archive_page_content — "Browse all posts by page" index-page links, at the

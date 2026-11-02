@@ -525,7 +525,7 @@ If at least one post or favourited special page has `favourite: true`, a `<div c
 </div>
 ```
 
-This is the same list `{{ favourite_post_list }}` renders (see [Dynamic shortcodes](#dynamic-shortcodes)): newest first by `updated` (falling back to `date`), favourited special pages included alongside favourited posts. It's omitted entirely when nothing qualifies — unlike `{{ favourite_post_list }}`, the archive never shows the `<li>(none)</li>` fallback.
+This is the same list `{{ favourite_post_list }}` renders (see [Dynamic values](#dynamic-values)): newest first by `updated` (falling back to `date`), favourited special pages included alongside favourited posts. It's omitted entirely when nothing qualifies — unlike `{{ favourite_post_list }}`, the archive never shows the `<li>(none)</li>` fallback.
 
 `archive-categories`, `archive-photos`, and `archive-favourites` all sit inside `archive-columns` — whichever of the three exist; if only one does, it's the sole child. Unlike a fixed two-column pair, up to three blocks of uneven height need to flow and balance across a 2-column layout without any one splitting across the break — the same job `archive-months` already does for month sections — so pair `archive-columns` with CSS multi-column flow (`column-count: 2`) rather than `display: flex`, giving each direct child `break-inside: avoid`. Magnetizer ships no default column CSS or breakpoint of its own.
 

@@ -1077,7 +1077,7 @@ def build(cwd, filename=None, flush=False, resources=False, refresh=False, on_pr
         specials_rebuilt = specials_rebuilt or not_found_rebuilt
 
     photos = None
-    if not filename and (post_ids_to_build or refresh):
+    if not filename and (post_ids_to_build or refresh or specials_rebuilt):
         photos = _gallery_photos(published_posts_sorted_desc, dist_dir)
         _write_generated_pages(published_posts_sorted_desc, special_page_posts, dist_dir, config, template, _log, build_date, build_datetime, photos, metadata=metadata)
 

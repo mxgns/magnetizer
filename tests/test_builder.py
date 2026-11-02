@@ -3816,6 +3816,29 @@ class TestFavouritePostListIncludesSpecialPages:
         assert "<h2>Personal Picks</h2>" in html
         assert '<a href="about.html">About Page</a>' in html
 
+    def test_marking_special_page_favourite_updates_archive_on_its_own(self, tmp_path):
+        # Post 1's own file is never touched between builds -- the archive must pick
+        # up about.md's favourite flag purely because about.md itself changed, with
+        # no post ever entering post_ids_to_build.
+        p = make_project(tmp_path, posts={
+            1: "---\ndate: 2026-05-24\ntitle: First\n---\n\nContent.\n",
+        }, config=_DYNAMIC_ABOUT_CONFIG)
+        (p / "content" / "about.md").write_text("---\ntitle: About Page\n---\n\nStatic content.\n")
+        build(p)
+        assert "<h2>Personal Picks</h2>" not in (p / "dist" / "archive.html").read_text()
+
+        (p / "content" / "about.md").write_text(
+            "---\ntitle: About Page\nfavourite: true\n---\n\nStatic content.\n"
+        )
+        build(p)
+        html = (p / "dist" / "archive.html").read_text()
+        assert "<h2>Personal Picks</h2>" in html
+        assert '<a href="about.html">About Page</a>' in html
+
+        (p / "content" / "about.md").write_text("---\ntitle: About Page\n---\n\nStatic content.\n")
+        build(p)
+        assert "<h2>Personal Picks</h2>" not in (p / "dist" / "archive.html").read_text()
+
 
 class TestDynamicManifestFlag:
 

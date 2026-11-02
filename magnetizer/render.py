@@ -552,9 +552,9 @@ def render_archive_page_content(posts, categories=None, build_date=None, build_d
     if favourite_candidates:
         favourites_block = ['<h2>Personal Picks</h2>', render_favourite_post_list(favourite_candidates)]
 
-    has_sections = bool(category_block) or bool(photos_block) or bool(favourites_block)
+    has_columns = bool(category_block) or bool(photos_block) or bool(favourites_block)
 
-    if has_sections:
+    if has_columns:
         parts.append('<div class="archive-columns">')
         if category_block:
             parts.append('<div class="archive-categories">')
@@ -570,7 +570,10 @@ def render_archive_page_content(posts, categories=None, build_date=None, build_d
             parts.append('</div>')
         parts.append('</div>')
 
-    if has_sections:
+    # Unlike archive-columns itself, the Blog Posts heading's presence is tied only
+    # to categories/photos -- Personal Picks being the sole qualifying section
+    # shouldn't conjure up a heading for an unrelated monthly list.
+    if category_block or photos_block:
         parts.append('<h2>Blog Posts</h2>')
 
     month_blocks = []
