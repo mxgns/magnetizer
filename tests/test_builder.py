@@ -3176,6 +3176,27 @@ class TestArchiveCategoriesList:
         assert "<h2>Categories</h2>" not in (p / "dist" / "archive.html").read_text()
 
 
+# ---------------------------------------------------------------------------
+# Archive "Personal Picks" favourites section
+# ---------------------------------------------------------------------------
+
+class TestArchivePersonalPicks:
+
+    def test_archive_contains_personal_picks_heading_for_favourite_post(self, tmp_path):
+        md = "---\ndate: 2026-05-24\ntitle: A Favourite\nfavourite: true\n---\n\nContent.\n"
+        p = make_project(tmp_path, posts={1: md})
+        build(p)
+        html = (p / "dist" / "archive.html").read_text()
+        assert "<h2>Personal Picks</h2>" in html
+        assert '<a href="1.html">A Favourite</a>' in html
+
+    def test_archive_has_no_personal_picks_heading_without_a_favourite(self, tmp_path):
+        md = "---\ndate: 2026-05-24\ntitle: Not A Favourite\n---\n\nContent.\n"
+        p = make_project(tmp_path, posts={1: md})
+        build(p)
+        assert "<h2>Personal Picks</h2>" not in (p / "dist" / "archive.html").read_text()
+
+
 
 # ---------------------------------------------------------------------------
 # Noindex posts
@@ -3732,6 +3753,91 @@ class TestAiPostListIncludesSpecialPages:
         )
         build(p)
         assert '<a href="about.html">About Page</a>' in (p / "dist" / "1.html").read_text()
+
+
+class TestFavouritePostList:
+
+    def test_favourite_post_list_end_to_end(self, tmp_path):
+        p = make_project(tmp_path, posts={
+            1: "---\ndate: 2026-05-24\ntitle: First\nfavourite: true\n---\n\nContent.\n",
+            2: "---\ndate: 2026-06-01\ntitle: Second\n---\n\nContent.\n",
+            3: "---\ndate: 2026-06-10\ntitle: Third\nfavourite: true\n---\n\n{{ favourite_post_list }}\n",
+        })
+        build(p)
+        html = (p / "dist" / "3.html").read_text()
+        assert (
+            '<ul class="favourite-post-list">'
+            '<li><a href="3.html">Third</a></li>'
+            '<li><a href="1.html">First</a></li>'
+            '</ul>'
+        ) in html
+
+    def test_inline_block_shortcode_warns_and_stays_literal(self, tmp_path):
+        p = make_project(tmp_path, posts={
+            1: "---\ndate: 2026-05-24\n---\n\nRecent posts: {{ favourite_post_list }} end.\n",
+        })
+        outcome = build(p)
+        html = (p / "dist" / "1.html").read_text()
+        assert "{{ favourite_post_list }}" in html
+        assert any(f == "1.html" and "favourite_post_list" in msg for f, msg in outcome["warnings"])
+
+
+class TestFavouritePostListIncludesSpecialPages:
+
+    def test_favourite_special_page_appears_in_favourite_post_list(self, tmp_path):
+        p = make_project(tmp_path, posts={
+            1: "---\ndate: 2026-05-24\n---\n\n{{ favourite_post_list }}\n",
+        }, config=_DYNAMIC_ABOUT_CONFIG)
+        (p / "content" / "about.md").write_text(
+            "---\ntitle: About Page\nfavourite: true\n---\n\nStatic content.\n"
+        )
+        build(p)
+        html = (p / "dist" / "1.html").read_text()
+        assert '<a href="about.html">About Page</a>' in html
+
+    def test_non_favourite_special_page_excluded(self, tmp_path):
+        p = make_project(tmp_path, posts={
+            1: "---\ndate: 2026-05-24\n---\n\n{{ favourite_post_list }}\n",
+        }, config=_DYNAMIC_ABOUT_CONFIG)
+        (p / "content" / "about.md").write_text("---\ntitle: About Page\n---\n\nStatic content.\n")
+        build(p)
+        html = (p / "dist" / "1.html").read_text()
+        assert '<ul class="favourite-post-list"><li>(none)</li></ul>' in html
+
+    def test_favourite_special_page_appears_in_archive_personal_picks(self, tmp_path):
+        p = make_project(tmp_path, posts={
+            1: "---\ndate: 2026-05-24\ntitle: First\n---\n\nContent.\n",
+        }, config=_DYNAMIC_ABOUT_CONFIG)
+        (p / "content" / "about.md").write_text(
+            "---\ntitle: About Page\nfavourite: true\n---\n\nStatic content.\n"
+        )
+        build(p)
+        html = (p / "dist" / "archive.html").read_text()
+        assert "<h2>Personal Picks</h2>" in html
+        assert '<a href="about.html">About Page</a>' in html
+
+    def test_marking_special_page_favourite_updates_archive_on_its_own(self, tmp_path):
+        # Post 1's own file is never touched between builds -- the archive must pick
+        # up about.md's favourite flag purely because about.md itself changed, with
+        # no post ever entering post_ids_to_build.
+        p = make_project(tmp_path, posts={
+            1: "---\ndate: 2026-05-24\ntitle: First\n---\n\nContent.\n",
+        }, config=_DYNAMIC_ABOUT_CONFIG)
+        (p / "content" / "about.md").write_text("---\ntitle: About Page\n---\n\nStatic content.\n")
+        build(p)
+        assert "<h2>Personal Picks</h2>" not in (p / "dist" / "archive.html").read_text()
+
+        (p / "content" / "about.md").write_text(
+            "---\ntitle: About Page\nfavourite: true\n---\n\nStatic content.\n"
+        )
+        build(p)
+        html = (p / "dist" / "archive.html").read_text()
+        assert "<h2>Personal Picks</h2>" in html
+        assert '<a href="about.html">About Page</a>' in html
+
+        (p / "content" / "about.md").write_text("---\ntitle: About Page\n---\n\nStatic content.\n")
+        build(p)
+        assert "<h2>Personal Picks</h2>" not in (p / "dist" / "archive.html").read_text()
 
 
 class TestDynamicManifestFlag:

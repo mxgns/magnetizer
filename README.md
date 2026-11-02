@@ -220,7 +220,7 @@ This is the single reference for every frontmatter key a post or special page ca
 | `name` | Posts, special pages | Plain text | Not set |
 | `images` | Posts, special pages | List of alt text strings, one per image file, in file order | `[]` |
 | `category` | Posts | A slug from `categories` in `config.yaml` | Not set |
-| `favourite` | Posts | `true` / `false` | `false` |
+| `favourite` | Posts, special pages | `true` / `false` | `false` |
 | `ai_assisted` | Posts, special pages | `true` / `false` | `false` |
 | `noindex` | Posts, special pages | `true` / `false` | `false` |
 | `draft` | Posts | `true` / `false` | `false` |
@@ -232,7 +232,7 @@ This is the single reference for every frontmatter key a post or special page ca
 - **`name`** — fallback label for a post with no `title` (an Image post or a Note), used for the heading and page `<title>`, and as the archive link text immediately after `title` — it wins over an excerpt of the post's own content, not just when there's no content to excerpt. Ignored (with a build warning) if `title` is also set. See [Post types](#post-types).
 - **`images`** — alt text for each image file belonging to the post (`{post-id}-image-{nn}.*`), matched to image files in filename order. If the list is absent or has fewer entries than image files, the remaining images get `alt=""` (decorative). An incomplete list triggers a "Missing alt text" build warning.
 - **`category`** — assigns the post to a category. Matching against `categories` in `config.yaml` is case-insensitive and the value is normalised to lowercase. Adds a category link to the post's footer and includes the post on that category's page (`{slug}.html`). If `categories` is configured, a build warning is printed for posts with no category or with a category not found in `categories`.
-- **`favourite`** — adds an additional `favourite` CSS class to the post's entry in the archive.
+- **`favourite`** — adds an additional `favourite` CSS class to the post's entry in the archive, and includes it in `{{ favourite_post_list }}` and the archive's "Personal Picks" section. Works the same way on special pages as on posts, except a special page has no archive `<li>` entry to add the class to — it only affects `{{ favourite_post_list }}` and "Personal Picks".
 - **`ai_assisted`** — inserts a disclosure banner above the post's heading, wherever it's shown (individual page, and index/category excerpts or full body). The banner text comes from `ai_disclosure_html` in `config.yaml` (raw HTML, so it can include a link) — Magnetizer falls back to a generic sentence if `ai_disclosure_html` isn't set. The banner needs the `.container-brown` and `.ai-disclosure` CSS rules to be present in the project's `resources/` directory — the icon itself is a CSS background image, base64-encoded in the project's own stylesheet, same as every other icon on the site.
 - **`noindex`** — excludes the page from `sitemap.xml` and adds a `<meta name="robots" content="noindex">` tag via `MAGNETIZER_METADATA`, but is otherwise treated normally (still shown on index pages, category pages, the feed, the archive, post navigation, and `posts.json`) — it only affects search indexing. Works the same way on special pages as on posts.
 - **`draft`** — unlike `noindex`, excludes the post from everywhere: index pages, category pages, the feed, the gallery, the archive, `sitemap.xml`, `posts.json`, next/previous navigation, and the dynamic post/word/image counts. Also gets `data-pagefind-ignore` and the `noindex` robots meta tag. The post's own page still builds, still rebuilds on change, still refreshes on `--refresh`, and still gets the invalid-post check — it's a normal post in every way except being unlisted, reachable only via its own URL. Shows a `[draft]` label in verbose build output. Posts only, not special pages.
@@ -413,11 +413,12 @@ Whitespace inside the braces is optional (`{{post_count}}` and `{{ post_count }}
 | `{{ image_count }}` | Total number of images across all published posts |
 | `{{ today }}` | The build date, as `D/M/YY` (e.g. `17/7/26`) |
 | `{{ now }}` | The build date and time, e.g. `2.43 pm on 24 September 2026` |
-| `{{ ai_post_list }}` | A `<ul>` of posts with `ai_assisted: true`, newest first |
+| `{{ ai_post_list }}` | A `<ul>` of posts with `ai_assisted: true`, newest first by `date` |
+| `{{ favourite_post_list }}` | A `<ul>` of posts with `favourite: true`, newest first by `updated` (or `date` if unset) |
 
-"Published posts" means posts with their own page — special pages, index/category/archive pages don't count. The three counts (`post_count`, `word_count`, `image_count`) are drawn only from that set. `{{ ai_post_list }}` is the one exception — a special page with `ai_assisted: true` shows up there too, alongside qualifying posts, even though it's never counted. Numbers 1,000 and above render with a comma thousands-separator (e.g. `12,345`).
+"Published posts" means posts with their own page — special pages, index/category/archive pages don't count. The three counts (`post_count`, `word_count`, `image_count`) are drawn only from that set. `{{ ai_post_list }}` and `{{ favourite_post_list }}` are the exceptions — a special page with `ai_assisted: true` or `favourite: true` shows up there too, alongside qualifying posts, even though it's never counted. `{{ favourite_post_list }}` ranks by whichever is more recent, `updated` or `date` (the same precedence the Atom feed uses for its own `<updated>` timestamps — see the `updated` entry in [Frontmatter reference](#frontmatter-reference)), so a long-published favourite that was recently revised outranks one nobody's touched since; `{{ ai_post_list }}` only ever looks at `date`. Numbers 1,000 and above render with a comma thousands-separator (e.g. `12,345`).
 
-Each expanded value is wrapped for styling: scalars in `<span class="post-count">42</span>` (underscores in the name become hyphens in the class); `{{ ai_post_list }}` renders its own `<ul class="ai-post-list">`, or `<ul class="ai-post-list"><li>(none)</li></ul>` if no posts qualify. Put `{{ ai_post_list }}` on its own line (blank lines before and after) so it isn't trapped inside a `<p>`.
+Each expanded value is wrapped for styling: scalars in `<span class="post-count">42</span>` (underscores in the name become hyphens in the class); `{{ ai_post_list }}` and `{{ favourite_post_list }}` render their own `<ul class="ai-post-list">` / `<ul class="favourite-post-list">`, or that same `<ul>` with just `<li>(none)</li>` if no posts qualify. Put either on its own line (blank lines before and after) so it isn't trapped inside a `<p>`.
 
 An unrecognised shortcode name is left as literal text and produces a build warning naming the shortcode and the file it's in. A `{{ ... }}` with no closing braces is just left as plain text, silently.
 
@@ -512,7 +513,21 @@ If the blog has at least one qualifying photo (see [Gallery page](#gallery-page)
 
 Each thumbnail uses the same thumbnail file, alt text, and dimensions as on the gallery page itself, newest first, and links to the post that photo belongs to (not to `gallery.html`). Fewer than 5 thumbnails appear if the blog has fewer than 5 photos in total. The `<p class="archive-gallery-count">` link always follows the list and always links to `gallery.html`; its count reflects every qualifying photo on the site, not just the ones shown as thumbnails. Magnetizer emits no icon here — same as the `favourite` class's star — any icon is added entirely by the project's own CSS.
 
-`archive-categories` and `archive-photos` sit side by side inside `archive-columns` — whichever of the two exist; if only one does, it's the sole child. Like `archive-months`, this is bare structure for a project's CSS to lay out on wide viewports (e.g. a two-column flex row); Magnetizer ships no default column CSS or breakpoint of its own.
+If at least one post or favourited special page has `favourite: true`, a `<div class="archive-favourites">` section is inserted alongside the categories and photo archive:
+
+```html
+<div class="archive-favourites">
+  <h2>Personal Picks</h2>
+  <ul class="favourite-post-list">
+    <li><a href="42.html">Post title</a></li>
+    ...
+  </ul>
+</div>
+```
+
+This is the same list `{{ favourite_post_list }}` renders (see [Dynamic values](#dynamic-values)): newest first by `updated` (falling back to `date`), favourited special pages included alongside favourited posts. It's omitted entirely when nothing qualifies — unlike `{{ favourite_post_list }}`, the archive never shows the `<li>(none)</li>` fallback.
+
+`archive-categories`, `archive-photos`, and `archive-favourites` all sit inside `archive-columns` — whichever of the three exist; if only one does, it's the sole child. Unlike a fixed two-column pair, up to three blocks of uneven height need to flow and balance across a 2-column layout without any one splitting across the break — the same job `archive-months` already does for month sections — so pair `archive-columns` with CSS multi-column flow (`column-count: 2`) rather than `display: flex`, giving each direct child `break-inside: avoid`. Magnetizer ships no default column CSS or breakpoint of its own.
 
 The page always ends with a `<h2>Browse all posts by page</h2>` section linking to every paginated index page by number, middle-dot separated:
 

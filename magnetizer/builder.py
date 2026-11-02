@@ -608,6 +608,7 @@ def _compute_dynamic_values(published_posts_sorted_desc, special_page_posts, bui
         published_posts_sorted_desc, build_date, build_datetime,
         warn=lambda msg: warnings.append(("build", msg)),
         ai_post_list_candidates=published_posts_sorted_desc + special_page_posts,
+        favourite_post_list_candidates=published_posts_sorted_desc + special_page_posts,
     )
     total_words = compute_word_count(published_posts_sorted_desc, base_values)
     return {**base_values, "word_count": wrap_scalar("word_count", format_int(total_words))}
@@ -801,7 +802,7 @@ def _rebuild_stale_not_found_page(config, content_dir, dist_dir, template, value
     return True
 
 
-def _write_generated_pages(published_posts_sorted_desc, dist_dir, config, template, log, build_date, build_datetime, photos, metadata=None):
+def _write_generated_pages(published_posts_sorted_desc, special_page_posts, dist_dir, config, template, log, build_date, build_datetime, photos, metadata=None):
     _write_index_pages(published_posts_sorted_desc, dist_dir, config, template, categories=config["categories"], metadata=metadata)
     per_page = config["posts_per_page"]
     total_pages = max(1, (len(published_posts_sorted_desc) + per_page - 1) // per_page)
@@ -823,7 +824,7 @@ def _write_generated_pages(published_posts_sorted_desc, dist_dir, config, templa
         content=render_archive_page_content(
             published_posts_sorted_desc, categories=config["categories"],
             build_date=build_date, build_datetime=build_datetime, posts_per_page=config["posts_per_page"],
-            photos=photos,
+            photos=photos, special_pages=special_page_posts,
         ),
         canonical=canonical_url(config["site_url"], "archive.html"),
         meta_description=_metadata_description(metadata, "archive"),
@@ -1076,9 +1077,9 @@ def build(cwd, filename=None, flush=False, resources=False, refresh=False, on_pr
         specials_rebuilt = specials_rebuilt or not_found_rebuilt
 
     photos = None
-    if not filename and (post_ids_to_build or refresh):
+    if not filename and (post_ids_to_build or refresh or specials_rebuilt):
         photos = _gallery_photos(published_posts_sorted_desc, dist_dir)
-        _write_generated_pages(published_posts_sorted_desc, dist_dir, config, template, _log, build_date, build_datetime, photos, metadata=metadata)
+        _write_generated_pages(published_posts_sorted_desc, special_page_posts, dist_dir, config, template, _log, build_date, build_datetime, photos, metadata=metadata)
 
     if not filename and (log or refresh):
         # post_ids_to_build can be empty while log is still non-empty (e.g. a

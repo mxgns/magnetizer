@@ -5,6 +5,10 @@
 
 ## Released changes
 
+### 02/11/26
+
+- Added `{{ favourite_post_list }}`, ranked by `updated`, and archive picks
+
 ### 01/11/26
 
 - Added `updated` frontmatter: revision date shown in footer and feed
