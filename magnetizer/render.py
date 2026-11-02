@@ -1,3 +1,4 @@
+import json
 import re
 from collections import Counter
 from datetime import date as _date, datetime as _datetime, timedelta as _timedelta
@@ -316,6 +317,35 @@ def render_search_page_content():
     )
 
 
+def render_random_page_content():
+    """The static shell for random.html. The redirect itself is passed
+    separately via page_scripts (see render_random_page_script), the same
+    way search.html's search.js is -- so it lands after the sitewide
+    analytics pixel/beacon in document order and a visit is tracked before
+    the browser navigates away."""
+    return (
+        '<main data-pagefind-ignore>\n'
+        '<h1>Random post</h1>\n'
+        '<p id="random-status">Taking you to a random post…</p>\n'
+        '</main>'
+    )
+
+
+def render_random_page_script(urls):
+    if not urls:
+        return (
+            '<script>\n'
+            'document.getElementById("random-status").textContent = "No posts to send you to yet.";\n'
+            '</script>'
+        )
+    return (
+        '<script>\n'
+        f'var urls = {json.dumps(urls)};\n'
+        'window.location.replace(urls[Math.floor(Math.random() * urls.length)]);\n'
+        '</script>'
+    )
+
+
 def _nav_item_class(href):
     stem = href.rsplit('.', 1)[0]
     slug = re.sub(r'[^a-z0-9]+', '-', stem.lower()).strip('-')
@@ -592,6 +622,8 @@ def render_archive_page_content(posts, categories=None, build_date=None, build_d
     # shouldn't conjure up a heading for an unrelated monthly list.
     if category_block or photos_block:
         parts.append('<h2>Blog Posts</h2>')
+
+    parts.append('<p class="archive-random"><a href="random.html">Jump to a random post →</a></p>')
 
     month_blocks = []
     for year, month in sorted(months.keys(), reverse=True):

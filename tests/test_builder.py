@@ -11,7 +11,8 @@ from PIL import Image as PILImage
 from magnetizer.builder import _apply_image_row_ratios, _build_post_images, build
 from magnetizer.content import Image
 from magnetizer.image import image_dimensions
-from conftest import MINIMAL_MD, make_project
+from magnetizer.render import render_random_page_content, render_random_page_script, render_template
+from conftest import MINIMAL_MD, TEMPLATE, make_project
 
 
 # ---------------------------------------------------------------------------
@@ -2632,6 +2633,109 @@ class TestSearchPage:
 
 
 # ---------------------------------------------------------------------------
+# Random post page
+# ---------------------------------------------------------------------------
+
+class TestRandomPage:
+
+    def test_random_html_created_after_build_with_changes(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD})
+        build(p)
+        assert (p / "dist" / "random.html").exists()
+
+    def test_random_html_not_created_on_single_file_build(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD})
+        build(p, filename="1.md")
+        assert not (p / "dist" / "random.html").exists()
+
+    def test_random_html_not_created_when_no_changes(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD})
+        build(p)
+        (p / "dist" / "random.html").unlink()
+        build(p)  # no changes — random.html should not be recreated
+        assert not (p / "dist" / "random.html").exists()
+
+    def test_random_title_includes_site_name(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD})
+        build(p)
+        assert "<title>Random post - Test Blog</title>" in (p / "dist" / "random.html").read_text()
+
+    def test_random_page_has_heading(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD})
+        build(p)
+        assert "<h1>Random post</h1>" in (p / "dist" / "random.html").read_text()
+
+    def test_random_page_canonical_url(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD})
+        build(p)
+        assert 'href="https://example.github.io/random.html"' in (p / "dist" / "random.html").read_text()
+
+    def test_random_page_has_robots_meta_tag(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD})
+        build(p)
+        assert '<meta name="robots" content="noindex">' in (p / "dist" / "random.html").read_text()
+
+    def test_random_page_not_mentioned_in_robots_txt(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD})
+        build(p)
+        assert "Disallow" not in (p / "dist" / "robots.txt").read_text()
+
+    def test_random_page_not_in_sitemap(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD})
+        build(p)
+        assert "random.html" not in (p / "dist" / "sitemap.xml").read_text()
+
+    def test_random_page_not_in_feed(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD})
+        build(p)
+        assert "random.html" not in (p / "dist" / "feed.xml").read_text()
+
+    def test_random_page_not_in_posts_json(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD})
+        build(p)
+        data = json.loads((p / "dist" / "posts.json").read_text())
+        assert "random" not in data
+
+    def test_random_page_contains_published_post_url(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD})
+        build(p)
+        assert '"1.html"' in (p / "dist" / "random.html").read_text()
+
+    def test_random_page_regenerated_when_post_added(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD})
+        build(p)
+        (p / "content" / "2.md").write_text(MINIMAL_MD)
+        build(p)
+        assert '"2.html"' in (p / "dist" / "random.html").read_text()
+
+    def test_random_page_regenerated_when_post_removed(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD, 2: MINIMAL_MD})
+        build(p)
+        (p / "content" / "2.md").unlink()
+        build(p, flush=True)
+        assert '"2.html"' not in (p / "dist" / "random.html").read_text()
+
+    def test_random_page_redirects_with_window_location_replace(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD})
+        build(p)
+        assert "window.location.replace(" in (p / "dist" / "random.html").read_text()
+
+    def test_random_page_script_is_page_scripts_not_content(self):
+        # Passed via page_scripts (like search.js) rather than baked into the
+        # static content shell, so it lands after the sitewide analytics
+        # pixel/beacon in document order -- the pageview is tracked before
+        # the browser navigates away.
+        html = render_template(
+            TEMPLATE,
+            title="x", content=render_random_page_content(),
+            page_scripts=render_random_page_script(["1.html"]),
+        )
+        content_pos = html.index(render_random_page_content())
+        script_pos = html.index("window.location.replace(")
+        assert content_pos < script_pos
+
+
+# ---------------------------------------------------------------------------
 # Alt text warnings
 # ---------------------------------------------------------------------------
 
@@ -3121,6 +3225,27 @@ class TestSearchMetadata:
         assert '<meta name="description" content="Search every post on the site.">' in (p / "dist" / "search.html").read_text()
 
 
+class TestRandomMetadata:
+
+    def test_random_title_overridden_by_metadata(self, tmp_path):
+        metadata = "random:\n  title: Surprise Me\n"
+        p = make_project(tmp_path, posts={1: MINIMAL_MD}, metadata=metadata)
+        build(p)
+        assert "<title>Surprise Me - Test Blog</title>" in (p / "dist" / "random.html").read_text()
+
+    def test_random_title_defaults_when_no_metadata(self, tmp_path):
+        p = make_project(tmp_path, posts={1: MINIMAL_MD})
+        build(p)
+        assert "<title>Random post - Test Blog</title>" in (p / "dist" / "random.html").read_text()
+
+    def test_random_description_overridden_by_metadata(self, tmp_path):
+        metadata = "random:\n  description: Land on a random post.\n"
+        p = make_project(tmp_path, posts={1: MINIMAL_MD}, metadata=metadata)
+        (p / "templates" / "index.html").write_text(META_DESCRIPTION_TEMPLATE)
+        build(p)
+        assert '<meta name="description" content="Land on a random post.">' in (p / "dist" / "random.html").read_text()
+
+
 class TestGalleryMetadata:
 
     def test_gallery_title_overridden_by_metadata(self, tmp_path):
@@ -3232,6 +3357,11 @@ class TestNoindexPosts:
         p = make_project(tmp_path, posts={1: _NOINDEX_MD})
         build(p)
         assert "Noindex Post" in (p / "dist" / "archive.html").read_text()
+
+    def test_noindex_post_still_shown_in_random_page(self, tmp_path):
+        p = make_project(tmp_path, posts={1: _NOINDEX_MD})
+        build(p)
+        assert '"1.html"' in (p / "dist" / "random.html").read_text()
 
     def test_noindex_post_excluded_from_sitemap(self, tmp_path):
         p = make_project(tmp_path, posts={1: _NOINDEX_MD})
@@ -3358,6 +3488,11 @@ class TestDraftPosts:
         p = make_project(tmp_path, posts={1: _DRAFT_MD, 2: MINIMAL_MD})
         build(p)
         assert "Draft Post" not in (p / "dist" / "archive.html").read_text()
+
+    def test_draft_post_excluded_from_random_page(self, tmp_path):
+        p = make_project(tmp_path, posts={1: _DRAFT_MD, 2: MINIMAL_MD})
+        build(p)
+        assert '"1.html"' not in (p / "dist" / "random.html").read_text()
 
     def test_draft_post_excluded_from_sitemap(self, tmp_path):
         p = make_project(tmp_path, posts={1: _DRAFT_MD, 2: MINIMAL_MD})

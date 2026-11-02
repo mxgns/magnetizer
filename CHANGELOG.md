@@ -7,6 +7,7 @@
 
 ### 02/11/26
 
+- Added `random.html`: redirects to a random post, linked from the archive
 - Added `{{ favourite_post_list }}`, ranked by `updated`, and archive picks
 - Generated post excerpts (titleless posts) now strip emoji
 

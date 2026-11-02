@@ -1,5 +1,6 @@
 """Tests for magnetizer/render.py — all HTML generation functions"""
 
+import json
 from datetime import date, datetime, timedelta
 from html.parser import HTMLParser
 
@@ -19,6 +20,8 @@ from magnetizer.render import (
     render_page_meta_description,
     render_page_title,
     render_post_page_content,
+    render_random_page_content,
+    render_random_page_script,
     render_search_page_content,
     render_template,
 )
@@ -2187,6 +2190,34 @@ class TestArchivePersonalPicks:
 
 
 # ---------------------------------------------------------------------------
+# render_archive_page_content — "Jump to a random post" link to random.html,
+# placed where the "Blog Posts" heading sits -- after it when present (since
+# categories/photos/favourites can push it down), but always before the
+# monthly post list, heading or no heading.
+# ---------------------------------------------------------------------------
+
+class TestArchiveRandomLink:
+
+    def test_random_link_present(self):
+        html = render_archive_page_content([make_dated_post(1, "2026-05-24")])
+        assert '<a href="random.html">Jump to a random post →</a>' in html
+
+    def test_random_link_after_blog_posts_heading_when_present(self):
+        post = make_dated_post(1, "2026-05-24", title="Hello", category="photography")
+        html = render_archive_page_content([post], categories=_CATEGORIES)
+        assert html.index("<h2>Blog Posts</h2>") < html.index('<a href="random.html">')
+
+    def test_random_link_before_monthly_post_list(self):
+        html = render_archive_page_content([make_dated_post(1, "2026-05-24")])
+        assert html.index('<a href="random.html">') < html.index('<div class="archive-months">')
+
+    def test_random_link_present_without_blog_posts_heading(self):
+        html = render_archive_page_content([make_dated_post(1, "2026-05-24")])
+        assert "<h2>Blog Posts</h2>" not in html
+        assert '<a href="random.html">' in html
+
+
+# ---------------------------------------------------------------------------
 # render_archive_page_content — "Browse all posts by page" index-page links, at the
 # foot of the archive (always shown, even with a single page — there's no
 # "current page" to omit here, unlike on the index pages themselves)
@@ -2962,6 +2993,65 @@ class TestRenderSearchPageContent:
 
 
 # ---------------------------------------------------------------------------
+# render_random_page_content / render_random_page_script
+# ---------------------------------------------------------------------------
+
+class TestRenderRandomPageContent:
+
+    def test_has_h1_heading(self):
+        html = render_random_page_content()
+        assert "<h1>Random post</h1>" in html
+
+    def test_wrapped_in_main_ignored_by_pagefind(self):
+        html = render_random_page_content()
+        assert "<main data-pagefind-ignore>" in html
+        assert "</main>" in html
+
+    def test_h1_inside_main(self):
+        html = render_random_page_content()
+        assert html.index("<main data-pagefind-ignore>") < html.index("<h1>Random post</h1>") < html.index("</main>")
+
+    def test_has_status_element(self):
+        html = render_random_page_content()
+        assert 'id="random-status"' in html
+
+
+class TestRenderRandomPageScript:
+
+    def test_embeds_urls_as_json_array(self):
+        html = render_random_page_script(["1.html", "2.html"])
+        assert json.dumps(["1.html", "2.html"]) in html
+
+    def test_redirects_with_window_location_replace(self):
+        html = render_random_page_script(["1.html"])
+        assert "window.location.replace(" in html
+
+    def test_no_network_requests(self):
+        html = render_random_page_script(["1.html"])
+        assert "fetch(" not in html
+        assert "XMLHttpRequest" not in html
+
+    def test_different_urls_can_be_selected(self):
+        # Random selection must actually vary -- not a fixed pick disguised
+        # as random (e.g. always the first element).
+        html = render_random_page_script(["1.html", "2.html", "3.html"])
+        assert "Math.random()" in html
+
+    def test_empty_list_does_not_redirect(self):
+        html = render_random_page_script([])
+        assert "window.location.replace(" not in html
+
+    def test_empty_list_updates_status_element(self):
+        html = render_random_page_script([])
+        assert 'getElementById("random-status")' in html
+
+    def test_wrapped_in_script_tag(self):
+        html = render_random_page_script(["1.html"])
+        assert html.startswith("<script>")
+        assert html.endswith("</script>")
+
+
+# ---------------------------------------------------------------------------
 # Magnetizer never emits <img>/<svg> markup of its own. An <img> only ever
 # appears when it reflects a real photo from post/gallery content; a
 # decorative icon (favourite's star, the archive page's photo count, the
@@ -3018,6 +3108,11 @@ class TestNeverEmitsDecorativeImgOrSvg:
 
     def test_render_search_page_content_has_no_img_or_svg(self):
         html = render_search_page_content()
+        assert '<img' not in html
+        assert '<svg' not in html
+
+    def test_render_random_page_content_has_no_img_or_svg(self):
+        html = render_random_page_content()
         assert '<img' not in html
         assert '<svg' not in html
 

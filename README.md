@@ -260,9 +260,9 @@ A post is assigned to a category via `category` in its frontmatter — see [Fron
 
 ## Page metadata overrides
 
-`metadata.yaml`, in the project root, sets a custom `<title>` and/or `<meta name="description">` for pages that have no `content/` file of their own to hold frontmatter — the index, the archive, the search page, the gallery, and category pages. A post or a content-backed special page (`about.html`, `cookies.html`, etc.) already has `title`/`description` frontmatter for this — see [Frontmatter reference](#frontmatter-reference) — and isn't affected by `metadata.yaml`.
+`metadata.yaml`, in the project root, sets a custom `<title>` and/or `<meta name="description">` for pages that have no `content/` file of their own to hold frontmatter — the index, the archive, the search page, the random post page, the gallery, and category pages. A post or a content-backed special page (`about.html`, `cookies.html`, etc.) already has `title`/`description` frontmatter for this — see [Frontmatter reference](#frontmatter-reference) — and isn't affected by `metadata.yaml`.
 
-It's optional; omit the file entirely if you don't need it. Each entry is keyed by the page's slug — `index`, `archive`, `search`, `gallery`, or a configured category slug — and may set `title`, `description`, or both:
+It's optional; omit the file entirely if you don't need it. Each entry is keyed by the page's slug — `index`, `archive`, `search`, `random`, `gallery`, or a configured category slug — and may set `title`, `description`, or both:
 
 ```yaml
 archive:
@@ -276,7 +276,7 @@ out-and-about:
 
 A key that doesn't match a real page or a configured category slug is a build error — there's no silent typo. An entry must set at least one of `title`/`description`; an empty entry is also a build error.
 
-If `title` is set, it replaces the page-specific part of the `<title>` tag — `site_name` is still appended the same way it is everywhere else (e.g. `Everything - My Blog`). For a category, this only affects the `<title>` tag; its display name from `categories` in `config.yaml` still controls its `<h1>` and every other place its display label appears. If `title` is unset, the page keeps its usual title (`Archive`, `Search`, `Photo archive`, or the category's display name).
+If `title` is set, it replaces the page-specific part of the `<title>` tag — `site_name` is still appended the same way it is everywhere else (e.g. `Everything - My Blog`). For a category, this only affects the `<title>` tag; its display name from `categories` in `config.yaml` still controls its `<h1>` and every other place its display label appears. If `title` is unset, the page keeps its usual title (`Archive`, `Search`, `Random post`, `Photo archive`, or the category's display name).
 
 If `description` is set, it becomes the page's `<meta name="description">` content, the same way a post's `description` frontmatter does — including a ` (Page N)` suffix on page 2 and beyond for a page family that paginates (the index, gallery, and category pages). If unset, the page gets no meta description; there's no auto-generated fallback, since none of these pages has a single body of text to summarise.
 
@@ -500,6 +500,14 @@ If `categories` is configured and at least one category has a matching post, a c
 
 Each category link shows the number of posts in that category in parentheses. Categories are listed in descending order of post count, and only if they have at least one matching post.
 
+Right where the `<h2>Blog Posts</h2>` heading sits — after it when shown, in the same spot when it isn't — a link offers a random post instead of browsing:
+
+```html
+<p class="archive-random"><a href="random.html">Jump to a random post →</a></p>
+```
+
+See [Random post page](#random-post-page).
+
 If the blog has at least one qualifying photo (see [Gallery page](#gallery-page)), a `<div class="archive-photos">` section is inserted alongside the categories. It shows up to the 5 most recent photos as thumbnails, each linking to its own post, followed by a single link to the gallery with a camera icon and the total photo count:
 
 ```html
@@ -569,6 +577,28 @@ Every full build generates `dist/search.html` — a static shell (heading, acces
 Every build — including single-file preview builds, not just full ones — also runs Pagefind indexing over `dist/` (via a pinned `npx pagefind@1.5.2`, so a bare `npx pagefind` can't silently pick up a newer release and change the index between builds) after all pages are written. This requires Node and network access to resolve the `pagefind` package (cached after the first run); a nonzero exit, a timeout, or a missing `npx` binary aborts the build with a red `ERROR`.
 
 To avoid indexing the same article twice (once on its own page, once again embedded in an index/category/archive/gallery listing) and to keep chrome out of results, Magnetizer marks listing pages' `<main>` with `data-pagefind-ignore` — only a post's own canonical page is indexed. On that canonical page, the post's `<h1>` carries `data-pagefind-meta="title"` and its `<time>` carries `data-pagefind-meta="date"`, so Pagefind's result metadata doesn't have to be scraped from the `{post_title} - {site_name}` `<title>` tag. `search.html` itself is also `data-pagefind-ignore`d, and so is any post, special page, or the 404 page when it has `noindex: true`, or any post with `draft: true` — a page excluded from `sitemap.xml` is excluded from the site's own search too. A project's own template is responsible for excluding its own repeated chrome (header, footer, nav) the same way — Magnetizer only controls the content it generates.
+
+## Random post page
+
+Every full build generates `dist/random.html`, which redirects to a random dated post rather than showing any content of its own:
+
+```html
+<main data-pagefind-ignore>
+<h1>Random post</h1>
+<p id="random-status">Taking you to a random post…</p>
+</main>
+```
+
+The list of post URLs and the redirect itself are passed via `MAGNETIZER_PAGE_SCRIPTS`, the same mechanism `search.html` uses for `search.js` (see [Templates](#templates)) — not baked into `MAGNETIZER_CONTENT` above. That placement matters: `MAGNETIZER_PAGE_SCRIPTS` lands just before `</body>`, after a project's own sitewide analytics pixel/beacon, so that pageview is already on its way before the redirect navigates away.
+
+```html
+<script>
+var urls = ["3.html", "2.html", "1.html"];
+window.location.replace(urls[Math.floor(Math.random() * urls.length)]);
+</script>
+```
+
+The URL list is rebuilt on every full build from every dated, published, non-draft post — `noindex: true` posts are included (same as the archive and the feed), drafts aren't. An empty list updates `#random-status` with a message instead of redirecting anywhere. `random.html` gets a `<meta name="robots" content="noindex">` tag and is excluded from `sitemap.xml`, `feed.xml`, and `posts.json` — the same treatment as `search.html` for the sitemap/feed/posts.json part, plus `noindex` on top since (unlike search) this page has nothing worth a search engine ever landing on. `random` is a reserved slug and a valid `metadata.yaml` key, the same as `search`/`archive`/`gallery`.
 
 ## Publishing
 
