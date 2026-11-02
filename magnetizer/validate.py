@@ -8,7 +8,7 @@ from magnetizer.content import IMAGE_EXTENSIONS, _IMAGE_EXT_RE, special_page_com
 _MD_PATTERN = re.compile(r'^([1-9]\d*)\.md$')
 _IMAGE_PATTERN = re.compile(rf'^([1-9]\d*)-image-(\d{{2}})\.({_IMAGE_EXT_RE})$')
 _COMMENT_PATTERN = re.compile(r'^([1-9]\d*)-comment-(\d{2})\.md$')
-_BASE_RESERVED_SLUGS = {"index", "archive", "gallery", "search"}
+_BASE_RESERVED_SLUGS = {"index", "archive", "gallery", "search", "random"}
 _INDEX_PAGE_SLUG_PATTERN = re.compile(r'^index-\d+$')
 _GALLERY_PAGE_SLUG_PATTERN = re.compile(r'^gallery-\d+$')
 
@@ -41,6 +41,8 @@ def validate_config(config):
         _error("'404-page-input-filename' and '404-page-output-filename' in config.yaml must both be set, or neither")
     if not_found_output and ("/" in not_found_output or not_found_output in (".", "..")):
         _error(f"'404-page-output-filename' in config.yaml is invalid: '{not_found_output}' — it must be a plain filename with no path separators")
+    if not_found_output == "random.html":
+        _error("'404-page-output-filename' in config.yaml is invalid: 'random.html' is Magnetizer's own generated random-post page — choose a different output filename")
     special_pages = set(config.get("special_pages", []))
     for name in special_pages:
         if _is_reserved_slug(name, _BASE_RESERVED_SLUGS):

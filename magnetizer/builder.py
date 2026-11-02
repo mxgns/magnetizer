@@ -42,6 +42,8 @@ from magnetizer.render import (
     render_page_meta_description,
     render_page_title,
     render_post_page_content,
+    render_random_page_content,
+    render_random_page_script,
     render_search_page_content,
     render_template,
 )
@@ -846,6 +848,21 @@ def _write_generated_pages(published_posts_sorted_desc, special_page_posts, dist
     )
     (dist_dir / "search.html").write_text(search_html)
     log(("UPDATED", "search.html"))
+
+    random_urls = [p.url for p in published_posts_sorted_desc if p.date]
+    random_html = render_template(
+        template,
+        title=render_page_title(config["site_name"], _metadata_title(metadata, "random", "Random post"), page_num=None),
+        content=render_random_page_content(),
+        canonical=canonical_url(config["site_url"], "random.html"),
+        meta_description=_metadata_description(metadata, "random"),
+        navigation=render_navigation(config["navigation"], "random.html"),
+        is_noindex=True,
+        page_id="random",
+        page_scripts=render_random_page_script(random_urls),
+    )
+    (dist_dir / "random.html").write_text(random_html)
+    log(("UPDATED", "random.html"))
 
 
 def _write_sitemap_and_robots(published_post_ids_sorted_desc, published_posts_sorted_desc, posts_cache, content_dir, dist_dir, config, special_page_posts_by_name, log, photos):

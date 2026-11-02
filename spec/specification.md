@@ -1666,6 +1666,56 @@ Category is deliberately not given `data-pagefind-meta` treatment — Pagefind's
 
 `search.html` itself is `data-pagefind-ignore`d, so it never appears as a search result. A project's own template is responsible for excluding its own repeated chrome (header, footer, nav) from indexing the same way — Magnetizer only controls attributes on the content it generates, not a project's hand-written template markup.
 
+<a id="random-post-page"></a>
+## Random post page
+
+Every full build generates `dist/random.html`, a page whose only job is to redirect the visitor to a random dated post. `random.html`'s `MAGNETIZER_CONTENT` is a static shell with no post list or redirect logic of its own:
+
+```html
+<main data-pagefind-ignore>
+<h1>Random post</h1>
+<p id="random-status">Taking you to a random post…</p>
+</main>
+```
+
+The actual list of post URLs, and the redirect itself, are passed via `MAGNETIZER_PAGE_SCRIPTS` instead — the same mechanism `search.html` uses for `search.js` (see [Templates](#templates)) — rather than being embedded in `MAGNETIZER_CONTENT`:
+
+```html
+<script>
+var urls = ["3.html", "2.html", "1.html"];
+window.location.replace(urls[Math.floor(Math.random() * urls.length)]);
+</script>
+```
+
+This placement, not an implementation detail, is what makes the page's own analytics pageview reliable: `MAGNETIZER_PAGE_SCRIPTS` is injected just before `</body>`, after the sitewide tracking pixel/beacon a project's template fires earlier in the page (see [Templates](#templates)) — so by the time this script runs and navigates away, that pageview has already been sent. Putting the same script in `MAGNETIZER_CONTENT` instead, higher up the page, would risk the browser leaving before the tracking markup below it is even parsed.
+
+The URL list is every dated, published, non-draft post's own `url` — the same population `feed.xml` draws from (see [Atom feed](#atom-feed)) — rebuilt from scratch on every full build, so it always reflects the current set of posts: a `noindex: true` post is still included (same reasoning as the archive and the feed: `noindex` only affects search-engine indexing, not ordinary navigation), a `draft: true` post is not. If there are no qualifying posts, the generated script updates `#random-status` with a message instead of redirecting anywhere:
+
+```html
+<script>
+document.getElementById("random-status").textContent = "No posts to send you to yet.";
+</script>
+```
+
+Notes:
+
+- `random.html` is generated under the same conditions as `archive.html` and `search.html` — on full builds, not on single-file preview builds.
+- The page title is `Random post - {site_name}`, overridable via `metadata.yaml`'s `random` key (see [Page metadata overrides](#page-metadata-overrides)) — `random` is a valid key there, the same as `index`/`archive`/`search`/`gallery`, and (like those) a reserved slug: a category or special page named `random` is a build error.
+- `random.html` gets a `<meta name="robots" content="noindex">` tag, the same mechanism used for a `noindex: true` post or special page (see [Noindex posts](#noindex-posts)) — this is what actually keeps it out of search results. `robots.txt` is left untouched: a blanket `Disallow` would stop crawlers from ever reaching the page to see that `noindex` tag in the first place, the same reasoning that already applies to a `noindex` post.
+- `random.html` is excluded from `sitemap.xml` and `feed.xml` entirely (not just marked `noindex`), and from `posts.json` — the same treatment `search.html` already gets from all three, since neither page is itself a piece of content worth cataloguing.
+- `random.html`'s `<main>` carries `data-pagefind-ignore`, the same as `search.html`'s, so it never appears as a Pagefind search result.
+- `random.html` is not part of `MAGNETIZER_NAVIGATION` — same reasoning as `search.html`: a nav entry for it is a project template concern.
+
+### Archive link
+
+The archive page (see [Archive page](#archive-page)) carries a link to `random.html`:
+
+```html
+<p class="archive-random"><a href="random.html">Jump to a random post →</a></p>
+```
+
+It sits where the "Blog Posts" `<h2>` sits — immediately after it when categories or the photo archive are shown above the monthly list (so the heading exists; favourites alone don't trigger that heading — see [Archive page](#archive-page)), and in that same position relative to the monthly list when none of those are shown and the heading is therefore absent. Either way, it's always before the monthly post list, and always present regardless of how many (if any) dated posts exist.
+
 ## GitHub integration
 
 The generated site is published to a dedicated GitHub Pages repository, separate from both the Magnetizer application and the user's project — typically by a CI pipeline (outside Magnetizer's own scope) that checks it out into `dist/`, runs a build, and pushes the result.
