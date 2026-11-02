@@ -201,8 +201,10 @@ Every post gets a non-empty heading and page `<title>`, built from the same prio
 
 1. `title`, if set
 2. `name`, if set — a frontmatter field used only as a fallback label when there's no `title`
-3. An excerpt of the post's own first paragraph (plaintext, tags stripped, truncated to 40 characters after the last full word), if its body has one
+3. An excerpt of the post's own first paragraph (plaintext, tags and emoji stripped, truncated to 40 characters after the last full word), if its body has any non-emoji content
 4. Otherwise, a generated fallback based on post type and top-level image count: `Note posted {date}`, `Photo posted {date}` (one image), or `Photos posted {date}` (more than one)
+
+Emoji stripping only applies to that generated excerpt — `title` and `name` are your own explicit text and are left exactly as written. A paragraph that's emoji-only ends up with nothing left after stripping, so it falls through to the generated fallback, same as an empty paragraph would.
 
 For an Image post or Note, the heading exists in the HTML (for the document outline and screen readers, since the index/category pages mix titled and untitled posts) but isn't shown visually — hiding it is left to your own `resources/` CSS, keyed off the `full-post`/`image-post`/`note` class on the `<article>`; Magnetizer itself never hides it.
 
