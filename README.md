@@ -413,10 +413,10 @@ Whitespace inside the braces is optional (`{{post_count}}` and `{{ post_count }}
 | `{{ image_count }}` | Total number of images across all published posts |
 | `{{ today }}` | The build date, as `D/M/YY` (e.g. `17/7/26`) |
 | `{{ now }}` | The build date and time, e.g. `2.43 pm on 24 September 2026` |
-| `{{ ai_post_list }}` | A `<ul>` of posts with `ai_assisted: true`, newest first |
-| `{{ favourite_post_list }}` | A `<ul>` of posts with `favourite: true`, newest first |
+| `{{ ai_post_list }}` | A `<ul>` of posts with `ai_assisted: true`, newest first by `date` |
+| `{{ favourite_post_list }}` | A `<ul>` of posts with `favourite: true`, newest first by `updated` (or `date` if unset) |
 
-"Published posts" means posts with their own page — special pages, index/category/archive pages don't count. The three counts (`post_count`, `word_count`, `image_count`) are drawn only from that set. `{{ ai_post_list }}` and `{{ favourite_post_list }}` are the exceptions — a special page with `ai_assisted: true` or `favourite: true` shows up there too, alongside qualifying posts, even though it's never counted. Numbers 1,000 and above render with a comma thousands-separator (e.g. `12,345`).
+"Published posts" means posts with their own page — special pages, index/category/archive pages don't count. The three counts (`post_count`, `word_count`, `image_count`) are drawn only from that set. `{{ ai_post_list }}` and `{{ favourite_post_list }}` are the exceptions — a special page with `ai_assisted: true` or `favourite: true` shows up there too, alongside qualifying posts, even though it's never counted. `{{ favourite_post_list }}` ranks by whichever is more recent, `updated` or `date` (the same precedence the Atom feed uses for its own `<updated>` timestamps — see the `updated` entry in [Frontmatter reference](#frontmatter-reference)), so a long-published favourite that was recently revised outranks one nobody's touched since; `{{ ai_post_list }}` only ever looks at `date`. Numbers 1,000 and above render with a comma thousands-separator (e.g. `12,345`).
 
 Each expanded value is wrapped for styling: scalars in `<span class="post-count">42</span>` (underscores in the name become hyphens in the class); `{{ ai_post_list }}` and `{{ favourite_post_list }}` render their own `<ul class="ai-post-list">` / `<ul class="favourite-post-list">`, or that same `<ul>` with just `<li>(none)</li>` if no posts qualify. Put either on its own line (blank lines before and after) so it isn't trapped inside a `<p>`.
 
@@ -513,19 +513,21 @@ If the blog has at least one qualifying photo (see [Gallery page](#gallery-page)
 
 Each thumbnail uses the same thumbnail file, alt text, and dimensions as on the gallery page itself, newest first, and links to the post that photo belongs to (not to `gallery.html`). Fewer than 5 thumbnails appear if the blog has fewer than 5 photos in total. The `<p class="archive-gallery-count">` link always follows the list and always links to `gallery.html`; its count reflects every qualifying photo on the site, not just the ones shown as thumbnails. Magnetizer emits no icon here — same as the `favourite` class's star — any icon is added entirely by the project's own CSS.
 
-`archive-categories` and `archive-photos` sit side by side inside `archive-columns` — whichever of the two exist; if only one does, it's the sole child. Like `archive-months`, this is bare structure for a project's CSS to lay out on wide viewports (e.g. a two-column flex row); Magnetizer ships no default column CSS or breakpoint of its own.
-
-If at least one post or favourited special page has `favourite: true`, a `<h2>Personal Picks</h2>` heading and its `<ul class="favourite-post-list">` are inserted right after `archive-columns`, below the photo archive:
+If at least one post or favourited special page has `favourite: true`, a `<div class="archive-favourites">` section is inserted alongside the categories and photo archive:
 
 ```html
-<h2>Personal Picks</h2>
-<ul class="favourite-post-list">
-  <li><a href="42.html">Post title</a></li>
-  ...
-</ul>
+<div class="archive-favourites">
+  <h2>Personal Picks</h2>
+  <ul class="favourite-post-list">
+    <li><a href="42.html">Post title</a></li>
+    ...
+  </ul>
+</div>
 ```
 
-This is the same list `{{ favourite_post_list }}` renders (see [Dynamic shortcodes](#dynamic-shortcodes)): newest first, favourited special pages included alongside favourited posts. It's omitted entirely when nothing qualifies — unlike `{{ favourite_post_list }}`, the archive never shows the `<li>(none)</li>` fallback.
+This is the same list `{{ favourite_post_list }}` renders (see [Dynamic shortcodes](#dynamic-shortcodes)): newest first by `updated` (falling back to `date`), favourited special pages included alongside favourited posts. It's omitted entirely when nothing qualifies — unlike `{{ favourite_post_list }}`, the archive never shows the `<li>(none)</li>` fallback.
+
+`archive-categories`, `archive-photos`, and `archive-favourites` all sit inside `archive-columns` — whichever of the three exist; if only one does, it's the sole child. Unlike a fixed two-column pair, up to three blocks of uneven height need to flow and balance across a 2-column layout without any one splitting across the break — the same job `archive-months` already does for month sections — so pair `archive-columns` with CSS multi-column flow (`column-count: 2`) rather than `display: flex`, giving each direct child `break-inside: avoid`. Magnetizer ships no default column CSS or breakpoint of its own.
 
 The page always ends with a `<h2>Browse all posts by page</h2>` section linking to every paginated index page by number, middle-dot separated:
 

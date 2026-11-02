@@ -7,7 +7,7 @@
 
 ### 02/11/26
 
-- Added `{{ favourite_post_list }}` and archive "Personal Picks" section
+- Added `{{ favourite_post_list }}`, ranked by `updated`, and archive picks
 
 ### 01/11/26
 

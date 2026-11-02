@@ -547,7 +547,12 @@ def render_archive_page_content(posts, categories=None, build_date=None, build_d
             f'<span>{len(photos)}</span> photos in the archive</a></p>',
         ]
 
-    has_sections = bool(category_block) or bool(photos_block)
+    favourite_candidates = [p for p in posts + (special_pages or []) if p.is_favourite]
+    favourites_block = []
+    if favourite_candidates:
+        favourites_block = ['<h2>Personal Picks</h2>', render_favourite_post_list(favourite_candidates)]
+
+    has_sections = bool(category_block) or bool(photos_block) or bool(favourites_block)
 
     if has_sections:
         parts.append('<div class="archive-columns">')
@@ -559,12 +564,11 @@ def render_archive_page_content(posts, categories=None, build_date=None, build_d
             parts.append('<div class="archive-photos">')
             parts.extend(photos_block)
             parts.append('</div>')
+        if favourites_block:
+            parts.append('<div class="archive-favourites">')
+            parts.extend(favourites_block)
+            parts.append('</div>')
         parts.append('</div>')
-
-    favourite_candidates = [p for p in posts + (special_pages or []) if p.is_favourite]
-    if favourite_candidates:
-        parts.append('<h2>Personal Picks</h2>')
-        parts.append(render_favourite_post_list(favourite_candidates))
 
     if has_sections:
         parts.append('<h2>Blog Posts</h2>')

@@ -2019,11 +2019,26 @@ class TestArchiveColumnsLayout:
         html = render_archive_page_content([make_dated_post(1, "2026-05-24")], photos=[make_photo()])
         assert '<div class="archive-photos">\n<h2>Photo archive</h2>' in html
 
-    def test_columns_container_has_both_divs_when_both_present(self):
-        post = make_dated_post(1, "2026-05-24", category="photography")
+    def test_favourites_div_wraps_personal_picks_heading_and_list(self):
+        post = make_dated_post(1, "2026-05-24", title="Hello", is_favourite=True)
+        html = render_archive_page_content([post])
+        assert '<div class="archive-favourites">\n<h2>Personal Picks</h2>' in html
+
+    def test_favourites_div_is_inside_columns_container(self):
+        post = make_dated_post(1, "2026-05-24", title="Hello", is_favourite=True)
+        html = render_archive_page_content([post])
+        assert (
+            html.index('<div class="archive-columns">')
+            < html.index('<div class="archive-favourites">')
+            < html.index("<h2>Browse all posts by page</h2>")
+        )
+
+    def test_columns_container_has_all_divs_when_all_present(self):
+        post = make_dated_post(1, "2026-05-24", category="photography", is_favourite=True)
         html = render_archive_page_content([post], categories=_CATEGORIES, photos=[make_photo()])
         assert "archive-categories" in html
         assert "archive-photos" in html
+        assert "archive-favourites" in html
 
     def test_columns_container_present_with_only_categories(self):
         post = make_dated_post(1, "2026-05-24", category="photography")
@@ -2031,14 +2046,24 @@ class TestArchiveColumnsLayout:
         assert '<div class="archive-columns">' in html
         assert "archive-categories" in html
         assert "archive-photos" not in html
+        assert "archive-favourites" not in html
 
     def test_columns_container_present_with_only_photos(self):
         html = render_archive_page_content([make_dated_post(1, "2026-05-24")], photos=[make_photo()])
         assert '<div class="archive-columns">' in html
         assert "archive-photos" in html
         assert "archive-categories" not in html
+        assert "archive-favourites" not in html
 
-    def test_no_columns_container_when_neither_categories_nor_photos(self):
+    def test_columns_container_present_with_only_favourites(self):
+        post = make_dated_post(1, "2026-05-24", title="Hello", is_favourite=True)
+        html = render_archive_page_content([post])
+        assert '<div class="archive-columns">' in html
+        assert "archive-favourites" in html
+        assert "archive-categories" not in html
+        assert "archive-photos" not in html
+
+    def test_no_columns_container_when_nothing_qualifies(self):
         html = render_archive_page_content([make_dated_post(1, "2026-05-24")])
         assert "archive-columns" not in html
 

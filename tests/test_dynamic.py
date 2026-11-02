@@ -226,6 +226,24 @@ class TestRenderFavouritePostList:
         assert "Post" in result
         assert "Syntax" in result
 
+    def test_sorted_by_updated_date_when_present(self):
+        # An older post that was recently revised should outrank a newer, untouched
+        # one -- "newest" here means most recently created *or* updated.
+        posts = [
+            make_post(post_id=1, date="2026-01-01", updated="2026-08-01", title="Revised", is_favourite=True),
+            make_post(post_id=2, date="2026-06-01", title="Untouched", is_favourite=True),
+        ]
+        result = render_favourite_post_list(posts)
+        assert result.index("Revised") < result.index("Untouched")
+
+    def test_falls_back_to_date_when_no_updated(self):
+        posts = [
+            make_post(post_id=1, date="2026-01-01", title="Older", is_favourite=True),
+            make_post(post_id=2, date="2026-06-01", title="Newer", is_favourite=True),
+        ]
+        result = render_favourite_post_list(posts)
+        assert result.index("Newer") < result.index("Older")
+
 
 # ---------------------------------------------------------------------------
 # compute_base_values

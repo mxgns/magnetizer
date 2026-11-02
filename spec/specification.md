@@ -1121,7 +1121,7 @@ An unknown shortcode name (matching the `{{ ... }}` pattern but not one of the n
 
 `{{ ai_post_list }}` and `{{ favourite_post_list }}` are the exceptions: a special page with `ai_assisted: true` or `favourite: true` also appears in the corresponding list (sorted alongside qualifying posts by the same rules), even though it's never counted by `post_count` or any other value. Generated pages (index, category, archive) never contribute to either regardless.
 
-`word_count` expands every other recognised shortcode in a post's body first (so e.g. a title shown via `{{ ai_post_list }}` counts towards the total), and treats any `{{ word_count }}` occurrence in the body as empty, to avoid circularity. `image_count` sums each published post's image count. `{{ ai_post_list }}` and `{{ favourite_post_list }}` each sort newest-first by frontmatter date, ties broken by descending filename number, and render `<ul class="ai-post-list"><li>(none)</li></ul>` / `<ul class="favourite-post-list"><li>(none)</li></ul>` respectively if no post qualifies.
+`word_count` expands every other recognised shortcode in a post's body first (so e.g. a title shown via `{{ ai_post_list }}` counts towards the total), and treats any `{{ word_count }}` occurrence in the body as empty, to avoid circularity. `image_count` sums each published post's image count. `{{ ai_post_list }}` sorts newest-first by frontmatter `date`; `{{ favourite_post_list }}` sorts newest-first by `updated` (falling back to `date` if `updated` is unset) — the same precedence the Atom feed uses for its own `<updated>` timestamps (see [Posts](#posts)) — so a long-published favourite that was recently revised outranks one nobody has touched since. Both break ties by descending filename number, and render `<ul class="ai-post-list"><li>(none)</li></ul>` / `<ul class="favourite-post-list"><li>(none)</li></ul>` respectively if no post qualifies.
 
 Integers are formatted with a comma thousands-separator for values of 1,000 and above (e.g. `12,345`), matching ordinary UK usage.
 
@@ -1173,12 +1173,14 @@ The `MAGNETIZER_CONTENT` has the following structure:
 </ol>
 <p class="archive-gallery-count"><a href="gallery.html"><span>N</span> photos in the archive</a></p>
 </div>
-</div>
+<div class="archive-favourites">
 <h2>Personal Picks</h2>
 <ul class="favourite-post-list">
   <li><a href="POST_URL">POST_TITLE</a></li>
   ...
 </ul>
+</div>
+</div>
 <h2>Blog Posts</h2>
 <div class="archive-months">
   <section>
@@ -1199,12 +1201,12 @@ The `MAGNETIZER_CONTENT` has the following structure:
 Where:
 
 - The contribution calendar (`<section class="contribution-calendar">`) is always present, immediately after the `<h1>` — see [Contribution calendar](#contribution-calendar), which also covers the `<p class="last-updated">` nested at the end of it.
-- `<div class="archive-columns">` wraps whichever of `<div class="archive-categories">` / `<div class="archive-photos">` are present, as a stable pair of blocks a project's CSS can lay out side by side on wide viewports (see [Archive column layout](#archive-column-layout)). It's included whenever either is shown, and omitted entirely when neither is.
+- `<div class="archive-columns">` wraps whichever of `<div class="archive-categories">` / `<div class="archive-photos">` / `<div class="archive-favourites">` are present — a sequence of independent blocks a project's CSS can arrange on wide viewports, e.g. via CSS multi-column flow (see [Archive column layout](#archive-column-layout)). It's included whenever at least one of the three is shown, and omitted entirely when none are.
 - The `<h2>Categories</h2>` heading and its `<ul>`, together in `<div class="archive-categories">`, are only included if `categories` is configured and at least one configured category has a matching post. Each `<li>` links to the corresponding category page (see [Categories](#categories)) and includes the number of posts `(N)` in that category. Categories are listed in descending order of post count; categories with no matching posts are omitted.
 - The `<h2>Photo archive</h2>` heading, its `<ol class="archive-gallery-preview">`, and the `<p class="archive-gallery-count">` after it, together in `<div class="archive-photos">`, are only included when at least one photo qualifies for the gallery (see [Gallery page](#gallery-page)) — the same condition that decides whether `gallery.html` itself is generated.
 - `<ol class="archive-gallery-preview">` shows the most recent photos first (the same order as [the gallery page](#gallery-page)), as up to 5 `<li>` thumbnails. Fewer than 5 appear if fewer than 5 photos exist in total. Each thumbnail's `<a>` links to `POST_URL` — the post that photo belongs to, same as on [the gallery page](#gallery-page) — not to `gallery.html` itself. `THUMB`, `ALT_TEXT`, `W`, and `H` are the same thumbnail file, alt text, and pixel dimensions used for that photo on the gallery page.
 - `<p class="archive-gallery-count">` is a single link to `gallery.html`, always present whenever the photo archive section is shown: `<span>N</span> photos in the archive`, where `N` (wrapped in its own `<span>` for numeric styling, the same convention as the contribution calendar's counts — see [Contribution calendar](#contribution-calendar)) is the total count of qualifying photos across the whole site, not just those shown as thumbnails. Magnetizer emits no icon markup here — like `favourite` (see [Favourite posts](#favourite-posts)), any icon is purely a project CSS concern, added via its own selector rather than baked into the generated HTML.
-- The `<h2>Personal Picks</h2>` heading and its `<ul class="favourite-post-list">`, placed below `archive-columns` (i.e. below the photo archive and categories, if either is shown), are only included when at least one post or favourited special page qualifies (`favourite: true`) — omitted entirely otherwise, not shown with an `<li>(none)</li>` fallback. The list is exactly `{{ favourite_post_list }}`'s output (see [Dynamic shortcodes](#dynamic-shortcodes)): newest-first by frontmatter date, ties broken by descending filename number, favourited special pages included alongside favourited posts.
+- The `<h2>Personal Picks</h2>` heading and its `<ul class="favourite-post-list">`, together in `<div class="archive-favourites">` (the third possible child of `archive-columns`, after `archive-categories` and `archive-photos`), are only included when at least one post or favourited special page qualifies (`favourite: true`) — omitted entirely otherwise, not shown with an `<li>(none)</li>` fallback. The list is exactly `{{ favourite_post_list }}`'s output (see [Dynamic shortcodes](#dynamic-shortcodes)): newest-first by `updated` (falling back to `date` if unset), ties broken by descending filename number, favourited special pages included alongside favourited posts.
 - The `<h2>Blog Posts</h2>` heading is only included when the categories list, the photo archive section, or both, are shown — independently of whether "Personal Picks" is shown.
 - `<div class="archive-months">` wraps every month `<section>`, so a project's CSS can flow them across multiple columns on wide viewports (see [Archive column layout](#archive-column-layout)). It's included whenever at least one dated post exists, and omitted when there are none.
 - Each month heading is an `<h3>` — one level below `<h2>Blog Posts</h2>` — since it's a subsection of the monthly list, not a sibling of it.
@@ -1222,7 +1224,7 @@ Where:
 
 `archive-columns` and `archive-months` (see [Archive page](#archive-page)) exist purely so a project's own CSS can arrange the archive into columns on wide viewports, without Magnetizer needing any opinion on the breakpoint or column count — Magnetizer only guarantees the wrapper elements are there, grouped the way a column layout needs:
 
-- `archive-columns` groups `archive-categories` and `archive-photos` as two adjacent, independently-sized blocks — suited to a simple two-column flex/grid row (categories on one side, the photo archive teaser on the other), each with its own heading pinned to the top of its column. When only one of the two is present, it's the sole child of `archive-columns`.
+- `archive-columns` groups whichever of `archive-categories`, `archive-photos`, and `archive-favourites` are present as independently-sized blocks, each with its own heading pinned to its top — suited to CSS multi-column flow (`column-count`/`columns`) the same way `archive-months` is, so the browser can balance two or three blocks of uneven height across columns without any one of them splitting across a column break (a project's CSS would give each block `break-inside: avoid`). A simple two-column flex/grid row also still works when at most two of the three are ever present at once. When only one is present, it's the sole child of `archive-columns`.
 - `archive-months` groups every month `<section>` as a flat sequence of same-shaped blocks — suited to CSS multi-column flow (`column-count`/`columns`), which distributes them across columns automatically, balancing column length without Magnetizer needing to decide which months go in which column itself.
 
 Magnetizer emits no inline styles and ships no default column CSS, same as everywhere else — narrow viewports get the same single-column stacked layout as before unless a project's `resources/` CSS adds a wide-viewport rule.

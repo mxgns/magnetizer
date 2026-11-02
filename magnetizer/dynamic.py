@@ -45,15 +45,15 @@ def format_now(build_datetime) -> str:
     return f"{time_str} on {build_datetime.day} {build_datetime:%B} {build_datetime.year}"
 
 
-def _render_post_list(matching, css_class) -> str:
+def _render_post_list(matching, css_class, recency) -> str:
     if not matching:
         return f'<ul class="{css_class}"><li>(none)</li></ul>'
     # Special pages carry a string id (their name) rather than an int post id, so a
-    # plain (date, id) key would raise when sorting a mix of the two — group by
+    # plain (recency, id) key would raise when sorting a mix of the two — group by
     # id-type first (only ever compared within the same type) as a tie-break.
     matching = sorted(
         matching,
-        key=lambda p: (p.date or "", 1, p.id) if isinstance(p.id, int) else (p.date or "", 0, p.id),
+        key=lambda p: (recency(p) or "", 1, p.id) if isinstance(p.id, int) else (recency(p) or "", 0, p.id),
         reverse=True,
     )
     items = "".join(
@@ -64,11 +64,18 @@ def _render_post_list(matching, css_class) -> str:
 
 
 def render_ai_post_list(published_posts) -> str:
-    return _render_post_list([p for p in published_posts if p.is_ai_assisted], "ai-post-list")
+    return _render_post_list([p for p in published_posts if p.is_ai_assisted], "ai-post-list", recency=lambda p: p.date)
 
 
 def render_favourite_post_list(published_posts) -> str:
-    return _render_post_list([p for p in published_posts if p.is_favourite], "favourite-post-list")
+    # Unlike ai_post_list, a favourite's rank reflects its most recent touch, not
+    # just when it was first published -- an old post revised today should outrank
+    # a newer post nobody has looked at since. Same precedence feed.py uses for its
+    # own <updated> timestamps.
+    return _render_post_list(
+        [p for p in published_posts if p.is_favourite], "favourite-post-list",
+        recency=lambda p: p.updated or p.date,
+    )
 
 
 def compute_base_values(
