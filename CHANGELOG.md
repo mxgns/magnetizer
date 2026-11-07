@@ -5,6 +5,10 @@
 
 ## Released changes
 
+### 07/11/26
+
+- Added `external_paths` config, exempting other Workers' routes from linkcheck
+
 ### 02/11/26
 
 - Added `random.html`: redirects to a random post, linked from the archive

@@ -164,3 +164,41 @@ class TestCheckInternalLinks:
         dist = tmp_path / "dist"
         dist.mkdir()
         assert check_internal_links(dist, SITE_URL) == []
+
+    def test_link_matching_external_path_prefix_not_checked(self, tmp_path):
+        dist = tmp_path / "dist"
+        dist.mkdir()
+        _write(dist, "1.html", '<a href="/api/guestbook/author-login">sign in</a>')
+        assert check_internal_links(dist, SITE_URL, external_paths=["/api"]) == []
+
+    def test_relative_link_resolving_under_external_path_not_checked(self, tmp_path):
+        dist = tmp_path / "dist"
+        dist.mkdir()
+        _write(dist, "1.html", '<a href="analytics/">analytics</a>')
+        assert check_internal_links(dist, SITE_URL, external_paths=["/analytics"]) == []
+
+    def test_external_path_prefix_matches_exactly_not_just_as_substring(self, tmp_path):
+        # "/api" must not match "/apikey.html" -- only "/api" itself or
+        # anything under "/api/...".
+        dist = tmp_path / "dist"
+        dist.mkdir()
+        _write(dist, "1.html", '<a href="/apikey.html">missing</a>')
+        assert check_internal_links(dist, SITE_URL, external_paths=["/api"]) == [
+            ("1.html", "Broken internal link: '/apikey.html'")
+        ]
+
+    def test_path_not_matching_any_external_prefix_still_checked(self, tmp_path):
+        dist = tmp_path / "dist"
+        dist.mkdir()
+        _write(dist, "1.html", '<a href="/other/missing.html">nope</a>')
+        assert check_internal_links(dist, SITE_URL, external_paths=["/api"]) == [
+            ("1.html", "Broken internal link: '/other/missing.html'")
+        ]
+
+    def test_external_paths_defaults_to_none_configured(self, tmp_path):
+        dist = tmp_path / "dist"
+        dist.mkdir()
+        _write(dist, "1.html", '<a href="/api/guestbook/author-login">sign in</a>')
+        assert check_internal_links(dist, SITE_URL) == [
+            ("1.html", "Broken internal link: '/api/guestbook/author-login'")
+        ]

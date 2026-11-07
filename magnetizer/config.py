@@ -18,6 +18,7 @@ DEFAULTS = {
     "default_category": "",
     "navigation": {},
     "special_pages": [],
+    "external_paths": [],
     "ai_disclosure_html": None,
     "404-page-input-filename": None,
     "404-page-output-filename": None,
