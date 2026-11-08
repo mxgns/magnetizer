@@ -235,15 +235,16 @@ Examples:
     - Delete any files related to the post (Markdown or images) from `dist/`
     - If  `{post-id}.md` exists in  `content/`, then generate the post HTML and resize and copy any associated images to `dist/` — writing both the resized image and its thumbnail for each raster image
 7. If `--refresh`: for every post *not* already processed in step 6 this run (i.e. not genuinely changed), re-render its HTML from its already-built images in `dist/` — no deleting, no resizing, no thumbnailing — and force every special page and the 404 page (if configured) to rebuild, regardless of whether either would otherwise be considered stale (see [Dynamic values](#dynamic-values) for what "stale" normally means here). A forced special/404 page rebuild skips its own image processing the same way, unless that page's own files did genuinely change, in which case its images are still deleted and reprocessed as normal. This is the one step unique to `--refresh`; everything else it does is simply "don't skip the following steps just because nothing changed."
-8. If there were any changes made in steps 6 or 7:
+8. Independently of steps 5-7 (which only concern posts), each special page and the 404 page (if configured) is checked for staleness and rebuilt here too, following the same rule as step 5: its own `.md` file or images changed since the last build, or — only if step 6 changed something elsewhere this run — it was flagged `dynamic: true` in the previous manifest (see [Dynamic values](#dynamic-values)). `--refresh` (step 7) already forced every special/404 page to rebuild, so this step is a no-op for them when `--refresh` is set.
+9. If there were any changes made in steps 6, 7, or 8:
     1. Regenerate all the index, category, gallery and archive pages
     2. Update the build manifest
     
-9. Sync `resources/` to `dist/resources/`:
+10. Sync `resources/` to `dist/resources/`:
     - If `--flush` or `--resources`: delete `dist/resources/` and copy all files from `resources/`
     - Otherwise: copy any files from `resources/` that are new or changed since the last build (detected via the manifest), and delete any files from `dist/resources/` that no longer exist in `resources/`
-10. During the build, print a `.` for each file generated or updated (flushed immediately, all on one line). When the build completes, erase the dots line in normal mode; keep it in verbose mode (followed by a newline).
-11. Print console output and exit. The output format depends on whether `--verbose` is passed:
+11. During the build, print a `.` for each file generated or updated (flushed immediately, all on one line). When the build completes, erase the dots line in normal mode; keep it in verbose mode (followed by a newline).
+12. Print console output and exit. The output format depends on whether `--verbose` is passed:
 
     **Normal output** (only posts with warnings are listed):
 
