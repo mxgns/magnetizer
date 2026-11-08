@@ -1,7 +1,7 @@
 import html
 import posixpath
 from pathlib import Path
-from urllib.parse import urlsplit
+from urllib.parse import unquote, urlsplit
 
 from magnetizer.content import _A_TAG_RE, _HREF_ATTR_RE, _is_external_href
 
@@ -14,6 +14,10 @@ def _matches_external_path(path, external_paths):
     anything nested under it, never just a string-prefix match, so "/api"
     matches "/api/x" but not "/apikey.html"."""
     for prefix in external_paths:
+        if not prefix:
+            # An empty entry, rstrip('/')'d down to "", would otherwise
+            # match every path via the startswith('/') check below.
+            continue
         prefix = prefix.rstrip('/')
         if path == prefix or path.startswith(prefix + '/'):
             return True
@@ -36,12 +40,17 @@ def _internal_target(href, site_url, external_paths=()):
         return None
     if not split.path:
         return None
+    # Decode percent-encoded dot segments (e.g. "%2e%2e") before collapsing
+    # them -- a browser resolves "/api/%2e%2e/x.html" to "/x.html" exactly
+    # like "/api/../x.html", and target/external_paths matching below must
+    # see the same resolved path a browser would navigate to.
+    #
     # normpath collapses dot segments (./2.html, ../2.html) the same way a
     # browser resolves them against a page -- and since every Magnetizer
     # page lives flat at dist/'s root, a leading ".." has nowhere to go
     # above it, so it collapses down to the root the same way it would in
     # a browser resolving it against a directory-less page URL.
-    path = posixpath.normpath('/' + split.path.lstrip('/'))
+    path = posixpath.normpath('/' + unquote(split.path).lstrip('/'))
     if _matches_external_path(path, external_paths):
         return None
     return 'index.html' if path == '/' else path.lstrip('/')
