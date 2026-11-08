@@ -7,6 +7,7 @@
 
 ### 08/11/26
 
+- Bumped pymdown-extensions to 12.3, pinning smart_mark to keep old behavior
 - Added `ruff check` to CI, with an explicitly pinned rule set
 - Fixed: blog refresh dispatch passed a `refresh` input Blog's workflow dropped
 - Extracted shared _write_paginated_page helper for index/category/gallery
