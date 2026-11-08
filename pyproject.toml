@@ -1,0 +1,5 @@
+[tool.ruff.lint]
+# Pin the rule set explicitly rather than inheriting ruff's own "default" --
+# that default has grown well beyond pyflakes/pycodestyle in past versions,
+# and a ruff upgrade silently expanding it would turn CI red out of nowhere.
+select = ["E4", "E7", "E9", "F"]

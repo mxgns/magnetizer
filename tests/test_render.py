@@ -4,7 +4,6 @@ import json
 from datetime import date, datetime, timedelta
 from html.parser import HTMLParser
 
-import pytest
 from magnetizer.content import Image, Post
 from magnetizer.render import (
     canonical_url,

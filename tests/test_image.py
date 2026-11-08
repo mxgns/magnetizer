@@ -1,7 +1,6 @@
 """Tests for magnetizer/image.py — resize_image()"""
 
 import pytest
-from pathlib import Path
 from PIL import Image as PILImage
 from magnetizer.image import resize_image, image_dimensions, source_image_dimensions
 

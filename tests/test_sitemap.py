@@ -1,6 +1,5 @@
 """Tests for magnetizer/sitemap.py — render_sitemap() and render_robots_txt()"""
 
-import pytest
 from magnetizer.sitemap import render_sitemap, render_robots_txt
 
 

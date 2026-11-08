@@ -2,7 +2,6 @@
 
 import os
 import subprocess
-from pathlib import Path
 from unittest.mock import patch
 
 from magnetizer.mtimes import restore_mtimes

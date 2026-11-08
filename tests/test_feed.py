@@ -3,7 +3,6 @@
 import xml.etree.ElementTree as ET
 from xml.etree.ElementTree import Element as _El
 
-import pytest
 
 from magnetizer.content import Image, Post
 from magnetizer.feed import render_feed
@@ -49,13 +48,13 @@ class TestFeedStructure:
     def test_feed_link_href_uses_site_url(self):
         root = parse([make_post()])
         links = root.findall(el("link"))
-        hrefs = [l.get("href") for l in links]
+        hrefs = [link.get("href") for link in links]
         assert "https://example.github.io" in hrefs
 
     def test_feed_self_link_points_to_feed_xml(self):
         root = parse([make_post()])
         links = root.findall(el("link"))
-        self_link = next(l for l in links if l.get("rel") == "self")
+        self_link = next(link for link in links if link.get("rel") == "self")
         assert self_link.get("href") == "https://example.github.io/feed.xml"
 
     def test_feed_id_has_trailing_slash(self):

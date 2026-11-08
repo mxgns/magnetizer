@@ -221,7 +221,7 @@ class TestMarkdownFileCreation:
         content = (project_dir / "content" / "1.md").read_text()
         assert content.startswith("---\n")
         lines = content.splitlines()
-        closing_dashes = [i for i, l in enumerate(lines) if l == "---"]
+        closing_dashes = [i for i, line in enumerate(lines) if line == "---"]
         assert len(closing_dashes) >= 2
 
 
