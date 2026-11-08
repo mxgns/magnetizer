@@ -318,6 +318,21 @@ def _metadata_description(metadata, key):
     return (metadata or {}).get(key, {}).get("description")
 
 
+def _write_paginated_page(dist_dir, config, template, filename, title, content_html, description, page_num):
+    """Render and write one page of a paginated listing (index/category/gallery)
+    -- the single source of truth for the canonical/meta_description/navigation
+    plumbing shared by all three, which otherwise differ only in how title and
+    content_html are computed."""
+    html = render_template(
+        template, title=title, content=content_html,
+        canonical=canonical_url(config["site_url"], filename),
+        meta_description=render_page_meta_description(description, page_num),
+        navigation=render_navigation(config["navigation"], filename),
+        page_id=_page_id(filename),
+    )
+    (dist_dir / filename).write_text(html)
+
+
 def _write_post_html(post, dist_dir, config, template, newer_url=None, older_url=None, categories=None):
     content_html = render_post_page_content(post, newer_url=newer_url, older_url=older_url, categories=categories, ai_disclosure_html=config["ai_disclosure_html"])
     title = render_page_title(config["site_name"], post_display_text(post), page_num=None)
@@ -343,12 +358,7 @@ def _write_index_pages(posts_sorted_desc, dist_dir, config, template, categories
         content_html = render_index_page_content(slice_, page_num, total_pages, categories=categories, ai_disclosure_html=config["ai_disclosure_html"], images_per_post=config["images_per_post"])
         title = render_page_title(config["site_name"], None, page_num=page_num, index_title=index_title)
         filename = index_page_url(page_num)
-        html = render_template(template, title=title, content=content_html,
-                               canonical=canonical_url(config["site_url"], filename),
-                               meta_description=render_page_meta_description(index_description, page_num),
-                               navigation=render_navigation(config["navigation"], filename),
-                               page_id=_page_id(filename))
-        (dist_dir / filename).write_text(html)
+        _write_paginated_page(dist_dir, config, template, filename, title, content_html, index_description, page_num)
 
 
 def _category_pages(posts_sorted_desc, categories, per_page):
@@ -384,12 +394,7 @@ def _write_category_pages(posts_sorted_desc, dist_dir, config, template, metadat
             )
             title = render_page_title(config["site_name"], title_text, page_num=None)
             filename = category_page_url(slug, page_num)
-            html = render_template(template, title=title, content=content_html,
-                                   canonical=canonical_url(config["site_url"], filename),
-                                   meta_description=render_page_meta_description(description, page_num),
-                                   navigation=render_navigation(config["navigation"], filename),
-                                   page_id=_page_id(filename))
-            (dist_dir / filename).write_text(html)
+            _write_paginated_page(dist_dir, config, template, filename, title, content_html, description, page_num)
 
 
 def _gallery_photos(posts_sorted_desc, dist_dir):
@@ -440,12 +445,7 @@ def _write_gallery_pages(photos, dist_dir, config, template, metadata=None):
         content_html = render_gallery_page_content(slice_, page_num, total_pages)
         title = render_page_title(config["site_name"], title_text, page_num=None)
         filename = gallery_page_url(page_num)
-        html = render_template(template, title=title, content=content_html,
-                               canonical=canonical_url(config["site_url"], filename),
-                               meta_description=render_page_meta_description(description, page_num),
-                               navigation=render_navigation(config["navigation"], filename),
-                               page_id=_page_id(filename))
-        (dist_dir / filename).write_text(html)
+        _write_paginated_page(dist_dir, config, template, filename, title, content_html, description, page_num)
 
 
 def _special_page_image_filenames(content_dir, name):
