@@ -5,6 +5,10 @@
 
 ## Released changes
 
+### 08/11/26
+
+- Extracted shared _write_paginated_page helper for index/category/gallery
+
 ### 07/11/26
 
 - Added `external_paths` config, exempting other Workers' routes from linkcheck
