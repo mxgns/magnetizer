@@ -21,6 +21,11 @@ def special_page_comment_pattern(name):
 
 _ALLOWED_FRONTMATTER_KEYS = frozenset({'date', 'updated', 'title', 'name', 'images', 'favourite', 'category', 'ai_assisted', 'noindex', 'draft', 'description'})
 _MARKDOWN_EXTENSIONS = ['pymdownx.mark', 'smarty', 'tables', 'footnotes', 'magnetizer.containers']
+# smart_mark=True keeps Mark's pre-12.0 behavior (no mid-word marking) --
+# pymdown-extensions 12.0 flipped that default, and a routine dependency
+# bump must not silently start marking things like "foo==bar==baz" that
+# were never intended as highlights.
+_MARKDOWN_EXTENSION_CONFIGS = {'pymdownx.mark': {'smart_mark': True}}
 _COMMENT_ALLOWED_FRONTMATTER_KEYS = frozenset({'date', 'author'})
 _COMMENT_MARKDOWN_EXTENSIONS = ['pymdownx.mark', 'smarty']
 _COMMENT_NUMBER_RE = re.compile(r'-comment-(\d+)')
@@ -359,7 +364,7 @@ def parse_comment(md_text, filename, site_url=""):
     if not author:
         _error(f"comment '{filename}' is missing required frontmatter key 'author'")
 
-    body_html = _mark_external_links(_markdown.markdown(body, extensions=_COMMENT_MARKDOWN_EXTENSIONS), site_url) if body else ''
+    body_html = _mark_external_links(_markdown.markdown(body, extensions=_COMMENT_MARKDOWN_EXTENSIONS, extension_configs=_MARKDOWN_EXTENSION_CONFIGS), site_url) if body else ''
 
     return Comment(
         filename=filename,
@@ -455,13 +460,13 @@ def parse_post(md_text, post_id, image_filenames, site_url="", comments=None):
         part0, excerpt_inline_image_filenames = _substitute_image_tokens(more_parts[0], images, post_id)
         part1, used1 = _substitute_image_tokens(more_parts[1], images, post_id)
         inline_image_filenames = excerpt_inline_image_filenames | used1
-        body_html = _mark_external_links(_scope_footnote_ids(_markdown.markdown(part0 + '\n\n' + part1, extensions=_MARKDOWN_EXTENSIONS), post_id), site_url)
+        body_html = _mark_external_links(_scope_footnote_ids(_markdown.markdown(part0 + '\n\n' + part1, extensions=_MARKDOWN_EXTENSIONS, extension_configs=_MARKDOWN_EXTENSION_CONFIGS), post_id), site_url)
         excerpt_source = _borrow_footnote_definitions(part0, part1).strip()
-        excerpt_html = _mark_external_links(_scope_footnote_ids(_markdown.markdown(excerpt_source, extensions=_MARKDOWN_EXTENSIONS), post_id), site_url)
+        excerpt_html = _mark_external_links(_scope_footnote_ids(_markdown.markdown(excerpt_source, extensions=_MARKDOWN_EXTENSIONS, extension_configs=_MARKDOWN_EXTENSION_CONFIGS), post_id), site_url)
     else:
         body, inline_image_filenames = _substitute_image_tokens(body, images, post_id)
         excerpt_inline_image_filenames = inline_image_filenames
-        body_html = _mark_external_links(_scope_footnote_ids(_markdown.markdown(body, extensions=_MARKDOWN_EXTENSIONS), post_id), site_url) if body else ''
+        body_html = _mark_external_links(_scope_footnote_ids(_markdown.markdown(body, extensions=_MARKDOWN_EXTENSIONS, extension_configs=_MARKDOWN_EXTENSION_CONFIGS), post_id), site_url) if body else ''
         excerpt_html = None
 
     char_count = len(_plain_text(body_html))

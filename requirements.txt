@@ -1,5 +1,5 @@
 Markdown==3.10.2
-pymdown-extensions==11.0.1
+pymdown-extensions==12.3
 PyYAML==6.0.3
 Pillow==13.0.0
 pillow-heif==1.8.0

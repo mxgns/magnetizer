@@ -316,6 +316,14 @@ class TestBodyHtml:
         assert post.excerpt_html is not None
         assert "<mark>marked</mark>" in post.excerpt_html
 
+    def test_mid_word_mark_syntax_not_converted(self):
+        # pymdown-extensions 12.0 flipped Mark's default to allow mid-word
+        # marking -- smart_mark must stay pinned to the pre-12.0 behavior so
+        # a routine dependency bump can't silently start marking things like
+        # "foo==bar==baz" that were never intended as highlights.
+        post = parse_post(make_md(body="foo==bar==baz"), 1, [])
+        assert "<mark>" not in post.body_html
+
     def test_table_syntax_converted_to_table_element(self):
         body = (
             "| Column 1 | Column 2 |\n"
