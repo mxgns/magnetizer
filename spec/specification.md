@@ -164,7 +164,7 @@ After running the script, the user will typically open the generated .md file in
 `build.py` is used to generate static html pages from the input files, using templates.
 
 ```
-Usage: build.py [OPTIONS] [FILENAME]
+Usage: build.py [OPTIONS]
 
 Generate static web pages from the content in ./content. This command must be 
 run from a directory containing at least the following:
@@ -174,11 +174,6 @@ run from a directory containing at least the following:
   templates/    Directory with HTML templates used when generating the output
   resources/    Directory with e.g. CSS and JS files to include in ./dist
   config.yaml   Configuration file
-
-Arguments:
-  FILENAME      A single .md filename (e.g. 1.md) to process. This argument is
-                for development/preview purposes and cannot be used together 
-                with any other options.
 
 Options:
   --help        Show this message and exit
@@ -194,7 +189,6 @@ Options:
                 whichever images are already in ./dist instead of 
                 reprocessing them. Use while iterating on generator or
                 template code, instead of --flush's much slower full rebuild.
-                Cannot be used together with FILENAME.
   --verbose     Print a detailed log of every file created, updated, or removed
                 during the build.
 
@@ -210,8 +204,6 @@ Examples:
   build.py --refresh   Re-render every page from the current templates/code,
                        reusing existing images except for any post that
                        content-change detection finds genuinely changed
-  build.py 1.md        Build a single page (e.g. generate 1.html from 1.md).
-                       Index pages are not updated.
 ```
 
 ### Behaviour
@@ -238,24 +230,21 @@ Examples:
     1. Delete all contents of `dist/`, including sub-directories
     2. Delete the build manifest, if it exists
 4. Load the build manifest (`manifest.json`) if it exists
-5. Determine what to process:
-    1. If a `FILENAME` was provided, then the post related to that file (and only that post) should be processed
-    2. Otherwise, any post where a file (Markdown or image) has changed, added or removed since the last build should be processed, plus any post or special page flagged `dynamic: true` in the manifest from the previous build (see [Dynamic values](#dynamic-values))
+5. Determine what to process: any post where a file (Markdown or image) has changed, added or removed since the last build, plus any post or special page flagged `dynamic: true` in the manifest from the previous build (see [Dynamic values](#dynamic-values))
 6. For each post to process:
     - Delete any files related to the post (Markdown or images) from `dist/`
     - If  `{post-id}.md` exists in  `content/`, then generate the post HTML and resize and copy any associated images to `dist/` — writing both the resized image and its thumbnail for each raster image
-7. If `--refresh` (and no `FILENAME` was specified): for every post *not* already processed in step 6 this run (i.e. not genuinely changed), re-render its HTML from its already-built images in `dist/` — no deleting, no resizing, no thumbnailing — and force every special page and the 404 page (if configured) to rebuild, regardless of whether either would otherwise be considered stale (see [Dynamic values](#dynamic-values) for what "stale" normally means here). A forced special/404 page rebuild skips its own image processing the same way, unless that page's own files did genuinely change, in which case its images are still deleted and reprocessed as normal. This is the one step unique to `--refresh`; everything else it does is simply "don't skip the following steps just because nothing changed."
-8. If there were any changes made in steps 6 or 7 (unless a `FILENAME` was specified):
+7. If `--refresh`: for every post *not* already processed in step 6 this run (i.e. not genuinely changed), re-render its HTML from its already-built images in `dist/` — no deleting, no resizing, no thumbnailing — and force every special page and the 404 page (if configured) to rebuild, regardless of whether either would otherwise be considered stale (see [Dynamic values](#dynamic-values) for what "stale" normally means here). A forced special/404 page rebuild skips its own image processing the same way, unless that page's own files did genuinely change, in which case its images are still deleted and reprocessed as normal. This is the one step unique to `--refresh`; everything else it does is simply "don't skip the following steps just because nothing changed."
+8. Independently of steps 5-7 (which only concern posts), each special page and the 404 page (if configured) is checked for staleness and rebuilt here too, following the same rule as step 5: its own `.md` file or images changed since the last build, or — only if step 6 changed something elsewhere this run — it was flagged `dynamic: true` in the previous manifest (see [Dynamic values](#dynamic-values)). `--refresh` (step 7) already forced every special/404 page to rebuild, so this step is a no-op for them when `--refresh` is set.
+9. If there were any changes made in steps 6, 7, or 8:
     1. Regenerate all the index, category, gallery and archive pages
     2. Update the build manifest
     
-    Note: when `FILENAME` is specified, the index pages are deliberately not updated, and the manifest is not rescanned/rewritten wholesale — single-file builds are for preview only. The one exception is the built page's `dynamic` flag (see [Dynamic values](#dynamic-values)), which is still updated in the manifest so incremental rebuilds keep working correctly. `--refresh` cannot be combined with `FILENAME` in the first place, so this note and step 7 never interact.
-    
-9. Sync `resources/` to `dist/resources/`:
+10. Sync `resources/` to `dist/resources/`:
     - If `--flush` or `--resources`: delete `dist/resources/` and copy all files from `resources/`
     - Otherwise: copy any files from `resources/` that are new or changed since the last build (detected via the manifest), and delete any files from `dist/resources/` that no longer exist in `resources/`
-10. During the build, print a `.` for each file generated or updated (flushed immediately, all on one line). When the build completes, erase the dots line in normal mode; keep it in verbose mode (followed by a newline).
-11. Print console output and exit. The output format depends on whether `--verbose` is passed:
+11. During the build, print a `.` for each file generated or updated (flushed immediately, all on one line). When the build completes, erase the dots line in normal mode; keep it in verbose mode (followed by a newline).
+12. Print console output and exit. The output format depends on whether `--verbose` is passed:
 
     **Normal output** (only posts with warnings are listed):
 
@@ -587,7 +576,7 @@ Every `<a>` tag in a post's rendered body or excerpt — whether from Markdown l
 
 ### Internal link checking
 
-After every full build (not a single-file preview build), Magnetizer scans every `.html` page in `dist/` for internal links whose target doesn't exist in `dist/`, and prints a build warning for each — `Broken internal link: '{href}'` — naming the page the link was found on. A link is internal by the same host test used for [External links](#external-links) above; a same-page fragment (`#section`) or a `mailto:`/`tel:`/`sms:`/`javascript:` link is never checked, since it has no page target to resolve. A root-relative link (`/2.html`, or `/` for the homepage) and a page-relative link (`2.html`) both resolve against `dist/`'s root, matching the flat structure every generated page is written into. HTML entities in the `href` attribute are decoded before this check runs, so an autolinked `<email@example.com>` — which Python-Markdown obfuscates as `&#109;&#97;...` — is still recognised as a `mailto:` link and skipped rather than flagged.
+After every build, Magnetizer scans every `.html` page in `dist/` for internal links whose target doesn't exist in `dist/`, and prints a build warning for each — `Broken internal link: '{href}'` — naming the page the link was found on. A link is internal by the same host test used for [External links](#external-links) above; a same-page fragment (`#section`) or a `mailto:`/`tel:`/`sms:`/`javascript:` link is never checked, since it has no page target to resolve. A root-relative link (`/2.html`, or `/` for the homepage) and a page-relative link (`2.html`) both resolve against `dist/`'s root, matching the flat structure every generated page is written into. HTML entities in the `href` attribute are decoded before this check runs, so an autolinked `<email@example.com>` — which Python-Markdown obfuscates as `&#109;&#97;...` — is still recognised as a `mailto:` link and skipped rather than flagged.
 
 A link whose resolved path matches one of `config.yaml`'s `external_paths` prefixes is also skipped, even though it's same-host — this is for a real, live path served by something other than this build, e.g. another Worker routed onto the same zone (`/api`, `/analytics`), which this check has no way to otherwise distinguish from a typo. Matching is prefix-exact, not substring: a prefix of `/api` matches `/api` itself and anything under `/api/...`, but not `/apikey.html`.
 
@@ -774,7 +763,7 @@ When a post has a category that matches a configured slug, a link to that catego
 <a href="{slug}.html" class="category">{display name}</a>
 ```
 
-For each configured category with at least one matching post, Magnetizer generates a paginated category page (`{slug}.html`, `{slug}-2.html`, etc.), using the same pagination and `posts_per_page` rules as index pages. Category pages are generated under the same conditions as index pages — full builds where post changes are detected, not single-file preview builds.
+For each configured category with at least one matching post, Magnetizer generates a paginated category page (`{slug}.html`, `{slug}-2.html`, etc.), using the same pagination and `posts_per_page` rules as index pages. Category pages are generated under the same conditions as index pages — on builds where post changes are detected.
 
 Every existing `{slug}*.html` for every *configured* category slug (whether or not it currently has any matching posts) is deleted before the current set is written back, the same way index pages are. This covers both a shrinking category (a stale `{slug}-2.html` once it's down to one page) and a category that's lost its last post entirely (`{slug}.html` itself, since the loop that writes category pages only ever runs for categories that still have at least one matching post).
 
@@ -1064,7 +1053,7 @@ special_pages:
 
 For each name in `special_pages`, Magnetizer requires a matching `content/{name}.md` file and generates `dist/{name}.html` on every full build — the build exits with an error if a configured special page's `.md` file is missing. A `.md` file matching the `{name}-image-NN.ext` convention that isn't listed in `special_pages` is treated as an unrecognised file (see [Input content model](#input-content-model)) — special pages are exempted from that check only when configured.
 
-A special page supports the same frontmatter fields (`date`, `updated`, `title`, `name`) and image conventions as posts, and is classified into a post type ([Post types](#post-types)) the same way. Unlike posts, `date` is optional — if both `date` and `updated` are omitted, no date footer is rendered (see [Posts](#posts) for what's shown when only one, or both, are set). On a full or partial build, it is rebuilt whenever its `.md` file or any of its images change. Single-file preview builds (e.g. `build.py about.md`) are also supported — a single-file build only ever touches the one page named by `FILENAME`, never any other special page, even one whose own file also changed since the last build.
+A special page supports the same frontmatter fields (`date`, `updated`, `title`, `name`) and image conventions as posts, and is classified into a post type ([Post types](#post-types)) the same way. Unlike posts, `date` is optional — if both `date` and `updated` are omitted, no date footer is rendered (see [Posts](#posts) for what's shown when only one, or both, are set). On a full or partial build, it is rebuilt whenever its `.md` file or any of its images change.
 
 Special pages are not automatically linked to from anywhere (add an entry to `navigation` to link one from the masthead — see [Navigation](#navigation)) and are not included in index pages, category pages, the archive, the feed, or the newer/older post navigation.
 
@@ -1093,7 +1082,7 @@ Both keys are optional, but if either is set, both must be set — the build exi
 
 The `content/404.md` reservation can't be bypassed by naming the 404 page's own input file `404.md`, or by adding `"404"` to `special_pages` — either configuration still exits with an error, since it would defeat the purpose of the reservation.
 
-In every other respect the 404 page behaves exactly like a special page — same frontmatter/image support, same rebuild-on-change behavior, same single-file preview build support (e.g. `build.py error-404.md`), same exclusion from index pages, category pages, the archive, the feed, `{{ ai_post_list }}`, `{{ favourite_post_list }}`, and the newer/older post navigation. The one difference: **it's also excluded from `sitemap.xml`**, since it's an error page, not real content.
+In every other respect the 404 page behaves exactly like a special page — same frontmatter/image support, same rebuild-on-change behavior, same exclusion from index pages, category pages, the archive, the feed, `{{ ai_post_list }}`, `{{ favourite_post_list }}`, and the newer/older post navigation. The one difference: **it's also excluded from `sitemap.xml`**, since it's an error page, not real content.
 
 ### Dynamic values
 
@@ -1145,11 +1134,9 @@ A page containing a shortcode can go stale purely because of changes elsewhere (
 
 A build where nothing has changed anywhere is a true no-op — it does not rebuild dynamic pages "just in case", and does not touch the manifest. The dynamic-flagged set is only pulled in as a *consequence* of some other real change; it is never a reason to do work on its own. (An unchanged resource-only build is also a no-op with respect to dynamic pages — resources don't feed any dynamic value.)
 
-Single-file preview builds (`build.py 42.md`) are the exception to the whole mechanism: sitewide values are still computed fresh so that page's shortcodes expand correctly, but no *other* dynamic-flagged page is pulled in — only the specified page is built, and only its own `dynamic` flag is updated in the manifest.
-
 ### Archive page
 
-Magnetizer generates `dist/archive.html` under the same conditions as index pages — on full builds where post changes are detected, but not during single-file preview builds.
+Magnetizer generates `dist/archive.html` under the same conditions as index pages — on full builds where post changes are detected.
 
 The archive lists all dated posts, Notes included, grouped by month, newest month first. Within each month, posts appear in reverse chronological order (highest post ID first). Posts without a `date` are excluded. The archive is not included in index pages, the feed, or the newer/older post navigation.
 
@@ -1283,7 +1270,7 @@ The `MAGNETIZER_CONTENT` structure is:
 <a id="gallery-page"></a>
 ### Gallery page
 
-Magnetizer generates `dist/gallery.html` (and `gallery-2.html`, `gallery-3.html`, etc.) under the same conditions as index pages — on full builds where post changes are detected, but not during single-file preview builds. If no qualifying photos exist, no gallery pages are generated.
+Magnetizer generates `dist/gallery.html` (and `gallery-2.html`, `gallery-3.html`, etc.) under the same conditions as index pages — on full builds where post changes are detected. If no qualifying photos exist, no gallery pages are generated.
 
 Every existing `gallery*.html` is deleted before the current set (if any) is written back, the same way index pages are — so a stale `gallery-2.html` from a shrinking photo count, or `gallery.html` itself once the last qualifying photo is gone, never lingers.
 
@@ -1495,11 +1482,9 @@ The manifest is:
 - Treated as absent (triggering a full build) if it exists but lacks `"_version": 2`
 - Written atomically (a uniquely-named temp file in the same directory, then renamed over the existing manifest), so a crash mid-build cannot corrupt it
 
-When a single `FILENAME` is specified (preview builds), the manifest is *not* rescanned or rewritten wholesale — but the `pages` entry for that one file's page is still updated with its freshly re-derived `dynamic` flag, and every other manifest entry is left exactly as it was.
-
 ## Atom feed
 
-Magnetizer generates an Atom 1.0 feed at `dist/feed.xml` on every full build (incremental or `--flush`). Single-file preview builds (`build.py 1.md`) do not update the feed. `site_url` must be set in `config.yaml`; the build will exit with an error if it is absent or empty — see [Configuration](#configuration) for the full list of config variables.
+Magnetizer generates an Atom 1.0 feed at `dist/feed.xml` on every full build (incremental or `--flush`). `site_url` must be set in `config.yaml`; the build will exit with an error if it is absent or empty — see [Configuration](#configuration) for the full list of config variables.
 
 ### Feed structure
 
@@ -1538,7 +1523,7 @@ Posts are listed in reverse chronological order (highest post ID first), capped 
 
 ## Sitemap
 
-Magnetizer generates an XML sitemap at `dist/sitemap.xml` and a `dist/robots.txt` on every full build (incremental or `--flush`). Single-file preview builds (`build.py 1.md`) do not update these files.
+Magnetizer generates an XML sitemap at `dist/sitemap.xml` and a `dist/robots.txt` on every full build (incremental or `--flush`).
 
 ### Pages included
 
@@ -1583,7 +1568,7 @@ Sitemap: https://example.github.io/sitemap.xml
 
 ## Posts index
 
-Magnetizer generates `dist/posts.json` on every full build (incremental or `--flush`). Single-file preview builds (`build.py 1.md`) do not update it. It's a lookup table from a page's `page_id` (the value templates get via `MAGNETIZER_PAGE_ID` — see [Templates](#templates)) to a human-readable representation, so an external consumer — e.g. the Magnalytics analytics UI, which only ever sees raw `page_id` values — can show what a given page actually is without fetching the page itself. Draft posts (see [Draft posts](#draft-posts)) are not included.
+Magnetizer generates `dist/posts.json` on every full build (incremental or `--flush`). It's a lookup table from a page's `page_id` (the value templates get via `MAGNETIZER_PAGE_ID` — see [Templates](#templates)) to a human-readable representation, so an external consumer — e.g. the Magnalytics analytics UI, which only ever sees raw `page_id` values — can show what a given page actually is without fetching the page itself. Draft posts (see [Draft posts](#draft-posts)) are not included.
 
 ### Format
 
@@ -1646,7 +1631,7 @@ Every full build generates `dist/search.html`, plus a [Pagefind](https://pagefin
 
 Notes:
 
-- `search.html` is generated under the same conditions as `archive.html` — on full builds, not on single-file preview builds.
+- `search.html` is generated under the same conditions as `archive.html` — on full builds.
 - The page title is `Search - {site_name}`.
 - The submit button has no icon markup of its own — like `favourite`'s star and the archive page's camera icon (see [Archive page](#archive-page)), Magnetizer never embeds decorative `<svg>`/`<img>` markup; any icon on the button is purely a project CSS concern (e.g. a `::before` on `#search-form button[type="submit"]`), free to match whatever icon the project's own template uses for the search link in its header nav.
 - The clear button (`#search-clear`) is always present but `hidden` in the generated markup — a project's `search.js` is responsible for un-hiding it once the input has text, and for wiring its click to clear the query and return to the initial state.
@@ -1655,7 +1640,7 @@ Notes:
 
 ### Pagefind indexing
 
-After every build — full or single-file preview — Magnetizer runs `npx --yes pagefind@1.5.2 --site dist/` (a pinned version, so a bare `npx pagefind` can't silently pick up a newer release and change the generated index's format/behaviour between builds), writing `dist/pagefind/`. This requires Node and, on first run on a machine, network access to resolve the `pagefind` npm package. A nonzero exit, a timeout, or a missing `npx` binary aborts the build with a red `ERROR`; there is no flag to skip or downgrade this to a warning.
+After every build, Magnetizer runs `npx --yes pagefind@1.5.2 --site dist/` (a pinned version, so a bare `npx pagefind` can't silently pick up a newer release and change the generated index's format/behaviour between builds), writing `dist/pagefind/`. This requires Node and, on first run on a machine, network access to resolve the `pagefind` npm package. A nonzero exit, a timeout, or a missing `npx` binary aborts the build with a red `ERROR`; there is no flag to skip or downgrade this to a warning.
 
 To avoid indexing the same article twice — once on its own canonical page, once again embedded in an index/category/archive/gallery listing — Magnetizer marks the `<main>` of every multi-post listing page (`render_index_page_content`, `render_category_page_content`, `render_archive_page_content`, `render_gallery_page_content`) with `data-pagefind-ignore`. `render_post_page_content`'s `<main>` (an individual post's, special page's, or the 404 page's own page — all three share this render path) is left unmarked, so Pagefind indexes each one exactly once, at its canonical URL — unless the post is `noindex: true` or `draft: true`, in which case `render_post_page_content` marks its own `<main>` too, consistent with that page already being excluded from `sitemap.xml`: a page search engines shouldn't index shouldn't turn up in the site's own search either.
 
@@ -1701,7 +1686,7 @@ document.getElementById("random-status").textContent = "No posts to send you to 
 
 Notes:
 
-- `random.html` is generated under the same conditions as `archive.html` and `search.html` — on full builds, not on single-file preview builds.
+- `random.html` is generated under the same conditions as `archive.html` and `search.html` — on full builds.
 - The page title is `Random post - {site_name}`, overridable via `metadata.yaml`'s `random` key (see [Page metadata overrides](#page-metadata-overrides)) — `random` is a valid key there, the same as `index`/`archive`/`search`/`gallery`, and (like those) a reserved slug: a category or special page named `random` is a build error.
 - `random.html` gets a `<meta name="robots" content="noindex">` tag, the same mechanism used for a `noindex: true` post or special page (see [Noindex posts](#noindex-posts)) — this is what actually keeps it out of search results. `robots.txt` is left untouched: a blanket `Disallow` would stop crawlers from ever reaching the page to see that `noindex` tag in the first place, the same reasoning that already applies to a `noindex` post.
 - `random.html` is excluded from `sitemap.xml` and `feed.xml` entirely (not just marked `noindex`), and from `posts.json` — the same treatment `search.html` already gets from all three, since neither page is itself a piece of content worth cataloguing.

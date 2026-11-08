@@ -26,7 +26,6 @@ from magnetizer.manifest import (
     is_file_changed,
     load_manifest,
     save_manifest,
-    update_page_dynamic_flag,
 )
 from magnetizer.render import (
     canonical_url,
@@ -616,30 +615,6 @@ def _compute_dynamic_values(published_posts_sorted_desc, special_page_posts, bui
     return {**base_values, "word_count": wrap_scalar("word_count", format_int(total_words))}
 
 
-def _build_requested_special_page(stem, content_dir, dist_dir, config, template, values, pages_dynamic_updates, warnings, log):
-    filename_html = f"{stem}.html"
-
-    def _warn_special(msg):
-        warnings.append((filename_html, msg))
-
-    ws, dynamic_flag = _build_special_page(stem, content_dir, dist_dir, config, template, values, _warn_special)
-    for w in ws:
-        warnings.append((filename_html, w))
-    log(("UPDATED", filename_html))
-    pages_dynamic_updates[filename_html] = {"dynamic": dynamic_flag}
-
-
-def _build_requested_not_found_page(name, output_filename, content_dir, dist_dir, config, template, values, pages_dynamic_updates, warnings, log):
-    def _warn_special(msg):
-        warnings.append((output_filename, msg))
-
-    ws, dynamic_flag = _build_special_page(name, content_dir, dist_dir, config, template, values, _warn_special, output_filename=output_filename)
-    for w in ws:
-        warnings.append((output_filename, w))
-    log(("UPDATED", output_filename))
-    pages_dynamic_updates[output_filename] = {"dynamic": dynamic_flag}
-
-
 def _determine_full_build_scope(changed_post_ids, content_dir, manifest, prev_pages, config, all_post_ids_sorted_desc, published_post_ids_sorted_desc):
     neighbor_ids = {
         n
@@ -964,13 +939,27 @@ def _write_posts_index(published_posts_sorted_desc, config, special_page_posts_b
     log(("UPDATED", "posts.json"))
 
 
-def _prepare_build(cwd, config, on_progress):
-    """Load and compute everything a full build and a single-page preview
-    build both need before they diverge: the manifest, this run's content,
-    and sitewide dynamic values. Sitewide dynamic-value computation runs
-    unconditionally (even for a single-page preview build) so that any
-    shortcodes on the page(s) being built expand correctly."""
+def build(cwd, flush=False, resources=False, refresh=False, on_progress=None):
+    cwd = Path(cwd)
+    content_dir = cwd / "content"
+    dist_dir = cwd / "dist"
+    resources_dir = cwd / "resources"
     manifest_path = cwd / "manifest.json"
+
+    validate_project(cwd)
+
+    config = load_config(cwd / "config.yaml")
+    validate_config(config)
+    validate_content(content_dir, config)
+    metadata = load_metadata(cwd / "metadata.yaml")
+    validate_metadata(metadata, config)
+    template = (cwd / "templates" / "index.html").read_text().replace(
+        'MAGNETIZER_BUILD_ID', str(int(time.time()))
+    )
+
+    if flush:
+        _flush_dist(dist_dir, manifest_path)
+
     manifest = load_manifest(manifest_path)
     prev_pages = manifest.get("pages", {})
     log = []
@@ -986,116 +975,14 @@ def _prepare_build(cwd, config, on_progress):
         buildable_post_ids_sorted_desc, buildable_posts_sorted_desc,
         published_post_ids_sorted_desc, published_posts_sorted_desc,
         special_page_posts, special_page_posts_by_name, not_found_post,
-    ) = _load_content(cwd / "content", config)
+    ) = _load_content(content_dir, config)
 
     _check_no_invalid_posts(buildable_posts_sorted_desc, special_page_posts, not_found_post)
-    warnings.extend(_orphan_comment_warnings(cwd / "content", set(buildable_post_ids_sorted_desc)))
+    warnings.extend(_orphan_comment_warnings(content_dir, set(buildable_post_ids_sorted_desc)))
 
     build_datetime = _datetime.now()
     build_date = build_datetime.date()
     values = _compute_dynamic_values(published_posts_sorted_desc, special_page_posts, build_date, build_datetime, warnings)
-
-    return (
-        manifest_path, manifest, prev_pages, log, _log, warnings,
-        all_post_ids_sorted_desc, posts_cache,
-        buildable_post_ids_sorted_desc, buildable_posts_sorted_desc,
-        published_post_ids_sorted_desc, published_posts_sorted_desc,
-        special_page_posts, special_page_posts_by_name, not_found_post,
-        build_date, build_datetime, values,
-    )
-
-
-def _build_single_page(cwd, filename, config, template, on_progress=None):
-    """Build (or preview-rebuild) exactly the one page FILENAME names --
-    a post, a special page, or the 404 page -- touching nothing else in
-    dist/. FILENAME can never be combined with flush/resources/refresh
-    (build.py's CLI rejects that combination before calling build() at
-    all), so none of those apply here."""
-    content_dir = cwd / "content"
-    dist_dir = cwd / "dist"
-    resources_dir = cwd / "resources"
-
-    (
-        manifest_path, manifest, prev_pages, log, _log, warnings,
-        all_post_ids_sorted_desc, posts_cache,
-        buildable_post_ids_sorted_desc, buildable_posts_sorted_desc,
-        published_post_ids_sorted_desc, published_posts_sorted_desc,
-        special_page_posts, special_page_posts_by_name, not_found_post,
-        build_date, build_datetime, values,
-    ) = _prepare_build(cwd, config, on_progress)
-
-    pages_dynamic_updates = {}
-    deleted_page_filenames = set()
-    not_found_name = _not_found_page_name(config)
-
-    stem = Path(filename).stem
-    if stem in config["special_pages"]:
-        _build_requested_special_page(
-            stem, content_dir, dist_dir, config, template, values,
-            pages_dynamic_updates, warnings, _log,
-        )
-        changed_post_ids = set()
-        post_ids_to_build: set[int] = set()
-    elif not_found_name and stem == not_found_name:
-        _build_requested_not_found_page(
-            not_found_name, config["404-page-output-filename"], content_dir, dist_dir, config, template, values,
-            pages_dynamic_updates, warnings, _log,
-        )
-        changed_post_ids = set()
-        post_ids_to_build = set()
-    else:
-        post_id = int(stem)
-        changed_post_ids = {post_id}
-        post_ids_to_build = {post_id}
-
-    created, updated, deleted = _build_changed_posts(
-        post_ids_to_build, changed_post_ids, posts_cache, manifest,
-        published_post_ids_sorted_desc, content_dir, dist_dir, config, template,
-        values, pages_dynamic_updates, deleted_page_filenames, warnings, _log,
-    )
-
-    # Patch just this one page's dynamic flag into the manifest, leaving
-    # every other entry untouched.
-    if not_found_name and stem == not_found_name:
-        single_page_filename = config["404-page-output-filename"]
-    else:
-        single_page_filename = f"{stem}.html"
-    if single_page_filename in pages_dynamic_updates:
-        update_page_dynamic_flag(
-            manifest_path, manifest, single_page_filename,
-            pages_dynamic_updates[single_page_filename]["dynamic"],
-        )
-
-    changed_resource_filenames = get_changed_resource_filenames(resources_dir, manifest)
-    copied, deleted_resources = _sync_resources(resources_dir, dist_dir, changed_resource_filenames, replace=False)
-    for name in copied:
-        _log(("COPIED", f"resources/{name}"))
-    for name in deleted_resources:
-        _log(("REMOVED", f"resources/{name}"))
-
-    return {"created": created, "updated": updated, "deleted": deleted, "log": log, "warnings": warnings}
-
-
-def _build_full(cwd, config, metadata, template, flush=False, resources=False, refresh=False, on_progress=None):
-    """Build the whole site: every post/special page whose content changed
-    since the last build, plus the generated listing/sitemap/search pages,
-    resources, and the manifest itself."""
-    content_dir = cwd / "content"
-    dist_dir = cwd / "dist"
-    resources_dir = cwd / "resources"
-    manifest_path = cwd / "manifest.json"
-
-    if flush:
-        _flush_dist(dist_dir, manifest_path)
-
-    (
-        manifest_path, manifest, prev_pages, log, _log, warnings,
-        all_post_ids_sorted_desc, posts_cache,
-        buildable_post_ids_sorted_desc, buildable_posts_sorted_desc,
-        published_post_ids_sorted_desc, published_posts_sorted_desc,
-        special_page_posts, special_page_posts_by_name, not_found_post,
-        build_date, build_datetime, values,
-    ) = _prepare_build(cwd, config, on_progress)
 
     pages_dynamic_updates = {}
     deleted_page_filenames = set()
@@ -1178,22 +1065,3 @@ def _build_full(cwd, config, metadata, template, flush=False, resources=False, r
     save_manifest(content_dir, manifest_path, resources_dir=resources_dir, pages=final_pages, prev_manifest=manifest)
 
     return {"created": created, "updated": updated, "deleted": deleted, "log": log, "warnings": warnings}
-
-
-def build(cwd, filename=None, flush=False, resources=False, refresh=False, on_progress=None):
-    cwd = Path(cwd)
-
-    validate_project(cwd)
-
-    config = load_config(cwd / "config.yaml")
-    validate_config(config)
-    validate_content(cwd / "content", config)
-    metadata = load_metadata(cwd / "metadata.yaml")
-    validate_metadata(metadata, config)
-    template = (cwd / "templates" / "index.html").read_text().replace(
-        'MAGNETIZER_BUILD_ID', str(int(time.time()))
-    )
-
-    if filename:
-        return _build_single_page(cwd, filename, config, template, on_progress=on_progress)
-    return _build_full(cwd, config, metadata, template, flush=flush, resources=resources, refresh=refresh, on_progress=on_progress)

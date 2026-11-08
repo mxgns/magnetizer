@@ -1,6 +1,5 @@
 """CLI integration tests for build.py"""
 
-import json
 import subprocess
 import sys
 from pathlib import Path
@@ -37,11 +36,6 @@ class TestHelp:
     def test_help_short_flag(self, tmp_path):
         assert run_build(["-h"], cwd=tmp_path).returncode == 0
 
-    def test_help_describes_filename_argument(self, tmp_path):
-        result = run_build(["--help"], cwd=tmp_path)
-        assert "FILENAME" in result.stdout
-        assert "development" in result.stdout.lower() or "preview" in result.stdout.lower()
-
     def test_help_describes_flush(self, tmp_path):
         result = run_build(["--help"], cwd=tmp_path)
         assert "scratch" in result.stdout.lower()
@@ -63,7 +57,6 @@ class TestHelp:
         result = run_build(["--help"], cwd=tmp_path)
         assert "Examples:" in result.stdout
         assert "build.py --flush" in result.stdout
-        assert "build.py 1.md" in result.stdout
 
 
 # ---------------------------------------------------------------------------
@@ -91,21 +84,6 @@ class TestCLIValidation:
     def test_exits_nonzero_when_content_has_no_md_files(self, tmp_path):
         make_project(tmp_path)  # content/ is empty
         result = run_build([], cwd=tmp_path)
-        assert result.returncode != 0
-
-    def test_filename_with_flush_is_rejected(self, tmp_path):
-        make_project(tmp_path, posts={1: MINIMAL_MD})
-        result = run_build(["1.md", "--flush"], cwd=tmp_path)
-        assert result.returncode != 0
-
-    def test_filename_with_resources_is_rejected(self, tmp_path):
-        make_project(tmp_path, posts={1: MINIMAL_MD})
-        result = run_build(["1.md", "--resources"], cwd=tmp_path)
-        assert result.returncode != 0
-
-    def test_filename_with_refresh_is_rejected(self, tmp_path):
-        make_project(tmp_path, posts={1: MINIMAL_MD})
-        result = run_build(["1.md", "--refresh"], cwd=tmp_path)
         assert result.returncode != 0
 
 
@@ -211,35 +189,6 @@ class TestCLIRefresh:
 
 
 # ---------------------------------------------------------------------------
-# Single filename
-# ---------------------------------------------------------------------------
-
-class TestCLISingleFile:
-
-    def test_single_file_creates_post_html(self, tmp_path):
-        p = make_project(tmp_path, posts={1: MINIMAL_MD, 2: MINIMAL_MD})
-        run_build(["1.md"], cwd=p)
-        assert (p / "dist" / "1.html").exists()
-
-    def test_single_file_does_not_create_other_post_html(self, tmp_path):
-        p = make_project(tmp_path, posts={1: MINIMAL_MD, 2: MINIMAL_MD})
-        run_build(["1.md"], cwd=p)
-        assert not (p / "dist" / "2.html").exists()
-
-    def test_single_file_does_not_create_index(self, tmp_path):
-        p = make_project(tmp_path, posts={1: MINIMAL_MD})
-        run_build(["1.md"], cwd=p)
-        assert not (p / "dist" / "index.html").exists()
-
-    def test_single_file_does_not_write_source_mtime_entries(self, tmp_path):
-        p = make_project(tmp_path, posts={1: MINIMAL_MD})
-        run_build(["1.md"], cwd=p)
-        manifest = json.loads((p / "manifest.json").read_text())
-        assert "1.md" not in manifest
-        assert manifest["pages"] == {"1.html": {"dynamic": False}}
-
-
-# ---------------------------------------------------------------------------
 # Outcome summary
 # ---------------------------------------------------------------------------
 
@@ -319,11 +268,6 @@ class TestCLIVerbose:
         p = make_project(tmp_path, posts={1: MINIMAL_MD})
         result = run_build(["--verbose"], cwd=p)
         assert "[draft]" not in result.stdout
-
-    def test_verbose_compatible_with_single_file(self, tmp_path):
-        p = make_project(tmp_path, posts={1: MINIMAL_MD, 2: MINIMAL_MD})
-        result = run_build(["1.md", "--verbose"], cwd=p)
-        assert result.returncode == 0
 
     def test_generating_line_has_site_name_then_arrow(self, tmp_path):
         p = make_project(tmp_path, posts={1: MINIMAL_MD})

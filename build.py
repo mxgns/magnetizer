@@ -226,18 +226,7 @@ def main():
             "                       ./resources\n"
             "  build.py --refresh   Re-render every page from the current templates/code,\n"
             "                       reusing existing images except for any post that\n"
-            "                       content-change detection finds genuinely changed\n"
-            "  build.py 1.md        Build a single page (e.g. generate 1.html from 1.md).\n"
-            "                       Index pages are not updated."
-        ),
-    )
-    parser.add_argument(
-        "filename",
-        nargs="?",
-        metavar="FILENAME",
-        help=(
-            "A single .md filename (e.g. 1.md) to process. This argument is for "
-            "development/preview purposes and cannot be used together with any other options."
+            "                       content-change detection finds genuinely changed"
         ),
     )
     parser.add_argument(
@@ -261,8 +250,7 @@ def main():
             "any post it finds genuinely changed is fully reprocessed (images included) -- "
             "--refresh's savings apply to everything else, which reuses whichever images are "
             "already in ./dist instead of reprocessing them. Use while iterating on generator "
-            "or template code, instead of --flush's much slower full rebuild. Cannot be used "
-            "together with FILENAME."
+            "or template code, instead of --flush's much slower full rebuild."
         ),
     )
     parser.add_argument(
@@ -271,10 +259,6 @@ def main():
         help="Print a detailed log of every file created, updated, or removed during the build.",
     )
     args = parser.parse_args()
-
-    if args.filename and any([args.flush, args.resources, args.refresh]):
-        print("Error: FILENAME cannot be used together with other options.", file=sys.stderr)
-        sys.exit(1)
 
     config = load_config(Path.cwd() / "config.yaml")
     dist_path = (Path.cwd() / "dist").resolve()
@@ -311,7 +295,6 @@ def main():
     try:
         outcome = build(
             Path.cwd(),
-            filename=args.filename,
             flush=args.flush,
             resources=args.resources,
             refresh=args.refresh,
