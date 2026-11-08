@@ -19,4 +19,4 @@ jobs:
           GH_TOKEN: ${{ secrets.BLOG_TRIGGER_TOKEN }}
         run: |
           gh workflow run publish.yml -R mxgns/blog --ref main \
-            -f refresh=true -f flush=false -f publish=true
+            -f flush=false -f publish=true

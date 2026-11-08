@@ -8,6 +8,7 @@
 ### 08/11/26
 
 - Added `ruff check` to CI, with an explicitly pinned rule set
+- Fixed: blog refresh dispatch passed a `refresh` input Blog's workflow dropped
 - Extracted shared _write_paginated_page helper for index/category/gallery
 
 ### 07/11/26
