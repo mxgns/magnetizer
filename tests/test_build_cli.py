@@ -5,7 +5,6 @@ import subprocess
 import sys
 from pathlib import Path
 
-import pytest
 from PIL import Image as PILImage
 
 from conftest import MINIMAL_MD, make_project

@@ -36,7 +36,7 @@ magnetizer/    -- Python modules required by the above
 tests/         -- Pytest tests
 spec/          -- specification.md (this file) and other specifications
 requirements.txt      -- pinned runtime dependencies
-requirements-dev.txt  -- requirements.txt plus pytest
+requirements-dev.txt  -- requirements.txt plus pytest and ruff
 ```
 
 The `magnetizer` application directory should be added to the PATH so it can be conveniently run from any project directory.

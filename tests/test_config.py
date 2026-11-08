@@ -1,7 +1,6 @@
 """Tests for magnetizer/config.py — load_config()"""
 
 import pytest
-from pathlib import Path
 from magnetizer.config import load_config
 
 

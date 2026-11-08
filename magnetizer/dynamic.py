@@ -1,7 +1,6 @@
 """Shortcode-style dynamic values for markdown pages: {{ post_count }}, {{ today }}, etc."""
 
 import re
-from datetime import date as _date
 from html import escape as _escape
 
 from magnetizer.content import _plain_text

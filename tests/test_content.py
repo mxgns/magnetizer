@@ -1,7 +1,7 @@
 """Tests for magnetizer/content.py — Post dataclass and parse_post()"""
 
 import pytest
-from magnetizer.content import Post, parse_post, Comment, parse_comment, special_page_comment_pattern, thumbnail_filename, _parse_frontmatter
+from magnetizer.content import parse_post, parse_comment, special_page_comment_pattern, thumbnail_filename, _parse_frontmatter
 
 
 # ---------------------------------------------------------------------------
