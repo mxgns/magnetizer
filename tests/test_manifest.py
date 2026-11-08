@@ -11,7 +11,6 @@ from magnetizer.manifest import (
     is_file_changed,
     load_manifest,
     save_manifest,
-    update_page_dynamic_flag,
 )
 
 
@@ -295,64 +294,6 @@ class TestSaveManifestAtomic:
 
         leftovers = [f for f in tmp_path.iterdir() if f.name not in ("manifest.json", "content")]
         assert leftovers == []
-
-
-# ---------------------------------------------------------------------------
-# update_page_dynamic_flag
-# ---------------------------------------------------------------------------
-
-class TestUpdatePageDynamicFlag:
-
-    def test_sets_dynamic_flag_for_page(self, tmp_path):
-        p = tmp_path / "manifest.json"
-        manifest = {"_version": 2, "1.md": {"sha256": "a", "size": 1, "mtime": 1.0}}
-        update_page_dynamic_flag(p, manifest, "1.html", True)
-        data = json.loads(p.read_text())
-        assert data["pages"] == {"1.html": {"dynamic": True}}
-
-    def test_preserves_other_manifest_entries(self, tmp_path):
-        p = tmp_path / "manifest.json"
-        manifest = {
-            "_version": 2,
-            "1.md": {"sha256": "a", "size": 1, "mtime": 1.0},
-            "2.md": {"sha256": "b", "size": 1, "mtime": 2.0},
-        }
-        update_page_dynamic_flag(p, manifest, "1.html", False)
-        data = json.loads(p.read_text())
-        assert data["1.md"] == {"sha256": "a", "size": 1, "mtime": 1.0}
-        assert data["2.md"] == {"sha256": "b", "size": 1, "mtime": 2.0}
-
-    def test_preserves_other_pages_entries(self, tmp_path):
-        p = tmp_path / "manifest.json"
-        manifest = {"_version": 2, "pages": {"about.html": {"dynamic": True}}}
-        update_page_dynamic_flag(p, manifest, "1.html", False)
-        data = json.loads(p.read_text())
-        assert data["pages"] == {
-            "about.html": {"dynamic": True},
-            "1.html": {"dynamic": False},
-        }
-
-    def test_overwrites_existing_page_entry(self, tmp_path):
-        p = tmp_path / "manifest.json"
-        manifest = {"_version": 2, "pages": {"1.html": {"dynamic": True}}}
-        update_page_dynamic_flag(p, manifest, "1.html", False)
-        data = json.loads(p.read_text())
-        assert data["pages"]["1.html"] == {"dynamic": False}
-
-    def test_is_atomic(self, tmp_path):
-        p = tmp_path / "manifest.json"
-        update_page_dynamic_flag(p, {}, "1.html", True)
-        leftovers = [f for f in tmp_path.iterdir() if f.name != "manifest.json"]
-        assert leftovers == []
-
-    def test_writes_version_2_even_from_empty_manifest(self, tmp_path):
-        # Guards against a manifest that only ever went through single-file
-        # preview builds (no normal build has run yet) being misread as the
-        # old mtime-only format on the next load.
-        p = tmp_path / "manifest.json"
-        update_page_dynamic_flag(p, {}, "1.html", True)
-        data = json.loads(p.read_text())
-        assert data["_version"] == 2
 
 
 # ---------------------------------------------------------------------------

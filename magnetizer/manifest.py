@@ -88,12 +88,6 @@ def save_manifest(content_dir, path, resources_dir=None, pages=None, prev_manife
     _atomic_write(path, data)
 
 
-def update_page_dynamic_flag(path, manifest, page_filename, dynamic):
-    pages = {**manifest.get("pages", {}), page_filename: {"dynamic": dynamic}}
-    updated = {**manifest, "_version": _MANIFEST_VERSION, "pages": pages}
-    _atomic_write(path, updated)
-
-
 def _post_id_from_filename(name):
     m = re.match(r'^(\d+)', name)
     return int(m.group(1)) if m else None

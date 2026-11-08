@@ -7,6 +7,7 @@
 
 ### 08/11/26
 
+- Removed single-file preview builds (`build.py FILENAME`); never used
 - Split build() into _build_single_page/_build_full, sharing _prepare_build
 - Bumped pymdown-extensions to 12.3, pinning smart_mark to keep old behavior
 - Added `ruff check` to CI, with an explicitly pinned rule set

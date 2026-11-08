@@ -606,11 +606,6 @@ class TestGalleryPages:
         build(p)
         assert '<a href="index.html">Blog home</a>' in (p / "dist" / "gallery.html").read_text()
 
-    def test_gallery_not_created_on_single_file_build(self, tmp_path):
-        p = make_project(tmp_path, posts={1: MINIMAL_MD})
-        make_jpg(p / "content" / "1-image-01.jpg")
-        build(p, filename="1.md")
-        assert not (p / "dist" / "gallery.html").exists()
 
     def test_gallery_regenerated_when_new_post_added(self, tmp_path):
         p = make_project(tmp_path, posts={1: MINIMAL_MD})
@@ -987,32 +982,6 @@ class TestIncrementalBuild:
 # Single-file (preview) build
 # ---------------------------------------------------------------------------
 
-class TestSingleFileBuild:
-
-    def test_single_file_produces_its_html(self, tmp_path):
-        p = make_project(tmp_path, posts={1: MINIMAL_MD, 2: MINIMAL_MD})
-        build(p, filename="1.md")
-        assert (p / "dist" / "1.html").exists()
-
-    def test_single_file_does_not_build_other_posts(self, tmp_path):
-        p = make_project(tmp_path, posts={1: MINIMAL_MD, 2: MINIMAL_MD})
-        build(p, filename="1.md")
-        assert not (p / "dist" / "2.html").exists()
-
-    def test_single_file_does_not_create_index_pages(self, tmp_path):
-        p = make_project(tmp_path, posts={1: MINIMAL_MD})
-        build(p, filename="1.md")
-        assert not (p / "dist" / "index.html").exists()
-
-    def test_single_file_does_not_write_source_mtime_entries(self, tmp_path):
-        # Single-file builds still don't run the normal manifest rescan — the only
-        # thing written is the "pages" dynamic-flag entry for the page just built.
-        p = make_project(tmp_path, posts={1: MINIMAL_MD})
-        build(p, filename="1.md")
-        manifest = json.loads((p / "manifest.json").read_text())
-        assert "1.md" not in manifest
-        assert manifest["pages"] == {"1.html": {"dynamic": False}}
-
 
 # ---------------------------------------------------------------------------
 # Build outcome
@@ -1080,10 +1049,6 @@ class TestFeed:
         build(p)
         assert (p / "dist" / "feed.xml").exists()
 
-    def test_feed_xml_not_created_on_single_file_build(self, tmp_path):
-        p = make_project(tmp_path, posts={1: MINIMAL_MD})
-        build(p, filename="1.md")
-        assert not (p / "dist" / "feed.xml").exists()
 
     def test_feed_xml_recreated_on_flush(self, tmp_path):
         p = make_project(tmp_path, posts={1: MINIMAL_MD})
@@ -1104,10 +1069,6 @@ class TestSitemap:
         build(p)
         assert (p / "dist" / "sitemap.xml").exists()
 
-    def test_sitemap_not_created_on_single_file_build(self, tmp_path):
-        p = make_project(tmp_path, posts={1: MINIMAL_MD})
-        build(p, filename="1.md")
-        assert not (p / "dist" / "sitemap.xml").exists()
 
     def test_sitemap_recreated_on_flush(self, tmp_path):
         p = make_project(tmp_path, posts={1: MINIMAL_MD})
@@ -1170,10 +1131,6 @@ class TestSitemap:
         build(p)
         assert (p / "dist" / "robots.txt").exists()
 
-    def test_robots_txt_not_created_on_single_file_build(self, tmp_path):
-        p = make_project(tmp_path, posts={1: MINIMAL_MD})
-        build(p, filename="1.md")
-        assert not (p / "dist" / "robots.txt").exists()
 
     def test_robots_txt_contains_sitemap_url(self, tmp_path):
         p = make_project(tmp_path, posts={1: MINIMAL_MD})
@@ -1295,10 +1252,6 @@ class TestPostsIndex:
         build(p)
         assert (p / "dist" / "posts.json").exists()
 
-    def test_posts_json_not_created_on_single_file_build(self, tmp_path):
-        p = make_project(tmp_path, posts={1: MINIMAL_MD})
-        build(p, filename="1.md")
-        assert not (p / "dist" / "posts.json").exists()
 
     def test_posts_json_recreated_on_flush(self, tmp_path):
         p = make_project(tmp_path, posts={1: MINIMAL_MD})
@@ -1588,11 +1541,6 @@ class TestAboutPage:
         assert "about.html" not in (p / "dist" / "1.html").read_text()
         assert "about.html" not in (p / "dist" / "2.html").read_text()
 
-    def test_single_file_build_about(self, tmp_path):
-        p = make_project(tmp_path, posts={1: MINIMAL_MD}, config=_ABOUT_CONFIG)
-        (p / "content" / "about.md").write_text(ABOUT_MD)
-        build(p, filename="about.md")
-        assert (p / "dist" / "about.html").exists()
 
     def test_about_html_created_without_date(self, tmp_path):
         p = make_project(tmp_path, posts={1: MINIMAL_MD}, config=_ABOUT_CONFIG)
@@ -1650,14 +1598,6 @@ class TestAboutPage:
         (p / "content" / "about.md").unlink()
         with pytest.raises(SystemExit):
             build(p)
-
-    def test_single_file_build_also_errors_when_about_md_deleted_while_configured(self, tmp_path):
-        p = make_project(tmp_path, posts={1: MINIMAL_MD, 2: MINIMAL_MD}, config=_ABOUT_CONFIG)
-        (p / "content" / "about.md").write_text(ABOUT_MD)
-        build(p)
-        (p / "content" / "about.md").unlink()
-        with pytest.raises(SystemExit):
-            build(p, filename="1.md")
 
 
 # ---------------------------------------------------------------------------
@@ -1721,17 +1661,6 @@ class TestCookiesPage:
         assert "cookies.html" not in (p / "dist" / "1.html").read_text()
         assert "cookies.html" not in (p / "dist" / "2.html").read_text()
 
-    def test_single_file_build_cookies(self, tmp_path):
-        p = make_project(tmp_path, posts={1: MINIMAL_MD}, config=_COOKIES_CONFIG)
-        (p / "content" / "cookies.md").write_text(COOKIES_MD)
-        build(p, filename="cookies.md")
-        assert (p / "dist" / "cookies.html").exists()
-
-    def test_single_file_build_cookies_does_not_create_index(self, tmp_path):
-        p = make_project(tmp_path, posts={1: MINIMAL_MD}, config=_COOKIES_CONFIG)
-        (p / "content" / "cookies.md").write_text(COOKIES_MD)
-        build(p, filename="cookies.md")
-        assert not (p / "dist" / "index.html").exists()
 
     def test_build_errors_on_second_build_when_cookies_md_deleted_while_configured(self, tmp_path):
         p = make_project(tmp_path, posts={1: MINIMAL_MD}, config=_COOKIES_CONFIG)
@@ -1776,20 +1705,6 @@ class TestAboutAndCookiesHeadingWarnings:
         (p / "content" / "cookies.md").write_text(md)
         warnings = build(p)["warnings"]
         assert not any(f == "cookies.html" for f, msg in warnings)
-
-    def test_warning_propagated_when_about_built_by_filename(self, tmp_path):
-        md = "---\ntitle: About\n---\n\n### A heading\n\nContent.\n"
-        p = make_project(tmp_path, posts={1: MINIMAL_MD}, config=_ABOUT_CONFIG)
-        (p / "content" / "about.md").write_text(md)
-        warnings = build(p, filename="about.md")["warnings"]
-        assert any(f == "about.html" and "heading" in msg.lower() for f, msg in warnings)
-
-    def test_warning_propagated_when_cookies_built_by_filename(self, tmp_path):
-        md = "---\ntitle: Cookie Policy\n---\n\n#### A heading\n\nContent.\n"
-        p = make_project(tmp_path, posts={1: MINIMAL_MD}, config=_COOKIES_CONFIG)
-        (p / "content" / "cookies.md").write_text(md)
-        warnings = build(p, filename="cookies.md")["warnings"]
-        assert any(f == "cookies.html" and "heading" in msg.lower() for f, msg in warnings)
 
 
 # ---------------------------------------------------------------------------
@@ -1864,13 +1779,6 @@ class TestSpecialPagesGeneric:
         (p / "content" / "now.md").write_text(NOW_MD)
         with pytest.raises(SystemExit):
             build(p)
-
-    def test_single_file_build_of_unrelated_post_does_not_rebuild_unchanged_special_page(self, tmp_path):
-        p = make_project(tmp_path, posts={1: MINIMAL_MD, 2: MINIMAL_MD}, config=_NOW_CONFIG)
-        (p / "content" / "now.md").write_text(NOW_MD)
-        build(p)
-        log = build(p, filename="1.md")["log"]
-        assert ("UPDATED", "now.html") not in log
 
 
 # ---------------------------------------------------------------------------
@@ -1982,18 +1890,6 @@ class TestNotFoundPage:
         build(p)
         assert (p / "dist" / "error-404-image-01-thumb.jpg").exists()
 
-    def test_single_file_build_of_404_page(self, tmp_path):
-        p = make_project(tmp_path, posts={1: MINIMAL_MD}, config=_NOT_FOUND_CONFIG)
-        (p / "content" / "error-404.md").write_text(NOT_FOUND_MD)
-        build(p, filename="error-404.md")
-        assert (p / "dist" / "404.html").exists()
-
-    def test_single_file_build_of_unrelated_post_does_not_rebuild_unchanged_404_page(self, tmp_path):
-        p = make_project(tmp_path, posts={1: MINIMAL_MD, 2: MINIMAL_MD}, config=_NOT_FOUND_CONFIG)
-        (p / "content" / "error-404.md").write_text(NOT_FOUND_MD)
-        build(p)
-        log = build(p, filename="1.md")["log"]
-        assert ("UPDATED", "404.html") not in log
 
     def test_editing_404_page_rebuilds_it_on_full_build(self, tmp_path):
         p = make_project(tmp_path, posts={1: MINIMAL_MD}, config=_NOT_FOUND_CONFIG)
@@ -2540,10 +2436,6 @@ class TestArchivePage:
         build(p)
         assert (p / "dist" / "archive.html").exists()
 
-    def test_archive_html_not_created_on_single_file_build(self, tmp_path):
-        p = make_project(tmp_path, posts={1: MINIMAL_MD})
-        build(p, filename="1.md")
-        assert not (p / "dist" / "archive.html").exists()
 
     def test_archive_html_not_created_when_no_changes(self, tmp_path):
         p = make_project(tmp_path, posts={1: MINIMAL_MD})
@@ -2588,10 +2480,6 @@ class TestSearchPage:
         build(p)
         assert (p / "dist" / "search.html").exists()
 
-    def test_search_html_not_created_on_single_file_build(self, tmp_path):
-        p = make_project(tmp_path, posts={1: MINIMAL_MD})
-        build(p, filename="1.md")
-        assert not (p / "dist" / "search.html").exists()
 
     def test_search_html_not_created_when_no_changes(self, tmp_path):
         p = make_project(tmp_path, posts={1: MINIMAL_MD})
@@ -2642,10 +2530,6 @@ class TestRandomPage:
         build(p)
         assert (p / "dist" / "random.html").exists()
 
-    def test_random_html_not_created_on_single_file_build(self, tmp_path):
-        p = make_project(tmp_path, posts={1: MINIMAL_MD})
-        build(p, filename="1.md")
-        assert not (p / "dist" / "random.html").exists()
 
     def test_random_html_not_created_when_no_changes(self, tmp_path):
         p = make_project(tmp_path, posts={1: MINIMAL_MD})
@@ -2780,14 +2664,6 @@ class TestAltTextWarnings:
         warnings = build(p)["warnings"]
         assert not any(f == "about.html" for f, msg in warnings)
 
-    def test_special_page_alt_text_warning_propagated_when_built_by_filename(self, tmp_path):
-        md = "---\ntitle: About\n---\n\nHello\n"
-        p = make_project(tmp_path, posts={1: MINIMAL_MD}, config=_ABOUT_CONFIG)
-        (p / "content" / "about.md").write_text(md)
-        make_jpg(p / "content" / "about-image-01.jpg")
-        warnings = build(p, filename="about.md")["warnings"]
-        assert any(f == "about.html" and "alt" in msg.lower() for f, msg in warnings)
-
 
 # ---------------------------------------------------------------------------
 # Title/name warnings — special pages
@@ -2820,13 +2696,6 @@ class TestSpecialPageTitleNameWarnings:
         p = make_project(tmp_path, posts={1: MINIMAL_MD}, config=_ABOUT_CONFIG)
         (p / "content" / "about.md").write_text(md)
         assert build(p)["warnings"] == []
-
-    def test_special_page_title_and_name_warning_propagated_when_built_by_filename(self, tmp_path):
-        md = "---\ntitle: About\nname: Fallback\n---\n\nHello\n"
-        p = make_project(tmp_path, posts={1: MINIMAL_MD}, config=_ABOUT_CONFIG)
-        (p / "content" / "about.md").write_text(md)
-        warnings = build(p, filename="about.md")["warnings"]
-        assert any(f == "about.html" and "title" in msg.lower() and "name" in msg.lower() for f, msg in warnings)
 
 
 # ---------------------------------------------------------------------------
@@ -3059,10 +2928,6 @@ class TestCategoryPages:
         assert (p / "dist" / "photography.html").exists()
         assert (p / "dist" / "travel.html").exists()
 
-    def test_category_page_not_created_on_single_file_build(self, tmp_path):
-        p = make_project(tmp_path, posts={1: _CATEGORY_MD}, config=_CATEGORIES_CONFIG)
-        build(p, filename="1.md")
-        assert not (p / "dist" / "photography.html").exists()
 
     def test_category_page_not_created_when_no_categories_configured(self, tmp_path):
         p = make_project(tmp_path, posts={1: _CATEGORY_MD})
@@ -3319,7 +3184,6 @@ class TestArchivePersonalPicks:
         p = make_project(tmp_path, posts={1: md})
         build(p)
         assert "<h2>Personal Picks</h2>" not in (p / "dist" / "archive.html").read_text()
-
 
 
 # ---------------------------------------------------------------------------
@@ -3658,11 +3522,6 @@ class TestProgressCallback:
         outcome = build(p, on_progress=lambda: calls.append(1))
         assert len(calls) == len(outcome["log"])
 
-    def test_on_progress_called_during_filename_build(self, tmp_path):
-        calls = []
-        p = make_project(tmp_path, posts={1: MINIMAL_MD})
-        outcome = build(p, filename="1.md", on_progress=lambda: calls.append(1))
-        assert len(calls) == len(outcome["log"])
 
     def test_on_progress_called_zero_times_when_no_changes(self, tmp_path):
         p = make_project(tmp_path, posts={1: MINIMAL_MD})
@@ -4134,98 +3993,6 @@ class TestDynamicForcedRebuild:
         assert '<a href="about.html">About</a>' in (p / "dist" / "1.html").read_text()
 
 
-class TestDynamicSinglePageBuild:
-
-    def test_single_page_build_computes_fresh_values(self, tmp_path):
-        p = make_project(tmp_path, posts={1: MINIMAL_MD})
-        build(p)
-        (p / "content" / "2.md").write_text(
-            "---\ndate: 2026-06-01\n---\n\nWe have {{ post_count }} posts.\n"
-        )
-        build(p, filename="2.md")
-        assert '<span class="post-count">2</span>' in (p / "dist" / "2.html").read_text()
-
-    def test_single_page_build_does_not_rebuild_other_dynamic_pages(self, tmp_path):
-        p = make_project(tmp_path, posts={
-            1: "---\ndate: 2026-05-24\n---\n\nWe have {{ post_count }} posts.\n",
-        })
-        build(p)
-        original_html = (p / "dist" / "1.html").read_text()
-        assert '<span class="post-count">1</span>' in original_html
-
-        (p / "content" / "2.md").write_text(MINIMAL_MD)
-        build(p, filename="2.md")
-        assert (p / "dist" / "1.html").read_text() == original_html
-
-    def test_single_page_build_updates_its_own_dynamic_flag(self, tmp_path):
-        p = make_project(tmp_path, posts={1: MINIMAL_MD})
-        build(p, filename="1.md")
-        manifest = json.loads((p / "manifest.json").read_text())
-        assert manifest["pages"]["1.html"] == {"dynamic": False}
-
-        (p / "content" / "1.md").write_text("---\ndate: 2026-05-24\n---\n\n{{ post_count }}\n")
-        build(p, filename="1.md")
-        manifest = json.loads((p / "manifest.json").read_text())
-        assert manifest["pages"]["1.html"] == {"dynamic": True}
-
-    def test_single_page_build_preserves_other_manifest_entries(self, tmp_path):
-        p = make_project(tmp_path, posts={1: MINIMAL_MD, 2: MINIMAL_MD})
-        build(p)
-        before = json.loads((p / "manifest.json").read_text())
-
-        build(p, filename="1.md")
-        after = json.loads((p / "manifest.json").read_text())
-        assert after["2.md"] == before["2.md"]
-        assert after["pages"]["2.html"] == before["pages"]["2.html"]
-
-    def test_single_page_special_build_does_not_rebuild_dynamic_post(self, tmp_path):
-        p = make_project(tmp_path, posts={
-            1: "---\ndate: 2026-05-24\n---\n\nWe have {{ post_count }} posts.\n",
-        }, config=_DYNAMIC_ABOUT_CONFIG)
-        (p / "content" / "about.md").write_text("---\ntitle: About\n---\n\nStatic content.\n")
-        build(p)
-        original_post_html = (p / "dist" / "1.html").read_text()
-
-        (p / "content" / "2.md").write_text(MINIMAL_MD)
-        build(p, filename="about.md")
-        assert (p / "dist" / "1.html").read_text() == original_post_html
-
-
-class TestSpecialPagePreviewBuildSharedTail:
-
-    def test_special_page_preview_syncs_resources(self, tmp_path):
-        # A special-page single-file build used to return early before resource
-        # syncing ran at all — unlike a post single-file build, which always reached
-        # it. Both must behave the same way.
-        p = make_project(tmp_path, posts={1: MINIMAL_MD}, config=_ABOUT_CONFIG)
-        (p / "content" / "about.md").write_text(ABOUT_MD)
-        (p / "resources" / "new.css").write_text("body { color: red; }")
-        build(p, filename="about.md")
-        assert (p / "dist" / "resources" / "new.css").exists()
-
-    def test_special_page_preview_not_double_processed(self, tmp_path):
-        # The general special_pages loop (which independently rebuilds any special
-        # page whose own file changed, regardless of what was targeted) must not
-        # re-process the same page a second time when it's also the preview target.
-        p = make_project(tmp_path, posts={1: MINIMAL_MD}, config=_ABOUT_CONFIG)
-        (p / "content" / "about.md").write_text(ABOUT_MD)
-        outcome = build(p, filename="about.md")
-        updated_entries = [e for e in outcome["log"] if e[1] == "about.html"]
-        assert len(updated_entries) == 1
-
-    def test_post_preview_does_not_rebuild_an_unrelated_changed_special_page(self, tmp_path):
-        # A single-file build must only ever touch the one page requested — an
-        # unrelated special page whose own file also changed must be left alone.
-        p = make_project(tmp_path, posts={1: MINIMAL_MD, 2: MINIMAL_MD}, config=_ABOUT_CONFIG)
-        (p / "content" / "about.md").write_text(ABOUT_MD)
-        build(p)
-        (p / "content" / "about.md").write_text(
-            "---\ndate: 2026-05-24\ntitle: About\n---\n\nUpdated about content.\n"
-        )
-        build(p, filename="1.md")
-        assert "Updated about content" not in (p / "dist" / "about.html").read_text()
-
-
 # ---------------------------------------------------------------------------
 # Comments
 # ---------------------------------------------------------------------------
@@ -4494,8 +4261,3 @@ class TestInternalLinkWarnings:
         warnings = build(p)["warnings"]
         assert any(f == "1.html" and "2.html" in msg for f, msg in warnings)
 
-    def test_no_link_check_on_single_file_preview_build(self, tmp_path):
-        md = "---\ndate: 2026-05-24\n---\n\n[missing](99.html)\n"
-        p = make_project(tmp_path, posts={1: md})
-        warnings = build(p, filename="1.md")["warnings"]
-        assert warnings == []
