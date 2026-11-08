@@ -2,6 +2,8 @@
 
 **Scope:** `magnetizer` repo only. Period: roughly 2026-08-08 to 2026-11-08 (147 commits, 50 merged PRs, 1 open PR). Solo-maintainer project (all commits authored by this project's one contributor, under two git identity casings, plus 2 Dependabot PRs) — several framework sections below are scoped down or marked N/A where they assume a team/service context that doesn't apply to a CLI static-site generator.
 
+> **Status update, 2026-11-08:** every item in the improvement roadmap (section 16) is now done — see sections 4, 15, and 16 for the full breakdown with PR references. The findings below are left as originally written, describing the codebase as it stood at the time of review.
+
 ---
 
 ## 1. Executive Summary
@@ -12,8 +14,8 @@
 - No known dependency vulnerabilities (`pip-audit` clean); no `shell=True`/`eval`/`exec`; no hardcoded secrets.
 - Clean trunk-based flow: 50 PRs merged this quarter, exactly 1 open, zero stale remote branches (GitHub auto-deletes on merge). CHANGELOG/spec/README all actively maintained and still match the implementation.
 - Major work this quarter: ingest pipeline (`ingest.py`), git-based pull/publish tooling (`pull.py`, `source_publisher.py`), CI reproducibility (dependency pinning + Linux CI), content-hash manifest rewrite, several rendering features (footnotes, inline-image pairing/linking, categories, search, gallery, comments groundwork).
-- One real architectural smell: `build()` in `builder.py` has grown into a ~170-line stateful orchestrator with many boolean flags (`filename`, `flush`, `refresh`, `resources`, `specials_rebuilt`...). It's heavily and well commented, and covered by tests, but it's the one function in the codebase that's genuinely hard to hold in your head.
-- No blocking risks. The main gaps are process/hygiene rather than correctness: no LICENSE file on a public repo, no linting/static analysis in CI, several stale local branches never cleaned up.
+- One real architectural smell: `build()` in `builder.py` has grown into a ~170-line stateful orchestrator with many boolean flags (`filename`, `flush`, `refresh`, `resources`, `specials_rebuilt`...). It's heavily and well commented, and covered by tests, but it's the one function in the codebase that's genuinely hard to hold in your head. *(Resolved since: the `filename`/single-page path turned out to be unused anywhere and was removed entirely, rather than just split — see section 4.)*
+- No blocking risks. The main gaps are process/hygiene rather than correctness: no LICENSE file on a public repo, no linting/static analysis in CI, several stale local branches never cleaned up. *(All closed out — see section 16.)*
 
 ## 2. Code Quality and Maintainability
 
@@ -34,16 +36,16 @@
 
 ## 4. Technical Debt Assessment
 
-| Issue | Impact | Priority | Est. Effort | Recommendation |
-|---|---|---|---|---|
-| Pagination boilerplate duplicated 3× (`_write_index_pages`/`_write_category_pages`/`_write_gallery_pages`) | Low-Medium | Medium | 0.5 day | Extract shared `_write_paginated_pages` helper |
-| `build()` flag-combinatorics (5 independent booleans) | Medium | Medium | 1-2 days | Consider splitting into `build_full()` / `build_single_page()` entry points sharing internals |
-| `post.py` at 18% coverage | Low-Medium (unknown) | Medium | 0.5 day to investigate | Determine if dead code; delete or test |
-| No LICENSE file on a public repo | Low (legal ambiguity) | Medium | 5 min | Add one (even restrictive) |
-| No linting/static analysis (ruff/mypy) in CI | Low | Low | 0.5 day | Add `ruff check` to `test.yml` |
-| Stale local branches never cleaned up after squash-merge | Low | Low | 10 min | `git branch -d` the merged ones |
+| Issue | Impact | Priority | Est. Effort | Recommendation | Status |
+|---|---|---|---|---|---|
+| Pagination boilerplate duplicated 3× (`_write_index_pages`/`_write_category_pages`/`_write_gallery_pages`) | Low-Medium | Medium | 0.5 day | Extract shared `_write_paginated_pages` helper | ✅ Done — `_write_paginated_page` extracted (#102, PR #106) |
+| `build()` flag-combinatorics (5 independent booleans) | Medium | Medium | 1-2 days | Consider splitting into `build_full()` / `build_single_page()` entry points sharing internals | ✅ Resolved, more thoroughly than planned — split (#104, PR #110), then the single-file-build path it isolated turned out to be unused anywhere (checked CI, Blog's `publish.yml`, `publish.py`, `ingest.py`) and was removed outright (PR #111). `build()` is back to one function, now genuinely simple rather than just split |
+| `post.py` at 18% coverage | Low-Medium (unknown) | Medium | 0.5 day to investigate | Determine if dead code; delete or test | ✅ Investigated (#103) — not dead, not under-tested; fully exercised via the same subprocess-based CLI testing convention every other script in this repo uses, just invisible to coverage.py. No code change needed; closed as a corrected finding |
+| No LICENSE file on a public repo | Low (legal ambiguity) | Medium | 5 min | Add one (even restrictive) | ✅ Done — `LICENSE` added, all rights reserved (#100, PR #112) |
+| No linting/static analysis (ruff/mypy) in CI | Low | Low | 0.5 day | Add `ruff check` to `test.yml` | ✅ Done — added with an explicitly pinned rule set (#101, PR #107) |
+| Stale local branches never cleaned up after squash-merge | Low | Low | 10 min | `git branch -d` the merged ones | ✅ Done — cleaned up directly (not tracked as an issue) |
 
-No newly introduced debt stands out this quarter beyond the above — if anything, debt was actively *paid down* (manifest rewrite, `git_utils.py` extraction, `publisher.py`/`--push` removal in PR #70/#72 once superseded by the pull/publish workflow).
+No newly introduced debt stands out this quarter beyond the above — if anything, debt was actively *paid down* (manifest rewrite, `git_utils.py` extraction, `publisher.py`/`--push` removal in PR #70/#72 once superseded by the pull/publish workflow). **Update (2026-11-08): every item above has since been resolved** — see section 16.
 
 ## 5. Security Review
 
@@ -134,27 +136,29 @@ Notable arcs:
 
 ## 15. Risk Register
 
-| Risk | Likelihood | Impact | Priority | Mitigation |
-|---|---|---|---|---|
-| `build()`'s flag-combinatorics causes a regression on a future feature | Medium | Medium | Medium | Split into explicit entry points; rely on existing 98% coverage as a safety net meanwhile |
-| Public repo with no LICENSE creates legal ambiguity for anyone encountering it | Low | Low-Medium | Medium | Add a LICENSE file |
-| pymdown-extensions a major version behind | Low | Low | Low | Review changelog, bump opportunistically |
-| Low coverage on `post.py`/`inbox.py` hides a latent bug | Low | Medium | Low-Medium | Investigate `post.py` for dead code; add tests to `inbox.py` |
-| No CI linting lets a style/type inconsistency land unnoticed | Low | Low | Low | Add ruff to CI |
+| Risk | Likelihood | Impact | Priority | Mitigation | Status |
+|---|---|---|---|---|---|
+| `build()`'s flag-combinatorics causes a regression on a future feature | Medium | Medium | Medium | Split into explicit entry points; rely on existing 98% coverage as a safety net meanwhile | ✅ Mitigated — the risky code path no longer exists (PR #111) |
+| Public repo with no LICENSE creates legal ambiguity for anyone encountering it | Low | Low-Medium | Medium | Add a LICENSE file | ✅ Mitigated (PR #112) |
+| pymdown-extensions a major version behind | Low | Low | Low | Review changelog, bump opportunistically | ✅ Mitigated (PR #109) — the bump also caught a real behavior change (Mark's mid-word-marking default flipped in 12.0), fixed with a pinned `smart_mark=True` |
+| Low coverage on `post.py`/`inbox.py` hides a latent bug | Low | Medium | Low-Medium | Investigate `post.py` for dead code; add tests to `inbox.py` | ✅ Mitigated — investigated, not a latent bug, no change needed (#103) |
+| No CI linting lets a style/type inconsistency land unnoticed | Low | Low | Low | Add ruff to CI | ✅ Mitigated (PR #107) |
 
-Nothing here rises above Medium — there is no Critical or High risk in this codebase right now.
+All identified risks have been mitigated as of 2026-11-08. Nothing here rose above Medium at the time of review — there was no Critical or High risk in this codebase this quarter.
 
 ## 16. Quarterly Improvement Roadmap
 
-| Priority | Item | Problem | Proposed Solution | Effort | Target |
-|---|---|---|---|---|---|
-| P1 | Add LICENSE file | Public repo, no stated license | Pick and add one | 5 min | Immediate |
-| P1 | Add ruff to CI | No static analysis gate | Add `ruff check .` step to `test.yml` | 0.5 day | This quarter |
-| P2 | Extract `_write_paginated_pages` helper | 3× duplicated pagination/render boilerplate in `builder.py` | Consolidate into one shared function | 0.5 day | Next quarter |
-| P2 | Investigate `post.py` (18% coverage) | Unclear if dead code or under-tested | Read usage, delete or test | 0.5 day | Next quarter |
-| P2 | Split `build()` into explicit entry points | High combinatorial complexity in one function | `build_full()` / `build_single_page()` sharing internals | 1-2 days | Next quarter |
-| P3 | Clean up stale local branches | Local-only clutter, no functional effect | `git branch -d` the merged ones | 10 min | As capacity permits |
-| P3 | Bump pymdown-extensions to 12.x | One major version behind | Review changelog, bump, run tests | 0.5 day | As capacity permits |
+**Status update (2026-11-08): every item below is complete.** PRs #106-#112 closed out all six roadmap items within the same week the review was written, including one (`build()`) resolved more completely than originally scoped — see section 4.
+
+| Priority | Item | Problem | Proposed Solution | Effort | Target | Status |
+|---|---|---|---|---|---|---|
+| P1 | Add LICENSE file | Public repo, no stated license | Pick and add one | 5 min | Immediate | ✅ Done (#100, PR #112) |
+| P1 | Add ruff to CI | No static analysis gate | Add `ruff check .` step to `test.yml` | 0.5 day | This quarter | ✅ Done (#101, PR #107) |
+| P2 | Extract `_write_paginated_pages` helper | 3× duplicated pagination/render boilerplate in `builder.py` | Consolidate into one shared function | 0.5 day | Next quarter | ✅ Done (#102, PR #106) |
+| P2 | Investigate `post.py` (18% coverage) | Unclear if dead code or under-tested | Read usage, delete or test | 0.5 day | Next quarter | ✅ Done, no action needed (#103) |
+| P2 | Split `build()` into explicit entry points | High combinatorial complexity in one function | `build_full()` / `build_single_page()` sharing internals | 1-2 days | Next quarter | ✅ Done, then superseded by removing the unused single-page path entirely (#104, PRs #110 + #111) |
+| P3 | Clean up stale local branches | Local-only clutter, no functional effect | `git branch -d` the merged ones | 10 min | As capacity permits | ✅ Done |
+| P3 | Bump pymdown-extensions to 12.x | One major version behind | Review changelog, bump, run tests | 0.5 day | As capacity permits | ✅ Done (#105, PR #109) |
 
 ## 17. Overall Codebase Health Scorecard
 
