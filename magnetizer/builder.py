@@ -964,26 +964,13 @@ def _write_posts_index(published_posts_sorted_desc, config, special_page_posts_b
     log(("UPDATED", "posts.json"))
 
 
-def build(cwd, filename=None, flush=False, resources=False, refresh=False, on_progress=None):
-    cwd = Path(cwd)
-    content_dir = cwd / "content"
-    dist_dir = cwd / "dist"
+def _prepare_build(cwd, config, on_progress):
+    """Load and compute everything a full build and a single-page preview
+    build both need before they diverge: the manifest, this run's content,
+    and sitewide dynamic values. Sitewide dynamic-value computation runs
+    unconditionally (even for a single-page preview build) so that any
+    shortcodes on the page(s) being built expand correctly."""
     manifest_path = cwd / "manifest.json"
-
-    validate_project(cwd)
-
-    config = load_config(cwd / "config.yaml")
-    validate_config(config)
-    validate_content(content_dir, config)
-    metadata = load_metadata(cwd / "metadata.yaml")
-    validate_metadata(metadata, config)
-    template = (cwd / "templates" / "index.html").read_text().replace(
-        'MAGNETIZER_BUILD_ID', str(int(time.time()))
-    )
-
-    if flush:
-        _flush_dist(dist_dir, manifest_path)
-
     manifest = load_manifest(manifest_path)
     prev_pages = manifest.get("pages", {})
     log = []
@@ -999,50 +986,67 @@ def build(cwd, filename=None, flush=False, resources=False, refresh=False, on_pr
         buildable_post_ids_sorted_desc, buildable_posts_sorted_desc,
         published_post_ids_sorted_desc, published_posts_sorted_desc,
         special_page_posts, special_page_posts_by_name, not_found_post,
-    ) = _load_content(content_dir, config)
+    ) = _load_content(cwd / "content", config)
 
     _check_no_invalid_posts(buildable_posts_sorted_desc, special_page_posts, not_found_post)
-    warnings.extend(_orphan_comment_warnings(content_dir, set(buildable_post_ids_sorted_desc)))
+    warnings.extend(_orphan_comment_warnings(cwd / "content", set(buildable_post_ids_sorted_desc)))
 
     build_datetime = _datetime.now()
     build_date = build_datetime.date()
-
-    # Sitewide dynamic-value computation runs unconditionally (even for a single-page
-    # preview build) so that any shortcodes on the page(s) being built expand correctly.
     values = _compute_dynamic_values(published_posts_sorted_desc, special_page_posts, build_date, build_datetime, warnings)
+
+    return (
+        manifest_path, manifest, prev_pages, log, _log, warnings,
+        all_post_ids_sorted_desc, posts_cache,
+        buildable_post_ids_sorted_desc, buildable_posts_sorted_desc,
+        published_post_ids_sorted_desc, published_posts_sorted_desc,
+        special_page_posts, special_page_posts_by_name, not_found_post,
+        build_date, build_datetime, values,
+    )
+
+
+def _build_single_page(cwd, filename, config, template, on_progress=None):
+    """Build (or preview-rebuild) exactly the one page FILENAME names --
+    a post, a special page, or the 404 page -- touching nothing else in
+    dist/. FILENAME can never be combined with flush/resources/refresh
+    (build.py's CLI rejects that combination before calling build() at
+    all), so none of those apply here."""
+    content_dir = cwd / "content"
+    dist_dir = cwd / "dist"
+    resources_dir = cwd / "resources"
+
+    (
+        manifest_path, manifest, prev_pages, log, _log, warnings,
+        all_post_ids_sorted_desc, posts_cache,
+        buildable_post_ids_sorted_desc, buildable_posts_sorted_desc,
+        published_post_ids_sorted_desc, published_posts_sorted_desc,
+        special_page_posts, special_page_posts_by_name, not_found_post,
+        build_date, build_datetime, values,
+    ) = _prepare_build(cwd, config, on_progress)
 
     pages_dynamic_updates = {}
     deleted_page_filenames = set()
-
-    post_ids_to_build: set[int] = set()
-
     not_found_name = _not_found_page_name(config)
 
-    if filename:
-        stem = Path(filename).stem
-        if stem in config["special_pages"]:
-            _build_requested_special_page(
-                stem, content_dir, dist_dir, config, template, values,
-                pages_dynamic_updates, warnings, _log,
-            )
-            changed_post_ids = set()
-        elif not_found_name and stem == not_found_name:
-            _build_requested_not_found_page(
-                not_found_name, config["404-page-output-filename"], content_dir, dist_dir, config, template, values,
-                pages_dynamic_updates, warnings, _log,
-            )
-            changed_post_ids = set()
-        else:
-            post_id = int(stem)
-            changed_post_ids = {post_id}
-            post_ids_to_build = {post_id}
-        any_relevant_change = False
-    else:
-        changed_post_ids = get_changed_post_ids(content_dir, manifest)
-        post_ids_to_build, any_relevant_change = _determine_full_build_scope(
-            changed_post_ids, content_dir, manifest, prev_pages, config,
-            all_post_ids_sorted_desc, published_post_ids_sorted_desc,
+    stem = Path(filename).stem
+    if stem in config["special_pages"]:
+        _build_requested_special_page(
+            stem, content_dir, dist_dir, config, template, values,
+            pages_dynamic_updates, warnings, _log,
         )
+        changed_post_ids = set()
+        post_ids_to_build: set[int] = set()
+    elif not_found_name and stem == not_found_name:
+        _build_requested_not_found_page(
+            not_found_name, config["404-page-output-filename"], content_dir, dist_dir, config, template, values,
+            pages_dynamic_updates, warnings, _log,
+        )
+        changed_post_ids = set()
+        post_ids_to_build = set()
+    else:
+        post_id = int(stem)
+        changed_post_ids = {post_id}
+        post_ids_to_build = {post_id}
 
     created, updated, deleted = _build_changed_posts(
         post_ids_to_build, changed_post_ids, posts_cache, manifest,
@@ -1050,7 +1054,65 @@ def build(cwd, filename=None, flush=False, resources=False, refresh=False, on_pr
         values, pages_dynamic_updates, deleted_page_filenames, warnings, _log,
     )
 
-    if refresh and not filename:
+    # Patch just this one page's dynamic flag into the manifest, leaving
+    # every other entry untouched.
+    if not_found_name and stem == not_found_name:
+        single_page_filename = config["404-page-output-filename"]
+    else:
+        single_page_filename = f"{stem}.html"
+    if single_page_filename in pages_dynamic_updates:
+        update_page_dynamic_flag(
+            manifest_path, manifest, single_page_filename,
+            pages_dynamic_updates[single_page_filename]["dynamic"],
+        )
+
+    changed_resource_filenames = get_changed_resource_filenames(resources_dir, manifest)
+    copied, deleted_resources = _sync_resources(resources_dir, dist_dir, changed_resource_filenames, replace=False)
+    for name in copied:
+        _log(("COPIED", f"resources/{name}"))
+    for name in deleted_resources:
+        _log(("REMOVED", f"resources/{name}"))
+
+    return {"created": created, "updated": updated, "deleted": deleted, "log": log, "warnings": warnings}
+
+
+def _build_full(cwd, config, metadata, template, flush=False, resources=False, refresh=False, on_progress=None):
+    """Build the whole site: every post/special page whose content changed
+    since the last build, plus the generated listing/sitemap/search pages,
+    resources, and the manifest itself."""
+    content_dir = cwd / "content"
+    dist_dir = cwd / "dist"
+    resources_dir = cwd / "resources"
+    manifest_path = cwd / "manifest.json"
+
+    if flush:
+        _flush_dist(dist_dir, manifest_path)
+
+    (
+        manifest_path, manifest, prev_pages, log, _log, warnings,
+        all_post_ids_sorted_desc, posts_cache,
+        buildable_post_ids_sorted_desc, buildable_posts_sorted_desc,
+        published_post_ids_sorted_desc, published_posts_sorted_desc,
+        special_page_posts, special_page_posts_by_name, not_found_post,
+        build_date, build_datetime, values,
+    ) = _prepare_build(cwd, config, on_progress)
+
+    pages_dynamic_updates = {}
+    deleted_page_filenames = set()
+
+    changed_post_ids = get_changed_post_ids(content_dir, manifest)
+    post_ids_to_build, any_relevant_change = _determine_full_build_scope(
+        changed_post_ids, content_dir, manifest, prev_pages, config,
+        all_post_ids_sorted_desc, published_post_ids_sorted_desc,
+    )
+
+    created, updated, deleted = _build_changed_posts(
+        post_ids_to_build, changed_post_ids, posts_cache, manifest,
+        published_post_ids_sorted_desc, content_dir, dist_dir, config, template,
+        values, pages_dynamic_updates, deleted_page_filenames, warnings, _log,
+    )
+
+    if refresh:
         # Anything already in post_ids_to_build is getting a real (image-processing)
         # rebuild this run regardless -- refresh only needs to cover the rest, reusing
         # whatever's already resized in dist/ from an earlier build. Iterate
@@ -1065,40 +1127,22 @@ def build(cwd, filename=None, flush=False, resources=False, refresh=False, on_pr
             dist_dir, config, template, values, pages_dynamic_updates, warnings, _log,
         )
 
-    if filename:
-        # Single-file preview build (post or special page): patch just this one page's
-        # dynamic flag into the manifest, leaving every other entry untouched.
-        if not_found_name and Path(filename).stem == not_found_name:
-            single_page_filename = config["404-page-output-filename"]
-        else:
-            single_page_filename = f"{Path(filename).stem}.html"
-        if single_page_filename in pages_dynamic_updates:
-            update_page_dynamic_flag(
-                manifest_path, manifest, single_page_filename,
-                pages_dynamic_updates[single_page_filename]["dynamic"],
-            )
-
-    specials_rebuilt = False
-    if not filename:
-        # A single-file build only ever touches the one page requested — a special
-        # page named directly as FILENAME is handled above; any other special page,
-        # even one whose own file also changed, is left untouched.
-        specials_rebuilt = _rebuild_stale_special_pages(
-            config, content_dir, dist_dir, template, values, manifest, prev_pages,
-            any_relevant_change, pages_dynamic_updates, warnings, _log, force=refresh,
-        )
-        not_found_rebuilt = _rebuild_stale_not_found_page(
-            config, content_dir, dist_dir, template, values, manifest, prev_pages,
-            any_relevant_change, pages_dynamic_updates, warnings, _log, force=refresh,
-        )
-        specials_rebuilt = specials_rebuilt or not_found_rebuilt
+    specials_rebuilt = _rebuild_stale_special_pages(
+        config, content_dir, dist_dir, template, values, manifest, prev_pages,
+        any_relevant_change, pages_dynamic_updates, warnings, _log, force=refresh,
+    )
+    not_found_rebuilt = _rebuild_stale_not_found_page(
+        config, content_dir, dist_dir, template, values, manifest, prev_pages,
+        any_relevant_change, pages_dynamic_updates, warnings, _log, force=refresh,
+    )
+    specials_rebuilt = specials_rebuilt or not_found_rebuilt
 
     photos = None
-    if not filename and (post_ids_to_build or refresh or specials_rebuilt):
+    if post_ids_to_build or refresh or specials_rebuilt:
         photos = _gallery_photos(published_posts_sorted_desc, dist_dir)
         _write_generated_pages(published_posts_sorted_desc, special_page_posts, dist_dir, config, template, _log, build_date, build_datetime, photos, metadata=metadata)
 
-    if not filename and (log or refresh):
+    if log or refresh:
         # post_ids_to_build can be empty while log is still non-empty (e.g. a
         # stale special page rebuilt on its own) — in that case photos wasn't
         # computed above yet.
@@ -1113,7 +1157,6 @@ def build(cwd, filename=None, flush=False, resources=False, refresh=False, on_pr
             values, metadata=metadata,
         )
 
-    resources_dir = cwd / "resources"
     changed_resource_filenames = get_changed_resource_filenames(resources_dir, manifest)
     copied, deleted_resources = _sync_resources(
         resources_dir, dist_dir, changed_resource_filenames, replace=(resources or flush)
@@ -1123,16 +1166,34 @@ def build(cwd, filename=None, flush=False, resources=False, refresh=False, on_pr
     for name in deleted_resources:
         _log(("REMOVED", f"resources/{name}"))
 
-    if not filename:
-        warnings.extend(check_internal_links(dist_dir, config["site_url"], config["external_paths"]))
+    warnings.extend(check_internal_links(dist_dir, config["site_url"], config["external_paths"]))
 
-        # Always save, even when nothing changed enough to rebuild anything: a
-        # touched-but-unedited file still needs its manifest entry's size/mtime
-        # refreshed (its sha256 is unchanged), or the fast path can never engage
-        # for it again and every future build re-hashes it from scratch.
-        final_pages = {**prev_pages, **pages_dynamic_updates}
-        for page_filename in deleted_page_filenames:
-            final_pages.pop(page_filename, None)
-        save_manifest(content_dir, manifest_path, resources_dir=resources_dir, pages=final_pages, prev_manifest=manifest)
+    # Always save, even when nothing changed enough to rebuild anything: a
+    # touched-but-unedited file still needs its manifest entry's size/mtime
+    # refreshed (its sha256 is unchanged), or the fast path can never engage
+    # for it again and every future build re-hashes it from scratch.
+    final_pages = {**prev_pages, **pages_dynamic_updates}
+    for page_filename in deleted_page_filenames:
+        final_pages.pop(page_filename, None)
+    save_manifest(content_dir, manifest_path, resources_dir=resources_dir, pages=final_pages, prev_manifest=manifest)
 
     return {"created": created, "updated": updated, "deleted": deleted, "log": log, "warnings": warnings}
+
+
+def build(cwd, filename=None, flush=False, resources=False, refresh=False, on_progress=None):
+    cwd = Path(cwd)
+
+    validate_project(cwd)
+
+    config = load_config(cwd / "config.yaml")
+    validate_config(config)
+    validate_content(cwd / "content", config)
+    metadata = load_metadata(cwd / "metadata.yaml")
+    validate_metadata(metadata, config)
+    template = (cwd / "templates" / "index.html").read_text().replace(
+        'MAGNETIZER_BUILD_ID', str(int(time.time()))
+    )
+
+    if filename:
+        return _build_single_page(cwd, filename, config, template, on_progress=on_progress)
+    return _build_full(cwd, config, metadata, template, flush=flush, resources=resources, refresh=refresh, on_progress=on_progress)
