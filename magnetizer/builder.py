@@ -1124,7 +1124,7 @@ def build(cwd, filename=None, flush=False, resources=False, refresh=False, on_pr
         _log(("REMOVED", f"resources/{name}"))
 
     if not filename:
-        warnings.extend(check_internal_links(dist_dir, config["site_url"]))
+        warnings.extend(check_internal_links(dist_dir, config["site_url"], config["external_paths"]))
 
         # Always save, even when nothing changed enough to rebuild anything: a
         # touched-but-unedited file still needs its manifest entry's size/mtime

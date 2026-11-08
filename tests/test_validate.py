@@ -751,6 +751,30 @@ class TestValidateConfig:
             })
         assert "random.html" in capsys.readouterr().err
 
+    def test_passes_with_valid_external_paths_list(self):
+        validate_config({"site_url": "https://example.github.io", "external_paths": ["/api", "/analytics"]})  # should not raise
+
+    def test_null_external_paths_normalized_to_empty_list(self):
+        config = {"site_url": "https://example.github.io", "external_paths": None}
+        validate_config(config)
+        assert config["external_paths"] == []
+
+    def test_fails_when_external_paths_is_not_a_list(self):
+        # A bare scalar like "external_paths: /api" in config.yaml, rather
+        # than a YAML list -- iterating it character-by-character would
+        # otherwise make every single-character "prefix" match everything.
+        with pytest.raises(SystemExit):
+            validate_config({"site_url": "https://example.github.io", "external_paths": "/api"})
+
+    def test_fails_when_external_paths_contains_a_non_string(self):
+        with pytest.raises(SystemExit):
+            validate_config({"site_url": "https://example.github.io", "external_paths": ["/api", None]})
+
+    def test_error_message_mentions_external_paths(self, capsys):
+        with pytest.raises(SystemExit):
+            validate_config({"site_url": "https://example.github.io", "external_paths": "/api"})
+        assert "external_paths" in capsys.readouterr().err
+
 
 # ---------------------------------------------------------------------------
 # validate_metadata — metadata.yaml keys match a real page or category

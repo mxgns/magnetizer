@@ -34,6 +34,11 @@ def validate_default_category(config):
 
 
 def validate_config(config):
+    external_paths = config.get("external_paths")
+    if external_paths is None:
+        config["external_paths"] = external_paths = []
+    if not isinstance(external_paths, list) or not all(isinstance(p, str) for p in external_paths):
+        _error("'external_paths' in config.yaml must be a list of strings, e.g.:\nexternal_paths:\n  - /api")
     if not config.get("site_url"):
         _error("'site_url' is required in config.yaml — set it to the absolute base URL of your site, e.g. https://example.github.io")
     not_found_output = config.get("404-page-output-filename")

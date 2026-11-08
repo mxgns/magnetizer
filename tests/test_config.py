@@ -20,6 +20,7 @@ DEFAULTS = {
     "default_category": "",
     "navigation": {},
     "special_pages": [],
+    "external_paths": [],
     "ai_disclosure_html": None,
     "404-page-input-filename": None,
     "404-page-output-filename": None,
@@ -275,6 +276,24 @@ class TestSpecialPages:
         config["special_pages"].append("about")
         fresh = load_config(tmp_path / "config.yaml")
         assert fresh["special_pages"] == []
+
+
+# ---------------------------------------------------------------------------
+
+class TestExternalPaths:
+
+    def test_external_paths_default_is_empty_list(self, tmp_path):
+        assert load_config(tmp_path / "config.yaml")["external_paths"] == []
+
+    def test_external_paths_loaded_from_config(self, tmp_path):
+        p = write_config(tmp_path, "external_paths:\n  - /api\n  - /analytics\n")
+        assert load_config(p)["external_paths"] == ["/api", "/analytics"]
+
+    def test_mutating_returned_external_paths_does_not_leak_into_next_load(self, tmp_path):
+        config = load_config(tmp_path / "config.yaml")
+        config["external_paths"].append("/api")
+        fresh = load_config(tmp_path / "config.yaml")
+        assert fresh["external_paths"] == []
 
 
 # ---------------------------------------------------------------------------

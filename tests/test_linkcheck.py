@@ -164,3 +164,63 @@ class TestCheckInternalLinks:
         dist = tmp_path / "dist"
         dist.mkdir()
         assert check_internal_links(dist, SITE_URL) == []
+
+    def test_link_matching_external_path_prefix_not_checked(self, tmp_path):
+        dist = tmp_path / "dist"
+        dist.mkdir()
+        _write(dist, "1.html", '<a href="/api/guestbook/author-login">sign in</a>')
+        assert check_internal_links(dist, SITE_URL, external_paths=["/api"]) == []
+
+    def test_relative_link_resolving_under_external_path_not_checked(self, tmp_path):
+        dist = tmp_path / "dist"
+        dist.mkdir()
+        _write(dist, "1.html", '<a href="analytics/">analytics</a>')
+        assert check_internal_links(dist, SITE_URL, external_paths=["/analytics"]) == []
+
+    def test_external_path_prefix_matches_exactly_not_just_as_substring(self, tmp_path):
+        # "/api" must not match "/apikey.html" -- only "/api" itself or
+        # anything under "/api/...".
+        dist = tmp_path / "dist"
+        dist.mkdir()
+        _write(dist, "1.html", '<a href="/apikey.html">missing</a>')
+        assert check_internal_links(dist, SITE_URL, external_paths=["/api"]) == [
+            ("1.html", "Broken internal link: '/apikey.html'")
+        ]
+
+    def test_path_not_matching_any_external_prefix_still_checked(self, tmp_path):
+        dist = tmp_path / "dist"
+        dist.mkdir()
+        _write(dist, "1.html", '<a href="/other/missing.html">nope</a>')
+        assert check_internal_links(dist, SITE_URL, external_paths=["/api"]) == [
+            ("1.html", "Broken internal link: '/other/missing.html'")
+        ]
+
+    def test_external_paths_defaults_to_none_configured(self, tmp_path):
+        dist = tmp_path / "dist"
+        dist.mkdir()
+        _write(dist, "1.html", '<a href="/api/guestbook/author-login">sign in</a>')
+        assert check_internal_links(dist, SITE_URL) == [
+            ("1.html", "Broken internal link: '/api/guestbook/author-login'")
+        ]
+
+    def test_empty_external_path_entry_does_not_match_every_link(self, tmp_path):
+        # "" would match every path if it were rstrip('/')'d and used as a
+        # prefix unguarded -- an empty entry must be ignored, not treated as
+        # "everything is external".
+        dist = tmp_path / "dist"
+        dist.mkdir()
+        _write(dist, "1.html", '<a href="/other/missing.html">nope</a>')
+        assert check_internal_links(dist, SITE_URL, external_paths=["", "/api"]) == [
+            ("1.html", "Broken internal link: '/other/missing.html'")
+        ]
+
+    def test_percent_encoded_dot_segment_resolved_before_external_path_match(self, tmp_path):
+        # A browser resolves "/api/%2e%2e/missing.html" to "/missing.html" --
+        # it must not be hidden by an "/api" external_paths entry just
+        # because the raw, undecoded path happens to start with "/api/".
+        dist = tmp_path / "dist"
+        dist.mkdir()
+        _write(dist, "1.html", '<a href="/api/%2e%2e/missing.html">nope</a>')
+        assert check_internal_links(dist, SITE_URL, external_paths=["/api"]) == [
+            ("1.html", "Broken internal link: '/api/%2e%2e/missing.html'")
+        ]
