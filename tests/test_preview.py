@@ -73,3 +73,37 @@ class TestMakeServer:
         (tmp_path / "secret.txt").write_text("secret")
         status, body = fetch(serve(dist) + "/../secret.txt")
         assert "secret" not in body
+
+    def test_does_not_follow_symlinks_out_of_dist(self, tmp_path, serve):
+        dist = tmp_path / "dist"
+        dist.mkdir()
+        (tmp_path / "secret.txt").write_text("secret")
+        (dist / "leak.txt").symlink_to(tmp_path / "secret.txt")
+        status, body = fetch(serve(dist) + "/leak.txt")
+        assert status == 404
+        assert "secret" not in body
+
+    def test_does_not_follow_symlinked_directory_out_of_dist(self, tmp_path, serve):
+        dist = tmp_path / "dist"
+        dist.mkdir()
+        outside = tmp_path / "outside"
+        outside.mkdir()
+        (outside / "secret.txt").write_text("secret")
+        (dist / "linked").symlink_to(outside)
+        status, body = fetch(serve(dist) + "/linked/secret.txt")
+        assert status == 404
+        assert "secret" not in body
+
+    def test_symlinked_404_page_outside_dist_is_not_served(self, tmp_path, serve):
+        dist = tmp_path / "dist"
+        dist.mkdir()
+        (tmp_path / "secret.txt").write_text("secret")
+        (dist / "404.html").symlink_to(tmp_path / "secret.txt")
+        status, body = fetch(serve(dist) + "/nope.html")
+        assert status == 404
+        assert "secret" not in body
+
+    def test_symlinks_within_dist_still_work(self, tmp_path, serve):
+        (tmp_path / "real.html").write_text("<p>real</p>")
+        (tmp_path / "alias.html").symlink_to(tmp_path / "real.html")
+        assert fetch(serve(tmp_path) + "/alias.html") == (200, "<p>real</p>")

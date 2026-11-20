@@ -1728,7 +1728,7 @@ Must be run from the project root (same convention as `build.py`).
 2. Serve `dist/` on `127.0.0.1` only (never on other network interfaces), print `Serving at http://localhost:{port}/ (Ctrl+C to stop)`, and open that URL in the browser unless `--no-open`. A port that can't be bound (e.g. already in use) is an error, exit non-zero.
 3. Serve until Ctrl+C, then exit 0.
 
-The server serves files as-is from `dist/`, so root-relative links (e.g. `/feed.xml`) resolve the same way as on the live site, unlike opening the files directly in a browser. A request for a path that doesn't exist gets `dist/404.html` with a 404 status, if that file exists — matching GitHub Pages' custom 404 behaviour (see [404 page](#404-page)) — or a plain 404 otherwise. Paths outside `dist/` are never served. Per-request logging is suppressed so the build output stays readable.
+The server serves files as-is from `dist/`, so root-relative links (e.g. `/feed.xml`) resolve the same way as on the live site, unlike opening the files directly in a browser. A request for a path that doesn't exist gets `dist/404.html` with a 404 status, if that file exists — matching GitHub Pages' custom 404 behaviour (see [404 page](#404-page)) — or a plain 404 otherwise. Paths outside `dist/` are never served, including via a symlink inside `dist/` that resolves to somewhere outside it (symlinks resolving within `dist/` work normally). Per-request logging is suppressed so the build output stays readable.
 
 ## restore_mtimes.py
 

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import argparse
 import sys
+import threading
 import webbrowser
 from pathlib import Path
 
@@ -49,7 +50,9 @@ def main():
     url = f"http://localhost:{server.server_address[1]}/"
     print(f"Serving at {url} (Ctrl+C to stop)", flush=True)
     if not args.no_open:
-        webbrowser.open(url)
+        # In a thread: with a text-mode browser, webbrowser.open blocks until
+        # the browser exits, which would stop serve_forever from ever starting.
+        threading.Thread(target=webbrowser.open, args=(url,), daemon=True).start()
 
     try:
         server.serve_forever()
