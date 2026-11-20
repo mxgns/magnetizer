@@ -5,6 +5,10 @@
 
 ## Released changes
 
+### 20/11/26
+
+- Added `preview.py`: builds, then serves the site locally
+
 ### 08/11/26
 
 - Removed single-file preview builds (`build.py FILENAME`); never used
