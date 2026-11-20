@@ -28,6 +28,7 @@ The `magnetizer` application directory includes the following:
 new-post.py
 ingest.py
 build.py
+preview.py
 publish.py
 pull.py
 restore_mtimes.py
@@ -1710,6 +1711,24 @@ The generated site is published to a dedicated GitHub Pages repository, separate
 `dist/` must be a cloned GitHub Pages repository whenever publishing (by any means) is in scope. Magnetizer assumes this is already set up and does not manage git remotes or initialise repositories; it only ever reads and writes files inside `dist/`, never git operations on it. `--flush` deliberately preserves `.git`, `CNAME`, and `.nojekyll` inside `dist/` rather than deleting them along with everything else, specifically so `dist/` stays a valid, correctly-configured clone across a full rebuild.
 
 Magnetizer itself has no built-in way to push `dist/` anywhere — publishing it, by whatever means a project chooses (CI, a manual `git push`, or anything else), is entirely outside this tool's scope. (An earlier `build.py --push`/`--force` existed for this; removed as unnecessary now that CI is the normal publishing path for every project this generator is actually used for — see `magnetizer` issue #71 for the reasoning, and git history if a similar built-in publish step is ever genuinely needed again.)
+
+## preview.py
+
+Builds the project, then serves `dist/` locally so the result can be browsed as it would be on the live site. The everyday local command — `build.py` stays the command that produces the site for publishing (CI, `publish.py`).
+
+Usage: `preview.py [--port PORT] [--no-open] [BUILD OPTIONS]`
+
+Must be run from the project root (same convention as `build.py`).
+
+- `--port PORT` — port to serve on, default `8000`. `0` picks a free port.
+- `--no-open` — don't open the site in the default browser.
+- Any other option (`--flush`, `--refresh`, `--resources`, `--verbose`) is passed straight through to `build.py`; an option `build.py` doesn't recognise fails the build the same way it would there.
+
+1. Run `build.py` with the passed-through options (same 600-second timeout as `publish.py`). If it fails or times out, exit non-zero without serving.
+2. Serve `dist/` on `127.0.0.1` only (never on other network interfaces), print `Serving at http://localhost:{port}/ (Ctrl+C to stop)`, and open that URL in the browser unless `--no-open`. A port that can't be bound (e.g. already in use) is an error, exit non-zero.
+3. Serve until Ctrl+C, then exit 0.
+
+The server serves files as-is from `dist/`, so root-relative links (e.g. `/feed.xml`) resolve the same way as on the live site, unlike opening the files directly in a browser. A request for a path that doesn't exist gets `dist/404.html` with a 404 status, if that file exists — matching GitHub Pages' custom 404 behaviour (see [404 page](#404-page)) — or a plain 404 otherwise. Paths outside `dist/` are never served, including via a symlink inside `dist/` that resolves to somewhere outside it (symlinks resolving within `dist/` work normally). Per-request logging is suppressed so the build output stays readable.
 
 ## restore_mtimes.py
 

@@ -330,6 +330,19 @@ Every build also generates `dist/feed.xml`, an Atom feed of the `feed_max_posts`
 
 Every build re-runs Pagefind indexing over the whole of `dist/` afterwards — see [Search page](#search-page).
 
+## Previewing the site
+
+Run `preview.py` from your project directory to build the site and browse it locally. It runs `build.py`, then serves `dist/` at `http://localhost:8000/` and opens it in your browser; press Ctrl+C to stop. Nothing is served if the build fails.
+
+| Command | What it does |
+|---|---|
+| `preview.py` | Build, then serve and open the site |
+| `preview.py --refresh` | Any `build.py` option is passed through to the build |
+| `preview.py --port 8001` | Serve on a different port |
+| `preview.py --no-open` | Serve without opening a browser |
+
+Serving it, rather than opening the files directly, makes root-relative links like `/feed.xml` work as they do on the live site, and a missing page shows your `404.html`. The server only listens on `localhost`.
+
 ## Templates
 
 Magnetizer uses a single template file: `templates/index.html`. It must contain two required placeholders, plus optional ones:

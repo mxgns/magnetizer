@@ -6,13 +6,14 @@ from magnetizer.git_utils import _run_git, _run_git_probe
 _BUILD_TIMEOUT = 600  # generous enough for a --flush full rebuild; catches a true hang
 
 
-def run_build(build_script, cwd):
+def run_build(build_script, cwd, args=()):
     """Run build_script as a sanity check before publishing. Returns True on
-    success, False on a normal (non-exceptional) build failure. Raises
+    success, False on a normal (non-exceptional) build failure. args are
+    passed through to build_script as CLI options. Raises
     RuntimeError if the build hangs past _BUILD_TIMEOUT."""
     try:
         result = subprocess.run(
-            [sys.executable, str(build_script)], cwd=cwd, timeout=_BUILD_TIMEOUT,
+            [sys.executable, str(build_script), *args], cwd=cwd, timeout=_BUILD_TIMEOUT,
         )
     except subprocess.TimeoutExpired as e:
         raise RuntimeError(f"Build timed out after {_BUILD_TIMEOUT}s") from e

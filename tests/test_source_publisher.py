@@ -300,3 +300,12 @@ class TestRunBuild:
                    side_effect=subprocess.TimeoutExpired(cmd="build.py", timeout=600)):
             with pytest.raises(RuntimeError, match="timed out"):
                 run_build(Path("build.py"), tmp_path)
+
+
+class TestRunBuildArgs:
+
+    def test_forwards_extra_args_to_build_script(self, tmp_path):
+        with patch("magnetizer.source_publisher.subprocess.run") as mock_run:
+            mock_run.return_value = MagicMock(returncode=0)
+            run_build(Path("build.py"), tmp_path, args=["--refresh", "--verbose"])
+        assert mock_run.call_args.args[0] == [sys.executable, "build.py", "--refresh", "--verbose"]
