@@ -3119,3 +3119,63 @@ class TestNeverEmitsDecorativeImgOrSvg:
         html = render_navigation({"index.html": "Home", "archive.html": "Archive"}, current_filename="index.html")
         assert '<img' not in html
         assert '<svg' not in html
+
+
+# ---------------------------------------------------------------------------
+# render_article — related posts section (single-post pages)
+# ---------------------------------------------------------------------------
+
+class TestRenderRelatedPosts:
+
+    def test_no_related_section_by_default(self):
+        html = render_article(make_post(), on_index_page=False)
+        assert 'class="related"' not in html
+
+    def test_no_related_section_when_list_empty(self):
+        html = render_article(make_post(), on_index_page=False, related_posts=[])
+        assert 'class="related"' not in html
+
+    def test_related_section_lists_links_with_display_text(self):
+        related = [make_post(post_id=7, title="Seven"), make_post(post_id="about", title="About me")]
+        html = render_article(make_post(), on_index_page=False, related_posts=related)
+        assert (
+            '<section class="related">\n<h2>Related posts</h2>\n<ul>\n'
+            '<li><a href="7.html">Seven</a></li>\n'
+            '<li><a href="about.html">About me</a></li>\n'
+            '</ul>\n</section>'
+        ) in html
+
+    def test_related_link_text_uses_display_text_fallback(self):
+        related = [make_post(post_id=7, title=None, name="A name")]
+        html = render_article(make_post(), on_index_page=False, related_posts=related)
+        assert '<a href="7.html">A name</a>' in html
+
+    def test_related_link_text_is_escaped(self):
+        related = [make_post(post_id=7, title="Fish & <chips>")]
+        html = render_article(make_post(), on_index_page=False, related_posts=related)
+        assert '<a href="7.html">Fish &amp; &lt;chips&gt;</a>' in html
+
+    def test_related_section_not_rendered_on_index_page(self):
+        related = [make_post(post_id=7, title="Seven")]
+        html = render_article(make_post(), on_index_page=True, related_posts=related)
+        assert 'class="related"' not in html
+
+    def test_related_section_after_footer(self):
+        related = [make_post(post_id=7, title="Seven")]
+        html = render_article(make_post(), on_index_page=False, related_posts=related)
+        assert html.index('<footer>') < html.index('<section class="related">')
+
+    def test_related_section_after_comments(self):
+        related = [make_post(post_id=7, title="Seven")]
+        html = render_article(make_post(comments=[make_comment()]), on_index_page=False, related_posts=related)
+        assert html.index('<section class="comments"') < html.index('<section class="related">')
+
+    def test_related_section_inside_article(self):
+        related = [make_post(post_id=7, title="Seven")]
+        html = render_article(make_post(), on_index_page=False, related_posts=related)
+        assert html.index('<section class="related">') < html.index('</article>')
+
+    def test_post_page_related_section_before_newer_older_nav(self):
+        related = [make_post(post_id=7, title="Seven")]
+        html = render_post_page_content(make_post(), newer_url="2.html", older_url="0.html", related_posts=related)
+        assert html.index('<section class="related">') < html.index('<li class="newer">')

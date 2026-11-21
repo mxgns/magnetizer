@@ -228,6 +228,7 @@ This is the single reference for every frontmatter key a post or special page ca
 | `noindex` | Posts, special pages | `true` / `false` | `false` |
 | `draft` | Posts | `true` / `false` | `false` |
 | `description` | Posts, special pages | Plain text | Not set |
+| `related` | Posts, special pages | List of post ids and/or special page names | `[]` |
 
 - **`date`** — publish date. Required on posts; optional on special pages (omit it and no date footer is rendered). Shown in the footer as `D Month YYYY` and used for the Atom feed, sitemap `lastmod`, and archive month grouping.
 - **`updated`** — the date content was last revised. Optional on both posts and special pages, and may be set with or without `date`. Shown in the footer alongside `date` as `D Month YYYY (updated D/M/YY)`, or on its own as `Updated D Month YYYY` if there's no `date`. Also feeds the Atom feed's `<updated>` element (per entry, and for the feed as a whole) in place of `date` — it does not affect sitemap `lastmod`, which is already derived from file modification time.
@@ -240,6 +241,23 @@ This is the single reference for every frontmatter key a post or special page ca
 - **`noindex`** — excludes the page from `sitemap.xml` and adds a `<meta name="robots" content="noindex">` tag via `MAGNETIZER_METADATA`, but is otherwise treated normally (still shown on index pages, category pages, the feed, the archive, post navigation, and `posts.json`) — it only affects search indexing. Works the same way on special pages as on posts.
 - **`draft`** — unlike `noindex`, excludes the post from everywhere: index pages, category pages, the feed, the gallery, the archive, `sitemap.xml`, `posts.json`, next/previous navigation, and the dynamic post/word/image counts. Also gets `data-pagefind-ignore` and the `noindex` robots meta tag. The post's own page still builds, still rebuilds on change, still refreshes on `--refresh`, and still gets the invalid-post check — it's a normal post in every way except being unlisted, reachable only via its own URL. Shows a `[draft]` label in verbose build output. Posts only, not special pages.
 - **`description`** — content for the page's own `<meta name="description">` tag via `MAGNETIZER_METADATA`, used verbatim if set. If absent, a description is generated from the post's plain-text body; if the post has no body text at all (e.g. a photo-only post), it's generated from the images' alt texts instead — `{N}-image post with {a photo / photos} showing {alt text}, {alt text}, …`, skipping any image with no alt text. Either way, the source text is truncated to the first 160 characters, preferring a sentence-boundary cut if that leaves a reasonably full description (at least 100 of the 160 characters), otherwise the last complete word before the limit followed by `…`. Never cuts a word or sentence mid-way, except a single word with no spaces longer than 160 characters, which has no word boundary to fall back to and is truncated to make room for `…`. No description is generated at all if there's no body text and no image has alt text. Independent of `metadata.yaml`, which only overrides pages that have no `content/` file of their own — see [Page metadata overrides](#page-metadata-overrides). Works the same way on special pages as on posts.
+- **`related`** — see [Related posts](#related-posts).
+
+## Related posts
+
+List related posts or special pages by id in the frontmatter:
+
+```yaml
+related:
+  - 12
+  - about
+```
+
+A numeric entry is a post id; anything else is a special page name. A single entry can also be written inline (`related: 12`). Links are one-way — the listed posts don't link back unless they list this one themselves.
+
+On the post's own page, a `<section class="related">` with an `<h2>Related posts</h2>` heading and a `<ul>` of links (using each target's display text, the same as its heading) is rendered inside the `<article>`, after the date footer and any comments, before the newer/older navigation. It's never shown on index or category pages, and is omitted entirely if no entries resolve.
+
+An id that doesn't exist, points at a draft, or points at the page itself is skipped with a build warning. When a listed post or special page changes (or is deleted), every page listing it is rebuilt, so link text never goes stale.
 
 ## Categories
 

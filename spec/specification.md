@@ -600,6 +600,7 @@ This is the single overview of every frontmatter key a post or special page can 
 | `noindex` | Posts, special pages | `true` / `false` | `false` | [Noindex posts](#noindex-posts) |
 | `draft` | Posts | `true` / `false` | `false` | [Draft posts](#draft-posts) |
 | `description` | Posts, special pages | Plain text | Not set | [Meta descriptions](#meta-descriptions) |
+| `related` | Posts, special pages | List of post ids and/or special page names | `[]` | [Related posts](#related-posts) |
 
 ### Favourite posts
 
@@ -1012,13 +1013,56 @@ Where `N` is the number of hidden top-of-post images (total minus `images_per_po
 
 If a `<!-- more -->` marker **is** present, undisplayed images (top-strip overflow, plus any inline images that fall after the marker) are folded into the "Read more" link's text instead — see [Read more](#read-more). Exactly one of "Read more" or "N more photo(s)" is ever shown for a given post, never both.
 
+### Related posts
+
+A post or special page can list related posts and/or special pages in its frontmatter:
+
+```yaml
+related:
+  - 12
+  - about
+```
+
+- Each entry made up only of digits is a post id (`12` → `12.html`); any other entry is a special page name from `special_pages` (`about` → `about.html`). A single entry may also be written as a scalar (`related: 12`). Duplicates are dropped, keeping the first occurrence.
+- Links are one-way: listing `12` on post `5` adds a link on `5.html` only. Post `12` doesn't link back unless its own frontmatter lists `5`.
+- Entries are shown in the order listed.
+
+On the page's own individual page, the related posts are rendered inside the `<article>`, after the `<footer>` (date) and after the comments section if there is one — so before the newer/older `<nav>`:
+
+```html
+<section class="related">
+<h2>Related posts</h2>
+<ul>
+<li><a href="12.html">Post title</a></li>
+<li><a href="about.html">About</a></li>
+</ul>
+</section>
+```
+
+- The link text is the target's display text — the same title → `name` → excerpt → generated-label chain as its heading (see [Heading and meta title text](#heading-and-meta-title-text)), with any `{{ shortcode }}` values in the target's body expanded first, HTML-escaped.
+- The section is never rendered on index or category pages.
+- The whole `<section>` is omitted when `related` is absent, empty, or none of its entries resolve.
+
+#### Invalid entries
+
+Each of the following is skipped with a build warning on the listing page, rather than a build error — the remaining valid entries still render:
+
+- `Related posts: post {id} not found, skipped` — no `{id}.md` in `content/`
+- `Related posts: post {id} is a draft, skipped` — the target has `draft: true` (see [Draft posts](#draft-posts))
+- `Related posts: page '{name}' not found, skipped` — not a configured special page with a `content/` file
+- `Related posts: lists itself, skipped` — the entry is the page's own id
+
+#### Rebuilding
+
+When a post or special page changes, is created, or is deleted, every post and special page whose `related` lists it is rebuilt on the next incremental build, so link text (and skipped/restored entries) never goes stale. This is in addition to the usual neighbour/dynamic rebuilds; nothing else is rebuilt on its account.
+
 ### Individual post pages
 
 The `MAGNETIZER_CONTENT` has the following structure on individual post pages:
 
 ```html
 <main>
-	<article>...</article>
+	<article>...</article> <!-- includes the related posts section, if any -->
 </main>
 <nav>
   <ul>
