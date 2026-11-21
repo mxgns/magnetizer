@@ -8,6 +8,7 @@
 ### 21/11/26
 
 - Added related posts
+- Generated headings are no longer shown on untitled posts
 
 ### 20/11/26
 
