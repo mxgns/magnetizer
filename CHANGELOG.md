@@ -7,6 +7,7 @@
 
 ### 20/11/26
 
+- Added Slack notifications for CI test results
 - Added `preview.py`: builds, then serves the site locally
 
 ### 08/11/26

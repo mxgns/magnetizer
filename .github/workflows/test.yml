@@ -13,3 +13,29 @@ jobs:
       - run: pip install -r requirements-dev.txt
       - run: ruff check .
       - run: pytest
+
+      # Posts the result to Slack. Needs a SLACK_WEBHOOK_URL repo secret
+      # (a Slack incoming webhook); skipped quietly if it isn't set, and
+      # never fails the build if Slack itself is unreachable.
+      - name: Notify Slack
+        if: always() && github.event_name == 'push'
+        continue-on-error: true
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          STATUS: ${{ job.status }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          if [ -z "$SLACK_WEBHOOK_URL" ]; then
+            echo "SLACK_WEBHOOK_URL not set; skipping."
+            exit 0
+          fi
+          case "$STATUS" in
+            success)   icon=":white_check_mark:" ;;
+            cancelled) icon=":no_entry_sign:" ;;
+            *)         icon=":x:" ;;
+          esac
+          subject=$(git log -1 --format=%s "$GITHUB_SHA" 2>/dev/null \
+            | sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g')
+          text="$icon *${GITHUB_REPOSITORY#*/}* $GITHUB_WORKFLOW: $STATUS on \`$GITHUB_REF_NAME\` (${GITHUB_SHA::7}) $subject <$RUN_URL|View run>"
+          jq -n --arg text "$text" '{text: $text}' \
+            | curl -sSf -X POST -H 'Content-Type: application/json' --data @- "$SLACK_WEBHOOK_URL"
