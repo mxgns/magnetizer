@@ -19,7 +19,7 @@ def special_page_image_pattern(name):
 def special_page_comment_pattern(name):
     return re.compile(rf'^{re.escape(name)}-comment-(\d{{2}})\.md$')
 
-_ALLOWED_FRONTMATTER_KEYS = frozenset({'date', 'updated', 'title', 'name', 'images', 'favourite', 'category', 'ai_assisted', 'noindex', 'draft', 'description'})
+_ALLOWED_FRONTMATTER_KEYS = frozenset({'date', 'updated', 'title', 'name', 'images', 'favourite', 'category', 'ai_assisted', 'noindex', 'draft', 'description', 'related'})
 _MARKDOWN_EXTENSIONS = ['pymdownx.mark', 'smarty', 'tables', 'footnotes', 'magnetizer.containers']
 # smart_mark=True keeps Mark's pre-12.0 behavior (no mid-word marking) --
 # pymdown-extensions 12.0 flipped that default, and a routine dependency
@@ -125,6 +125,7 @@ class Post:
     inline_image_filenames: frozenset = frozenset()
     excerpt_inline_image_filenames: frozenset = frozenset()
     comments: list = field(default_factory=list)
+    related: list = field(default_factory=list)
 
 
 def resized_filename(filename):
@@ -251,6 +252,22 @@ def _parse_frontmatter(text):
         i += 1
     body = '\n'.join(all_lines[closing + 1:]).strip()
     return fm, body
+
+
+def _parse_related(raw):
+    """`related` front matter: a list (or a single scalar) of ids. Numeric ids
+    are posts (ints, matching post ids elsewhere); anything else is a special
+    page name. Duplicates are dropped, first occurrence wins."""
+    items = raw if isinstance(raw, list) else [raw]
+    related = []
+    for item in items:
+        item = str(item).strip()
+        if not item:
+            continue
+        ref = int(item) if item.isdigit() else item
+        if ref not in related:
+            related.append(ref)
+    return related
 
 
 def _format_date_uk(date_str):
@@ -444,6 +461,7 @@ def parse_post(md_text, post_id, image_filenames, site_url="", comments=None):
     category_raw = fm.get('category', '')
     category = (category_raw.lower().strip() if isinstance(category_raw, str) else '') or None
     description = fm.get('description') or None
+    related = _parse_related(fm.get('related') or [])
 
     sorted_filenames = sorted(
         image_filenames,
@@ -520,4 +538,5 @@ def parse_post(md_text, post_id, image_filenames, site_url="", comments=None):
         inline_image_filenames=frozenset(inline_image_filenames),
         excerpt_inline_image_filenames=frozenset(excerpt_inline_image_filenames),
         comments=sorted_comments,
+        related=related,
     )

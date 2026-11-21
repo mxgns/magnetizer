@@ -298,6 +298,38 @@ def _warn_if_heading_too_deep(post):
     return None
 
 
+def _make_related_resolver(posts_cache, special_page_posts_by_name):
+    """Returns resolve(post) -> (related Post objects, warnings) for a post's
+    `related` front matter. Numeric ids look up posts, names look up special
+    pages; missing ids, drafts and self-references are skipped with a warning."""
+    def resolve(post):
+        resolved, ws = [], []
+        for ref in post.related:
+            if ref == post.id:
+                ws.append("Related posts: lists itself, skipped")
+                continue
+            if isinstance(ref, int):
+                target = posts_cache.get(ref)
+                if target is None:
+                    ws.append(f"Related posts: post {ref} not found, skipped")
+                    continue
+                if target.is_draft:
+                    ws.append(f"Related posts: post {ref} is a draft, skipped")
+                    continue
+            else:
+                target = special_page_posts_by_name.get(ref)
+                if target is None:
+                    ws.append(f"Related posts: page '{ref}' not found, skipped")
+                    continue
+            resolved.append(target)
+        return resolved, ws
+    return resolve
+
+
+def _no_related(post):
+    return [], []
+
+
 def _adjacent_post_urls(post_id, post_ids_sorted_desc):
     pos = post_ids_sorted_desc.index(post_id)
     newer_url = f"{post_ids_sorted_desc[pos - 1]}.html" if pos > 0 else None
@@ -332,8 +364,8 @@ def _write_paginated_page(dist_dir, config, template, filename, title, content_h
     (dist_dir / filename).write_text(html)
 
 
-def _write_post_html(post, dist_dir, config, template, newer_url=None, older_url=None, categories=None):
-    content_html = render_post_page_content(post, newer_url=newer_url, older_url=older_url, categories=categories, ai_disclosure_html=config["ai_disclosure_html"])
+def _write_post_html(post, dist_dir, config, template, newer_url=None, older_url=None, categories=None, related_posts=None):
+    content_html = render_post_page_content(post, newer_url=newer_url, older_url=older_url, categories=categories, ai_disclosure_html=config["ai_disclosure_html"], related_posts=related_posts)
     title = render_page_title(config["site_name"], post_display_text(post), page_num=None)
     filename = f"{post.id}.html"
     html = render_template(template, title=title, content=content_html,
@@ -472,7 +504,7 @@ def _load_special_page_post(content_dir, name, site_url=""):
     return post
 
 
-def _build_special_page(name, content_dir, dist_dir, config, template, values, warn, output_filename=None, skip_images=False):
+def _build_special_page(name, content_dir, dist_dir, config, template, values, warn, output_filename=None, skip_images=False, resolve_related=_no_related):
     post = _load_special_page_post(content_dir, name, config["site_url"])
     ws = [
         w for w in [
@@ -482,6 +514,8 @@ def _build_special_page(name, content_dir, dist_dir, config, template, values, w
             _warn_if_title_without_image_or_content(post),
         ] if w
     ]
+    related_posts, related_ws = resolve_related(post)
+    ws.extend(related_ws)
 
     expanded_body, used_names = expand_shortcodes(post.body_html, values, f"{name}.md", warn)
     post.body_html = expanded_body
@@ -491,7 +525,7 @@ def _build_special_page(name, content_dir, dist_dir, config, template, values, w
         _delete_special_page_image_files(dist_dir, name)
         _build_post_images(post.images, content_dir, dist_dir, config)
 
-    content_html = render_post_page_content(post, ai_disclosure_html=config["ai_disclosure_html"])
+    content_html = render_post_page_content(post, ai_disclosure_html=config["ai_disclosure_html"], related_posts=related_posts)
     title = render_page_title(config["site_name"], post_display_text(post), page_num=None)
     filename = output_filename or f"{name}.html"
     html = render_template(template, title=title, content=content_html,
@@ -615,7 +649,7 @@ def _compute_dynamic_values(published_posts_sorted_desc, special_page_posts, bui
     return {**base_values, "word_count": wrap_scalar("word_count", format_int(total_words))}
 
 
-def _determine_full_build_scope(changed_post_ids, content_dir, manifest, prev_pages, config, all_post_ids_sorted_desc, published_post_ids_sorted_desc):
+def _determine_full_build_scope(changed_post_ids, content_dir, manifest, prev_pages, config, all_post_ids_sorted_desc, published_post_ids_sorted_desc, posts_cache=None, special_pages_by_name=None):
     neighbor_ids = {
         n
         for pid in changed_post_ids
@@ -629,11 +663,11 @@ def _determine_full_build_scope(changed_post_ids, content_dir, manifest, prev_pa
     not_found_name = _not_found_page_name(config)
     if not_found_name:
         special_page_checks.append((not_found_name, config["404-page-input-filename"]))
-    any_special_page_changed = any(
-        _special_page_changed(content_dir, manifest, md_name, [special_page_image_pattern(name), special_page_comment_pattern(name)])
-        for name, md_name in special_page_checks
-    )
-    any_relevant_change = bool(changed_post_ids) or any_special_page_changed
+    changed_special_names = {
+        name for name, md_name in special_page_checks
+        if _special_page_changed(content_dir, manifest, md_name, [special_page_image_pattern(name), special_page_comment_pattern(name)])
+    }
+    any_relevant_change = bool(changed_post_ids) or bool(changed_special_names)
     if any_relevant_change:
         forced_dynamic_ids = {
             pid for pid in all_post_ids_sorted_desc
@@ -641,11 +675,22 @@ def _determine_full_build_scope(changed_post_ids, content_dir, manifest, prev_pa
         }
     else:
         forced_dynamic_ids = set()
-    post_ids_to_build = changed_post_ids | neighbor_ids | forced_dynamic_ids
-    return post_ids_to_build, any_relevant_change
+    # Related posts are one-way: a page linking to a changed (or deleted) post
+    # or special page shows its display text, so it has to be rebuilt too.
+    changed_refs = set(changed_post_ids) | changed_special_names
+    related_linker_ids = {
+        pid for pid, post in (posts_cache or {}).items()
+        if changed_refs.intersection(post.related)
+    }
+    related_stale_pages = {
+        name for name, page in (special_pages_by_name or {}).items()
+        if changed_refs.intersection(page.related)
+    }
+    post_ids_to_build = changed_post_ids | neighbor_ids | forced_dynamic_ids | related_linker_ids
+    return post_ids_to_build, any_relevant_change, related_stale_pages
 
 
-def _prepare_post_for_render(post, page_filename, config, values, pages_dynamic_updates, warnings):
+def _prepare_post_for_render(post, page_filename, config, values, pages_dynamic_updates, warnings, resolve_related=_no_related):
     def _warn_post(msg, _page_filename=page_filename):
         warnings.append((_page_filename, msg))
 
@@ -669,11 +714,13 @@ def _prepare_post_for_render(post, page_filename, config, values, pages_dynamic_
             _warn_if_heading_too_deep(post),
         ] if w
     ]
-    for msg in post_warnings:
+    related_posts, related_ws = resolve_related(post)
+    for msg in post_warnings + related_ws:
         warnings.append((page_filename, msg))
+    return related_posts
 
 
-def _build_changed_posts(post_ids_to_build, changed_post_ids, posts_cache, manifest, published_post_ids_sorted_desc, content_dir, dist_dir, config, template, values, pages_dynamic_updates, deleted_page_filenames, warnings, log):
+def _build_changed_posts(post_ids_to_build, changed_post_ids, posts_cache, manifest, published_post_ids_sorted_desc, content_dir, dist_dir, config, template, values, pages_dynamic_updates, deleted_page_filenames, warnings, log, resolve_related=_no_related):
     created = updated = deleted = 0
 
     for post_id in post_ids_to_build:
@@ -695,7 +742,7 @@ def _build_changed_posts(post_ids_to_build, changed_post_ids, posts_cache, manif
 
         post = posts_cache[post_id]
         page_filename = f"{post_id}.html"
-        _prepare_post_for_render(post, page_filename, config, values, pages_dynamic_updates, warnings)
+        related_posts = _prepare_post_for_render(post, page_filename, config, values, pages_dynamic_updates, warnings, resolve_related)
 
         src_sizes = {img.filename: (content_dir / img.filename).stat().st_size for img in post.images}
         _build_post(post, dist_dir, content_dir, config)
@@ -711,32 +758,32 @@ def _build_changed_posts(post_ids_to_build, changed_post_ids, posts_cache, manif
         # A draft has no prev/next nav -- it isn't in published_post_ids_sorted_desc
         # at all, so _adjacent_post_urls' plain .index() lookup would raise.
         newer_url, older_url = (None, None) if post.is_draft else _adjacent_post_urls(post_id, published_post_ids_sorted_desc)
-        _write_post_html(post, dist_dir, config, template, newer_url=newer_url, older_url=older_url, categories=config["categories"])
+        _write_post_html(post, dist_dir, config, template, newer_url=newer_url, older_url=older_url, categories=config["categories"], related_posts=related_posts)
         log((action, f"{post_id}.html", post.char_count, post.post_type == "note", len(post.images), post.is_draft))
 
     return created, updated, deleted
 
 
-def _refresh_posts(post_ids_to_refresh, posts_cache, published_post_ids_sorted_desc, dist_dir, config, template, values, pages_dynamic_updates, warnings, log):
+def _refresh_posts(post_ids_to_refresh, posts_cache, published_post_ids_sorted_desc, dist_dir, config, template, values, pages_dynamic_updates, warnings, log, resolve_related=_no_related):
     """Re-renders each post's HTML from its already-built images -- no resizing,
     no manifest/content-change bookkeeping. For --refresh: iterating on generator
     or template code without paying the image-processing cost of a real rebuild."""
     for post_id in post_ids_to_refresh:
         post = posts_cache[post_id]
         page_filename = f"{post_id}.html"
-        _prepare_post_for_render(post, page_filename, config, values, pages_dynamic_updates, warnings)
+        related_posts = _prepare_post_for_render(post, page_filename, config, values, pages_dynamic_updates, warnings, resolve_related)
 
         newer_url, older_url = (None, None) if post.is_draft else _adjacent_post_urls(post_id, published_post_ids_sorted_desc)
-        _write_post_html(post, dist_dir, config, template, newer_url=newer_url, older_url=older_url, categories=config["categories"])
+        _write_post_html(post, dist_dir, config, template, newer_url=newer_url, older_url=older_url, categories=config["categories"], related_posts=related_posts)
         log(("UPDATED", f"{post_id}.html", post.char_count, post.post_type == "note", len(post.images), post.is_draft))
 
 
-def _rebuild_stale_special_pages(config, content_dir, dist_dir, template, values, manifest, prev_pages, any_relevant_change, pages_dynamic_updates, warnings, log, force=False):
+def _rebuild_stale_special_pages(config, content_dir, dist_dir, template, values, manifest, prev_pages, any_relevant_change, pages_dynamic_updates, warnings, log, force=False, related_stale_pages=frozenset(), resolve_related=_no_related):
     specials_rebuilt = False
     for name in config["special_pages"]:
         page_filename = f"{name}.html"
         really_changed = _special_page_changed(content_dir, manifest, f"{name}.md", [special_page_image_pattern(name), special_page_comment_pattern(name)])
-        should_build = force or really_changed
+        should_build = force or really_changed or name in related_stale_pages
         if not should_build and any_relevant_change:
             should_build = bool(prev_pages.get(page_filename, {}).get("dynamic"))
         if should_build:
@@ -747,7 +794,7 @@ def _rebuild_stale_special_pages(config, content_dir, dist_dir, template, values
             # change -- it's only being rebuilt because of something else (a forced
             # refresh, or a dynamic-value change elsewhere), so its images are
             # already sitting in dist/ from the build that did last touch it.
-            ws, dynamic_flag = _build_special_page(name, content_dir, dist_dir, config, template, values, _warn_special, skip_images=not really_changed)
+            ws, dynamic_flag = _build_special_page(name, content_dir, dist_dir, config, template, values, _warn_special, skip_images=not really_changed, resolve_related=resolve_related)
             for w in ws:
                 warnings.append((page_filename, w))
             log(("UPDATED", page_filename))
@@ -756,13 +803,13 @@ def _rebuild_stale_special_pages(config, content_dir, dist_dir, template, values
     return specials_rebuilt
 
 
-def _rebuild_stale_not_found_page(config, content_dir, dist_dir, template, values, manifest, prev_pages, any_relevant_change, pages_dynamic_updates, warnings, log, force=False):
+def _rebuild_stale_not_found_page(config, content_dir, dist_dir, template, values, manifest, prev_pages, any_relevant_change, pages_dynamic_updates, warnings, log, force=False, related_stale_pages=frozenset(), resolve_related=_no_related):
     name = _not_found_page_name(config)
     if not name:
         return False
     output_filename = config["404-page-output-filename"]
     really_changed = _special_page_changed(content_dir, manifest, config["404-page-input-filename"], [special_page_image_pattern(name), special_page_comment_pattern(name)])
-    should_build = force or really_changed
+    should_build = force or really_changed or name in related_stale_pages
     if not should_build and any_relevant_change:
         should_build = bool(prev_pages.get(output_filename, {}).get("dynamic"))
     if not should_build:
@@ -771,7 +818,7 @@ def _rebuild_stale_not_found_page(config, content_dir, dist_dir, template, value
     def _warn_special(msg, _page_filename=output_filename):
         warnings.append((_page_filename, msg))
 
-    ws, dynamic_flag = _build_special_page(name, content_dir, dist_dir, config, template, values, _warn_special, output_filename=output_filename, skip_images=not really_changed)
+    ws, dynamic_flag = _build_special_page(name, content_dir, dist_dir, config, template, values, _warn_special, output_filename=output_filename, skip_images=not really_changed, resolve_related=resolve_related)
     for w in ws:
         warnings.append((output_filename, w))
     log(("UPDATED", output_filename))
@@ -987,16 +1034,23 @@ def build(cwd, flush=False, resources=False, refresh=False, on_progress=None):
     pages_dynamic_updates = {}
     deleted_page_filenames = set()
 
+    resolve_related = _make_related_resolver(posts_cache, special_page_posts_by_name)
+    special_pages_by_name = dict(special_page_posts_by_name)
+    if not_found_post is not None:
+        special_pages_by_name[not_found_post.id] = not_found_post
+
     changed_post_ids = get_changed_post_ids(content_dir, manifest)
-    post_ids_to_build, any_relevant_change = _determine_full_build_scope(
+    post_ids_to_build, any_relevant_change, related_stale_pages = _determine_full_build_scope(
         changed_post_ids, content_dir, manifest, prev_pages, config,
         all_post_ids_sorted_desc, published_post_ids_sorted_desc,
+        posts_cache=posts_cache, special_pages_by_name=special_pages_by_name,
     )
 
     created, updated, deleted = _build_changed_posts(
         post_ids_to_build, changed_post_ids, posts_cache, manifest,
         published_post_ids_sorted_desc, content_dir, dist_dir, config, template,
         values, pages_dynamic_updates, deleted_page_filenames, warnings, _log,
+        resolve_related=resolve_related,
     )
 
     if refresh:
@@ -1012,15 +1066,18 @@ def build(cwd, flush=False, resources=False, refresh=False, on_progress=None):
         _refresh_posts(
             refresh_ids, posts_cache, published_post_ids_sorted_desc,
             dist_dir, config, template, values, pages_dynamic_updates, warnings, _log,
+            resolve_related=resolve_related,
         )
 
     specials_rebuilt = _rebuild_stale_special_pages(
         config, content_dir, dist_dir, template, values, manifest, prev_pages,
         any_relevant_change, pages_dynamic_updates, warnings, _log, force=refresh,
+        related_stale_pages=related_stale_pages, resolve_related=resolve_related,
     )
     not_found_rebuilt = _rebuild_stale_not_found_page(
         config, content_dir, dist_dir, template, values, manifest, prev_pages,
         any_relevant_change, pages_dynamic_updates, warnings, _log, force=refresh,
+        related_stale_pages=related_stale_pages, resolve_related=resolve_related,
     )
     specials_rebuilt = specials_rebuilt or not_found_rebuilt
 

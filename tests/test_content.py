@@ -1524,3 +1524,39 @@ class TestThumbnailFilename:
 
     def test_svg_unchanged(self):
         assert thumbnail_filename("1-image-01.svg") == "1-image-01.svg"
+
+
+# ---------------------------------------------------------------------------
+# Related posts
+# ---------------------------------------------------------------------------
+
+class TestRelated:
+
+    def test_related_is_empty_by_default(self):
+        post = parse_post(make_md(), 1, [])
+        assert post.related == []
+
+    def test_related_list_of_post_ids_parsed_as_ints(self):
+        md = "---\ndate: 2026-05-24\nrelated:\n  - 12\n  - 7\n---\n"
+        post = parse_post(md, 1, [])
+        assert post.related == [12, 7]
+
+    def test_related_page_names_kept_as_strings(self):
+        md = "---\ndate: 2026-05-24\nrelated:\n  - about\n  - 3\n---\n"
+        post = parse_post(md, 1, [])
+        assert post.related == ["about", 3]
+
+    def test_related_single_scalar_value(self):
+        md = "---\ndate: 2026-05-24\nrelated: 12\n---\n"
+        post = parse_post(md, 1, [])
+        assert post.related == [12]
+
+    def test_related_duplicates_removed_keeping_order(self):
+        md = "---\ndate: 2026-05-24\nrelated:\n  - 12\n  - 7\n  - 12\n---\n"
+        post = parse_post(md, 1, [])
+        assert post.related == [12, 7]
+
+    def test_related_key_does_not_trigger_unknown_key_warning(self, capsys):
+        md = "---\ndate: 2026-05-24\nrelated:\n  - 12\n---\n"
+        parse_post(md, 1, [])
+        assert "Warning" not in capsys.readouterr().out

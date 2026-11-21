@@ -101,6 +101,14 @@ def _render_comments_section(comments):
     return '\n'.join(parts)
 
 
+def _render_related_section(related_posts):
+    parts = ['<section class="related">', '<h2>Related posts</h2>', '<ul>']
+    for related in related_posts:
+        parts.append(f'<li><a href="{related.url}">{_escape(post_display_text(related))}</a></li>')
+    parts.extend(['</ul>', '</section>'])
+    return '\n'.join(parts)
+
+
 def _link_inline_images(html_content, post):
     """Wrap each inline (in-body) image's <figure> in a link to the post,
     mirroring how top-strip images link through on index/category pages."""
@@ -129,7 +137,7 @@ def _strip_footnotes(html_content):
     return html_content
 
 
-def render_article(post, on_index_page, categories=None, ai_disclosure_html=None, images_per_post=2):
+def render_article(post, on_index_page, categories=None, ai_disclosure_html=None, images_per_post=2, related_posts=None):
     article_class = "multiple-posts" if on_index_page else "single-post"
     if post.post_type in _POST_TYPE_CLASS:
         article_class += f" {_POST_TYPE_CLASS[post.post_type]}"
@@ -210,12 +218,15 @@ def render_article(post, on_index_page, categories=None, ai_disclosure_html=None
     if not on_index_page and post.comments:
         parts.append(_render_comments_section(post.comments))
 
+    if not on_index_page and related_posts:
+        parts.append(_render_related_section(related_posts))
+
     parts.append('</article>')
     return '\n'.join(parts)
 
 
-def render_post_page_content(post, newer_url=None, older_url=None, categories=None, ai_disclosure_html=None):
-    article = render_article(post, on_index_page=False, categories=categories, ai_disclosure_html=ai_disclosure_html)
+def render_post_page_content(post, newer_url=None, older_url=None, categories=None, ai_disclosure_html=None, related_posts=None):
+    article = render_article(post, on_index_page=False, categories=categories, ai_disclosure_html=ai_disclosure_html, related_posts=related_posts)
 
     main_attrs = ' data-pagefind-ignore' if (post.is_noindex or post.is_draft) else ''
     parts = [f'<main{main_attrs}>\n{article}\n</main>']

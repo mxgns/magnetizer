@@ -5,6 +5,10 @@
 
 ## Released changes
 
+### 21/11/26
+
+- Added related posts
+
 ### 20/11/26
 
 - Added Slack notifications for CI test results

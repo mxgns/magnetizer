@@ -4261,3 +4261,132 @@ class TestInternalLinkWarnings:
         warnings = build(p)["warnings"]
         assert any(f == "1.html" and "2.html" in msg for f, msg in warnings)
 
+
+
+# ---------------------------------------------------------------------------
+# Related posts
+# ---------------------------------------------------------------------------
+
+def _titled(title, extra=""):
+    return f"---\ndate: 2026-05-24\ntitle: {title}\n{extra}---\n\nBody.\n"
+
+
+def _related_fm(*ids):
+    return "related:\n" + "".join(f"  - {i}\n" for i in ids)
+
+
+class TestRelatedPosts:
+
+    def test_post_page_lists_related_post(self, tmp_path):
+        p = make_project(tmp_path, posts={1: _titled("One", _related_fm(2)), 2: _titled("Two")})
+        build(p)
+        assert '<li><a href="2.html">Two</a></li>' in (p / "dist" / "1.html").read_text()
+
+    def test_related_is_one_way(self, tmp_path):
+        p = make_project(tmp_path, posts={1: _titled("One", _related_fm(2)), 2: _titled("Two")})
+        build(p)
+        assert 'class="related"' not in (p / "dist" / "2.html").read_text()
+
+    def test_related_in_listed_order(self, tmp_path):
+        p = make_project(tmp_path, posts={1: _titled("One", _related_fm(3, 2)), 2: _titled("Two"), 3: _titled("Three")})
+        build(p)
+        html = (p / "dist" / "1.html").read_text()
+        assert html.index('href="3.html">Three') < html.index('href="2.html">Two')
+
+    def test_post_can_relate_to_special_page(self, tmp_path):
+        p = make_project(tmp_path, posts={1: _titled("One", _related_fm("about"))}, config=_ABOUT_CONFIG)
+        (p / "content" / "about.md").write_text(ABOUT_MD)
+        build(p)
+        assert '<li><a href="about.html">About</a></li>' in (p / "dist" / "1.html").read_text()
+
+    def test_special_page_can_list_related_post(self, tmp_path):
+        p = make_project(tmp_path, posts={1: _titled("One")}, config=_ABOUT_CONFIG)
+        (p / "content" / "about.md").write_text(_titled("About", _related_fm(1)))
+        build(p)
+        assert '<li><a href="1.html">One</a></li>' in (p / "dist" / "about.html").read_text()
+
+    def test_unknown_id_warns_and_is_skipped(self, tmp_path):
+        p = make_project(tmp_path, posts={1: _titled("One", _related_fm(99))})
+        warnings = build(p)["warnings"]
+        assert 'class="related"' not in (p / "dist" / "1.html").read_text()
+        assert any(f == "1.html" and "99" in msg and "related" in msg.lower() for f, msg in warnings)
+
+    def test_unknown_page_name_warns_and_is_skipped(self, tmp_path):
+        p = make_project(tmp_path, posts={1: _titled("One", _related_fm("nope"))})
+        warnings = build(p)["warnings"]
+        assert 'class="related"' not in (p / "dist" / "1.html").read_text()
+        assert any(f == "1.html" and "nope" in msg for f, msg in warnings)
+
+    def test_draft_target_warns_and_is_skipped(self, tmp_path):
+        p = make_project(tmp_path, posts={1: _titled("One", _related_fm(2)), 2: _titled("Two", "draft: true\n")})
+        warnings = build(p)["warnings"]
+        assert 'href="2.html"' not in (p / "dist" / "1.html").read_text()
+        assert any(f == "1.html" and "2" in msg and "draft" in msg.lower() for f, msg in warnings)
+
+    def test_self_reference_warns_and_is_skipped(self, tmp_path):
+        p = make_project(tmp_path, posts={1: _titled("One", _related_fm(1))})
+        warnings = build(p)["warnings"]
+        assert 'class="related"' not in (p / "dist" / "1.html").read_text()
+        assert any(f == "1.html" and "itself" in msg for f, msg in warnings)
+
+    def test_valid_items_kept_when_others_skipped(self, tmp_path):
+        p = make_project(tmp_path, posts={1: _titled("One", _related_fm(99, 2)), 2: _titled("Two")})
+        build(p)
+        assert '<li><a href="2.html">Two</a></li>' in (p / "dist" / "1.html").read_text()
+
+    def test_no_warning_when_all_related_valid(self, tmp_path):
+        p = make_project(tmp_path, posts={1: _titled("One", _related_fm(2)), 2: _titled("Two")})
+        warnings = build(p)["warnings"]
+        assert not any("related" in msg.lower() for f, msg in warnings)
+
+
+_FIVE_POSTS = {i: _titled(f"Post {i}") for i in range(2, 6)}
+
+
+class TestRelatedPostsIncrementalRebuild:
+
+    def test_retitled_target_post_rebuilds_linking_post(self, tmp_path):
+        import time
+        p = make_project(tmp_path, posts={1: _titled("One", _related_fm(5)), **_FIVE_POSTS})
+        build(p)
+        time.sleep(0.01)
+        (p / "content" / "5.md").write_text(_titled("Renamed"))
+        build(p)
+        assert '<a href="5.html">Renamed</a>' in (p / "dist" / "1.html").read_text()
+
+    def test_deleted_target_post_removed_from_linking_post(self, tmp_path):
+        p = make_project(tmp_path, posts={1: _titled("One", _related_fm(5)), **_FIVE_POSTS})
+        build(p)
+        (p / "content" / "5.md").unlink()
+        warnings = build(p)["warnings"]
+        assert 'href="5.html"' not in (p / "dist" / "1.html").read_text()
+        assert any(f == "1.html" and "5" in msg for f, msg in warnings)
+
+    def test_unrelated_change_does_not_rebuild_linking_post(self, tmp_path):
+        import time
+        p = make_project(tmp_path, posts={1: _titled("One", _related_fm(5)), **_FIVE_POSTS})
+        build(p)
+        time.sleep(0.01)
+        (p / "content" / "4.md").write_text(_titled("Four edited"))
+        log = build(p)["log"]
+        assert not any(len(e) > 1 and e[1] == "1.html" for e in log)
+
+    def test_retitled_special_page_rebuilds_linking_post(self, tmp_path):
+        import time
+        p = make_project(tmp_path, posts={1: _titled("One", _related_fm("about")), **_FIVE_POSTS}, config=_ABOUT_CONFIG)
+        (p / "content" / "about.md").write_text(ABOUT_MD)
+        build(p)
+        time.sleep(0.01)
+        (p / "content" / "about.md").write_text(_titled("About me"))
+        build(p)
+        assert '<a href="about.html">About me</a>' in (p / "dist" / "1.html").read_text()
+
+    def test_retitled_target_post_rebuilds_linking_special_page(self, tmp_path):
+        import time
+        p = make_project(tmp_path, posts={1: _titled("One"), **_FIVE_POSTS}, config=_ABOUT_CONFIG)
+        (p / "content" / "about.md").write_text(_titled("About", _related_fm(1)))
+        build(p)
+        time.sleep(0.01)
+        (p / "content" / "1.md").write_text(_titled("Renamed"))
+        build(p)
+        assert '<a href="1.html">Renamed</a>' in (p / "dist" / "about.html").read_text()
