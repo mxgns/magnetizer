@@ -1560,3 +1560,8 @@ class TestRelated:
         md = "---\ndate: 2026-05-24\nrelated:\n  - 12\n---\n"
         parse_post(md, 1, [])
         assert "Warning" not in capsys.readouterr().out
+
+    def test_related_superscript_digit_kept_as_string(self):
+        md = "---\ndate: 2026-05-24\nrelated: ²\n---\n"
+        post = parse_post(md, 1, [])
+        assert post.related == ["²"]

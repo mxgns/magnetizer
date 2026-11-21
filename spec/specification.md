@@ -1039,7 +1039,7 @@ On the page's own individual page, the related posts are rendered inside the `<a
 </section>
 ```
 
-- The link text is the target's display text — the same title → `name` → excerpt → generated-label chain as its heading (see [Heading and meta title text](#heading-and-meta-title-text)), HTML-escaped.
+- The link text is the target's display text — the same title → `name` → excerpt → generated-label chain as its heading (see [Heading and meta title text](#heading-and-meta-title-text)), with any `{{ shortcode }}` values in the target's body expanded first, HTML-escaped.
 - The section is never rendered on index or category pages.
 - The whole `<section>` is omitted when `related` is absent, empty, or none of its entries resolve.
 

@@ -264,7 +264,7 @@ def _parse_related(raw):
         item = str(item).strip()
         if not item:
             continue
-        ref = int(item) if item.isdigit() else item
+        ref = int(item) if item.isdecimal() else item
         if ref not in related:
             related.append(ref)
     return related

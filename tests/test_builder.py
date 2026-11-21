@@ -4390,3 +4390,39 @@ class TestRelatedPostsIncrementalRebuild:
         (p / "content" / "1.md").write_text(_titled("Renamed"))
         build(p)
         assert '<a href="1.html">Renamed</a>' in (p / "dist" / "about.html").read_text()
+
+
+class TestRelatedPostsReviewFixes:
+
+    def test_superscript_digit_warns_and_does_not_crash(self, tmp_path):
+        p = make_project(tmp_path, posts={1: _titled("One", "related: ²\n")})
+        warnings = build(p)["warnings"]
+        assert any(f == "1.html" and "²" in msg for f, msg in warnings)
+
+    def test_untitled_special_page_link_text_has_shortcodes_expanded(self, tmp_path):
+        p = make_project(tmp_path, posts={1: _titled("One", _related_fm("about"))}, config=_ABOUT_CONFIG)
+        (p / "content" / "about.md").write_text("---\n---\n\nI have {{ post_count }} posts.\n")
+        build(p)
+        html = (p / "dist" / "1.html").read_text()
+        assert "{{" not in html.split('<section class="related">')[1]
+        assert 'href="about.html">I have 1 posts.</a>' in html
+
+    def test_untitled_post_link_text_has_shortcodes_expanded_when_not_rebuilt(self, tmp_path):
+        import time
+        posts = {1: _titled("One", _related_fm(5)), **_FIVE_POSTS, 5: "---\ndate: 2026-05-24\n---\n\nI have {{ post_count }} posts.\n"}
+        p = make_project(tmp_path, posts=posts)
+        build(p)
+        time.sleep(0.01)
+        (p / "content" / "1.md").write_text(_titled("One edited", _related_fm(5)))
+        build(p)
+        assert 'href="5.html">I have 5 posts.</a>' in (p / "dist" / "1.html").read_text()
+
+    def test_deleted_special_page_rebuilds_linking_post(self, tmp_path):
+        p = make_project(tmp_path, posts={1: _titled("One", _related_fm("about")), **_FIVE_POSTS}, config=_ABOUT_CONFIG)
+        (p / "content" / "about.md").write_text(ABOUT_MD)
+        build(p)
+        (p / "content" / "about.md").unlink()
+        (p / "config.yaml").write_text("site_name: Test Blog\nsite_url: https://example.github.io\nposts_per_page: 2\n")
+        warnings = build(p)["warnings"]
+        assert 'href="about.html"' not in (p / "dist" / "1.html").read_text()
+        assert any(f == "1.html" and "about" in msg for f, msg in warnings)

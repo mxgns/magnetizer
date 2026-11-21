@@ -298,10 +298,15 @@ def _warn_if_heading_too_deep(post):
     return None
 
 
-def _make_related_resolver(posts_cache, special_page_posts_by_name):
+def _make_related_resolver(posts_cache, special_page_posts_by_name, values):
     """Returns resolve(post) -> (related Post objects, warnings) for a post's
     `related` front matter. Numeric ids look up posts, names look up special
-    pages; missing ids, drafts and self-references are skipped with a warning."""
+    pages; missing ids, drafts and self-references are skipped with a warning.
+
+    Each target is returned as a copy with its body's shortcodes expanded, so
+    an untitled target's excerpt-based link text never shows a literal
+    shortcode -- cached bodies are only expanded for pages rebuilt this run
+    (and special pages' never are), so this can't rely on build order."""
     def resolve(post):
         resolved, ws = [], []
         for ref in post.related:
@@ -321,7 +326,8 @@ def _make_related_resolver(posts_cache, special_page_posts_by_name):
                 if target is None:
                     ws.append(f"Related posts: page '{ref}' not found, skipped")
                     continue
-            resolved.append(target)
+            expanded_body, _ = expand_shortcodes(target.body_html, values, f"{target.id}.md", None)
+            resolved.append(_replace(target, body_html=expanded_body))
         return resolved, ws
     return resolve
 
@@ -677,7 +683,13 @@ def _determine_full_build_scope(changed_post_ids, content_dir, manifest, prev_pa
         forced_dynamic_ids = set()
     # Related posts are one-way: a page linking to a changed (or deleted) post
     # or special page shows its display text, so it has to be rebuilt too.
-    changed_refs = set(changed_post_ids) | changed_special_names
+    # A deleted special page has also left config, so it isn't in
+    # special_page_checks -- spot it as a non-numeric .md the last build saw.
+    deleted_special_names = {
+        key[:-3] for key in manifest
+        if key.endswith(".md") and not key[:-3].isdecimal() and not (content_dir / key).exists()
+    }
+    changed_refs = set(changed_post_ids) | changed_special_names | deleted_special_names
     related_linker_ids = {
         pid for pid, post in (posts_cache or {}).items()
         if changed_refs.intersection(post.related)
@@ -1034,7 +1046,7 @@ def build(cwd, flush=False, resources=False, refresh=False, on_progress=None):
     pages_dynamic_updates = {}
     deleted_page_filenames = set()
 
-    resolve_related = _make_related_resolver(posts_cache, special_page_posts_by_name)
+    resolve_related = _make_related_resolver(posts_cache, special_page_posts_by_name, values)
     special_pages_by_name = dict(special_page_posts_by_name)
     if not_found_post is not None:
         special_pages_by_name[not_found_post.id] = not_found_post
