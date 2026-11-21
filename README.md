@@ -194,7 +194,7 @@ A blank or whitespace-only `title`, `name`, or body counts as unset for all of t
 
 Images placed inline via `{{ image N }}` don't count as top-level images for the Image post criterion, but any image at all — top-level or inline — rules out a Note: an untitled post with only an inline image, whatever its length, is a Full post instead. All in-post features (`<!-- more -->`, `{{ image N }}`, container blocks, dynamic values) work the same way across all three types; Magnetizer doesn't restrict any of them by post type.
 
-A Note's 806-character cap is 50% over the longest post that qualified under Magnetizer's previous, uncapped Note classification (537 characters). Past that length, an untitled, image-less post is a Full post: it gets the normal excerpt/"Read more" treatment on multi-post pages, and its heading is shown rather than visually hidden (see below).
+A Note's 806-character cap is 50% over the longest post that qualified under Magnetizer's previous, uncapped Note classification (537 characters). Past that length, an untitled, image-less post is a Full post: it gets the normal excerpt/"Read more" treatment on multi-post pages, and, like every untitled post, its heading is visually hidden (see below).
 
 A post with no `title`, no images and no content is invalid — the build exits with an error. A post with a `title` but no images and no content triggers a build warning (it doesn't make much use of its own page), as does a post with both `title` and `name` set — the `title` wins and `name` is ignored. ("Images" here means any image, including one used only inline via `{{ image N }}` — unlike the Full/Image/Note classification above, these two checks don't distinguish top-level from inline.)
 
@@ -207,7 +207,7 @@ Every post gets a non-empty heading and page `<title>`, built from the same prio
 
 Emoji stripping only applies to that generated excerpt — `title` and `name` are your own explicit text and are left exactly as written. A paragraph that's emoji-only ends up with nothing left after stripping, so it falls through to the generated fallback, same as an empty paragraph would.
 
-For an Image post or Note, the heading exists in the HTML (for the document outline and screen readers, since the index/category pages mix titled and untitled posts) but isn't shown visually — hiding it is left to your own `resources/` CSS, keyed off the `full-post`/`image-post`/`note` class on the `<article>`; Magnetizer itself never hides it.
+For any post without a `title` — whatever its type, and even with a `name` — the heading exists in the HTML (for the document outline, screen readers and search) but isn't meant to be shown: generated text is for the page title, archive and feed only. The `<article>` gets an `untitled` class, and hiding the heading is left to your own `resources/` CSS keyed off it; Magnetizer itself never hides it.
 
 The archive's link text and feed entry title for each post follow this same priority order — see [Archive page](#archive-page).
 

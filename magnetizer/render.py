@@ -141,6 +141,11 @@ def render_article(post, on_index_page, categories=None, ai_disclosure_html=None
     article_class = "multiple-posts" if on_index_page else "single-post"
     if post.post_type in _POST_TYPE_CLASS:
         article_class += f" {_POST_TYPE_CLASS[post.post_type]}"
+    if not (post.title or "").strip():
+        # The heading falls back to generated text (name/excerpt/date) — fine
+        # for the meta title, archive, feed and search, but never meant to be
+        # seen on the page. The site's CSS hides it keyed off this class.
+        article_class += " untitled"
     parts = [f'<article id="post-{post.id}" class="{article_class}">']
 
     top_images = [image for image in post.images if image.filename not in post.inline_image_filenames]

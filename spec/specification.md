@@ -406,7 +406,7 @@ Replaced with an empty string when `navigation` is not configured.
 Posts are generated using a simple html structure.
 
 ```html
-<article id="POST_HTML_ID" class="POST_LAYOUT_CLASS POST_TYPE_CLASS">
+<article id="POST_HTML_ID" class="POST_LAYOUT_CLASS POST_TYPE_CLASS UNTITLED_CLASS">
   <POST_TITLE_TAG><a href="POST_URL">POST_HEADING</a></POST_TITLE_TAG>
 	<div class="post-body">
     POST_BODY
@@ -424,7 +424,8 @@ Where:
 
 - `POST_HTML_ID` is the unique id of the `<article>` element, as `post-{post-id}` , used for anchor links
 - `POST_LAYOUT_CLASS` is `single-post` on the individual post page, or `multiple-posts` on a multi-post page (index or category page) — see [Read more](#read-more)
-- `POST_TYPE_CLASS` is `full-post`, `image-post` or `note`, depending on the post's type — see [Post types](#post-types). It's always present alongside `POST_LAYOUT_CLASS`, not instead of it, e.g. `class="single-post note"` or `class="multiple-posts image-post"`.
+- `POST_TYPE_CLASS` is `full-post`, `image-post` or `note`, depending on the post's type — see [Post types](#post-types). It's always present alongside `POST_LAYOUT_CLASS`, not instead of it, e.g. `class="single-post full-post"` or `class="multiple-posts image-post untitled"`.
+- `UNTITLED_CLASS` is `untitled` if the post has no `title` (blank or whitespace-only counts as none), regardless of post type, and omitted otherwise. A `name` doesn't count as a title. It marks a post whose heading text is generated rather than written as a title — see [Heading and meta title text](#heading-and-meta-title-text).
 - `POST_URL` is the URL of the individual post page, e.g. `1.html`
 - `POST_TITLE_TAG` is `h2` when the post is displayed on a multi-post page (index or category page), or `h1` on the individual post page
 - `POST_HEADING` is the post's heading text — see [Post types](#post-types) for how it's derived
@@ -439,7 +440,7 @@ Where:
 
 Notes:
 
-- The heading element is always present, on every post, regardless of type. See [Post types](#post-types) for what text it contains when the post has no `title`. Visually hiding it for untitled posts — so it exists for the document outline and assistive technology without appearing on the page — is the responsibility of the project's own `resources/` CSS, keyed off `POST_TYPE_CLASS`; Magnetizer itself never hides it.
+- The heading element is always present, on every post, regardless of type. See [Post types](#post-types) for what text it contains when the post has no `title`. Visually hiding it for untitled posts — so it exists for the document outline and assistive technology without appearing on the page — is the responsibility of the project's own `resources/` CSS, keyed off `UNTITLED_CLASS`; Magnetizer itself never hides it. A generated heading is only meant to be seen as the page `<title>`, archive link text, feed entry title and search result title — never on the page itself.
 - On multi-post pages (index and category pages), the heading is an `<h2>` rather than `<h1>`, so that a page listing several posts has only one `<h1>` (used elsewhere on the page, e.g. for a category name). On the individual post page, the heading is an `<h1>`. See below for how this interacts with heading tags inside `POST_BODY` itself.
 - If the post is displayed on a multi-post page, the heading and `<time>` contain a link to the post page. On the individual post page, no links are included.
 - A post or special page's body is authored starting at `#` (top level) and `##` (sub-level) — two levels only, as if the body were its own document, with no need to account for the heading levels `POST_TITLE_TAG` already occupies. At render time, `POST_BODY`'s heading tags are renumbered depending on where the post is shown: by **one level** (`h1`→`h2`, `h2`→`h3`) on the post's own page and in each entry's content in `feed.xml`, so the body never introduces a second `<h1>` alongside `POST_TITLE_TAG`; by **two levels** (`h1`→`h3`, `h2`→`h4`) on a multi-post page (index or category page), since `POST_TITLE_TAG` is already `<h2>` there.
@@ -463,7 +464,7 @@ Every post is classified into exactly one of three types, based on its `title`, 
 
 - A blank or whitespace-only `title`, `name`, or body counts as unset/empty throughout — for classification, for the invalid-post and warning checks below, and for the heading/meta-title/archive fallback logic. A post with `title: "   "` is treated exactly like one with no `title` at all.
 - Images placed inline in the body via `{{ image N }}` (see [Inline images](#inline-images)) don't count as top-level images for the Image post criterion, but any image at all — top-level or inline — rules out a Note: an untitled post with only an inline image, regardless of length, is a Full post instead.
-- The 806-character length cap on a Note is 50% over the longest post that qualified under Magnetizer's previous, uncapped Note classification (537 characters) — chosen to comfortably cover existing short posts while drawing a firm line between a "note" and an ordinary untitled post. An untitled, image-less post at or past that length is a Full post: it gets the normal excerpt/"Read more" treatment on multi-post pages instead of always showing its full body, and its heading (see below) is shown rather than visually hidden.
+- The 806-character length cap on a Note is 50% over the longest post that qualified under Magnetizer's previous, uncapped Note classification (537 characters) — chosen to comfortably cover existing short posts while drawing a firm line between a "note" and an ordinary untitled post. An untitled, image-less post at or past that length is a Full post: it gets the normal excerpt/"Read more" treatment on multi-post pages instead of always showing its full body. Like every untitled post, its heading is visually hidden (see [Posts](#posts)).
 - All in-post features — `<!-- more -->`, `{{ image N }}`, container blocks, dynamic values — work the same way regardless of post type. Magnetizer doesn't restrict which features a Full post, Image post or Note can use.
 - A post with no `title`, no images, and no body content is invalid. The build exits with an error.
 - A post with both `title` and `name` set uses the `title` and ignores `name`. A build warning is printed naming the post.

@@ -56,11 +56,11 @@ class TestRenderArticleStructure:
 
     def test_image_post_type_class(self):
         html = render_article(make_post(post_type="image", title=None), on_index_page=False)
-        assert 'class="single-post image-post"' in html
+        assert 'class="single-post image-post untitled"' in html
 
     def test_note_post_type_class(self):
         html = render_article(make_post(post_type="note", title=None), on_index_page=False)
-        assert 'class="single-post note"' in html
+        assert 'class="single-post note untitled"' in html
 
     def test_post_type_class_on_index_page(self):
         html = render_article(make_post(post_type="full"), on_index_page=True)
@@ -72,8 +72,35 @@ class TestRenderArticleStructure:
 
     def test_type_class_appended_alongside_layout_class_not_instead_of_it(self):
         html = render_article(make_post(post_type="note", title=None), on_index_page=False)
-        assert 'class="single-post note"' in html
+        assert 'class="single-post note untitled"' in html
         assert 'class="note"' not in html
+
+    # A heading generated from name/excerpt/date is for meta title, archive,
+    # feed and search only — the `untitled` class lets the site's CSS hide it.
+    def test_untitled_full_post_gets_untitled_class(self):
+        post = make_post(post_type="full", title=None, images=["a.jpg"], inline_image_filenames=frozenset({"a.jpg"}))
+        html = render_article(post, on_index_page=False)
+        assert 'class="single-post full-post untitled"' in html
+
+    def test_untitled_class_on_index_page(self):
+        html = render_article(make_post(post_type="full", title=None), on_index_page=True)
+        assert 'class="multiple-posts full-post untitled"' in html
+
+    def test_named_post_without_title_is_untitled(self):
+        html = render_article(make_post(post_type="image", title=None, name="Harbour"), on_index_page=False)
+        assert 'class="single-post image-post untitled"' in html
+
+    def test_titled_post_has_no_untitled_class(self):
+        html = render_article(make_post(post_type="full", title="My Post"), on_index_page=False)
+        assert "untitled" not in html
+
+    def test_whitespace_title_is_untitled(self):
+        html = render_article(make_post(post_type="full", title="   "), on_index_page=False)
+        assert 'class="single-post full-post untitled"' in html
+
+    def test_untitled_post_still_renders_heading(self):
+        html = render_article(make_post(post_type="note", title=None, body_html="<p>Hello there</p>"), on_index_page=False)
+        assert '<h1 data-pagefind-meta="title">Hello there</h1>' in html
 
     def test_post_body_present(self):
         html = render_article(make_post(body_html="<p>Hello</p>"), on_index_page=False)
