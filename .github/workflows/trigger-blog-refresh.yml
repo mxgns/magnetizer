@@ -15,16 +15,21 @@ jobs:
     if: github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-        with:
-          sparse-checkout: .github/scripts
-
       - name: Dispatch a refresh build on mxgns/blog
         env:
           GH_TOKEN: ${{ secrets.BLOG_TRIGGER_TOKEN }}
         run: |
           gh workflow run publish.yml -R mxgns/blog --ref main \
             -f flush=false -f publish=true
+
+      # After the dispatch, not before: the dispatch needs no repo files, so a
+      # checkout failure must never stop the blog rebuild from being triggered.
+      - name: Check out the notifier script
+        if: always()
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: .github/scripts
+          persist-credentials: false
 
       # Needs a SLACK_WEBHOOK_URL repo secret; skips quietly without it.
       - name: Notify Slack

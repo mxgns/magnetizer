@@ -14,6 +14,10 @@ import urllib.request
 
 PRODUCTION_BRANCH = "main"
 DEPLOYMENTS_URL = "https://github.com/mxgns/blog/actions/workflows/publish.yml"
+# Stands in for a commit subject or PR whose GitHub lookup failed, so the
+# alert still goes out (with that detail labelled) instead of being dropped.
+UNAVAILABLE = object()
+_UNAVAILABLE_TEXT = "unavailable (GitHub lookup failed)"
 
 
 def _esc(text):
@@ -33,8 +37,13 @@ def _failed_part(status, outcomes):
 def build_message(*, kind, status, branch, sha, subject, run_url, pr, outcomes):
     ok = status == "success"
     short = sha[:7]
-    pr_link = [f"<{pr['url']}|View PR>"] if pr else []
-    pr_line = f"PR: #{pr['number']} — {_esc(pr['title'])}" if pr else None
+    if pr is UNAVAILABLE:
+        pr_link, pr_line = [], f"PR: {_UNAVAILABLE_TEXT}"
+    elif pr:
+        pr_link = [f"<{pr['url']}|View PR>"]
+        pr_line = f"PR: #{pr['number']} — {_esc(pr['title'])}"
+    else:
+        pr_link, pr_line = [], None
 
     if kind == "test" and branch != PRODUCTION_BRANCH:
         lines = [
@@ -61,8 +70,11 @@ def build_message(*, kind, status, branch, sha, subject, run_url, pr, outcomes):
             else:
                 detail = f"🔴 {_failed_part(status, outcomes)} on main · Not deployed"
             links = pr_link + [f"<{run_url}|View failed run>"]
-        change = re.sub(r"\s*\(#\d+\)$", "", subject)
-        lines = [header, detail, f"Commit: `{short}`", f"Change: {_esc(change)}"]
+        if subject is UNAVAILABLE:
+            change = _UNAVAILABLE_TEXT
+        else:
+            change = _esc(re.sub(r"\s*\(#\d+\)$", "", subject))
+        lines = [header, detail, f"Commit: `{short}`", f"Change: {change}"]
         if pr_line:
             lines.append(pr_line)
         lines.append(" · ".join(links))
@@ -82,6 +94,23 @@ def _github(path, token):
         return json.load(resp)
 
 
+def fetch_metadata(repo, sha, get):
+    """Commit subject and PR for sha; each is UNAVAILABLE if its lookup fails."""
+    try:
+        subject = get(f"/repos/{repo}/commits/{sha}")["commit"]["message"].splitlines()[0]
+    except Exception as e:
+        print(f"Commit lookup failed: {e}", file=sys.stderr)
+        subject = UNAVAILABLE
+    try:
+        pulls = get(f"/repos/{repo}/commits/{sha}/pulls")
+        pr = ({"number": pulls[0]["number"], "title": pulls[0]["title"],
+               "url": pulls[0]["html_url"]} if pulls else None)
+    except Exception as e:
+        print(f"PR lookup failed: {e}", file=sys.stderr)
+        pr = UNAVAILABLE
+    return subject, pr
+
+
 def main():
     env = os.environ
     webhook = env.get("SLACK_WEBHOOK_URL")
@@ -90,11 +119,7 @@ def main():
         return
     repo, sha, token = env["GITHUB_REPOSITORY"], env["SHA"], env["GITHUB_TOKEN"]
 
-    subject = _github(f"/repos/{repo}/commits/{sha}", token)["commit"]["message"]
-    subject = subject.splitlines()[0]
-    pulls = _github(f"/repos/{repo}/commits/{sha}/pulls", token)
-    pr = ({"number": pulls[0]["number"], "title": pulls[0]["title"],
-           "url": pulls[0]["html_url"]} if pulls else None)
+    subject, pr = fetch_metadata(repo, sha, lambda path: _github(path, token))
 
     text = build_message(
         kind=env["KIND"], status=env["STATUS"], branch=env["BRANCH"], sha=sha,

@@ -122,3 +122,63 @@ def test_slack_control_characters_are_escaped():
     out = msg(kind="refresh", pr=pr, subject="a < b & c")
     assert "PR: #117 — Use &lt;b&gt; &amp; &lt;i&gt;" in out
     assert "Change: a &lt; b &amp; c" in out
+
+
+# GitHub metadata lookups
+
+UNAVAILABLE = slack_notify.UNAVAILABLE
+
+
+def test_unavailable_metadata_is_labelled_not_dropped():
+    out = msg(kind="refresh", status="failure", subject=UNAVAILABLE, pr=UNAVAILABLE)
+    assert "Change: unavailable (GitHub lookup failed)" in out
+    assert "PR: unavailable (GitHub lookup failed)" in out
+    assert "Commit: `d44f3d7`" in out
+    assert out.endswith(f"<{RUN}|View failed run>")
+
+
+def test_unavailable_pr_on_branch_is_not_reported_as_none_yet():
+    out = msg(branch="wip", pr=UNAVAILABLE)
+    assert "PR: unavailable (GitHub lookup failed)" in out
+    assert "none yet" not in out
+    assert out.endswith(f"<{RUN}|View CI>")
+
+
+def _getter(responses):
+    def get(path):
+        result = responses[path]
+        if isinstance(result, Exception):
+            raise result
+        return result
+    return get
+
+
+def test_fetch_metadata_success():
+    get = _getter({
+        "/repos/r/commits/s": {"commit": {"message": "Subject line\n\nBody"}},
+        "/repos/r/commits/s/pulls": [{"number": 1, "title": "T", "html_url": "U"}],
+    })
+    assert slack_notify.fetch_metadata("r", "s", get) == (
+        "Subject line", {"number": 1, "title": "T", "url": "U"})
+
+
+def test_fetch_metadata_no_pr():
+    get = _getter({
+        "/repos/r/commits/s": {"commit": {"message": "Subject"}},
+        "/repos/r/commits/s/pulls": [],
+    })
+    assert slack_notify.fetch_metadata("r", "s", get) == ("Subject", None)
+
+
+def test_fetch_metadata_failures_are_independent():
+    get = _getter({
+        "/repos/r/commits/s": OSError("503"),
+        "/repos/r/commits/s/pulls": [{"number": 1, "title": "T", "html_url": "U"}],
+    })
+    assert slack_notify.fetch_metadata("r", "s", get) == (
+        UNAVAILABLE, {"number": 1, "title": "T", "url": "U"})
+    get = _getter({
+        "/repos/r/commits/s": {"commit": {"message": "Subject"}},
+        "/repos/r/commits/s/pulls": OSError("503"),
+    })
+    assert slack_notify.fetch_metadata("r", "s", get) == ("Subject", UNAVAILABLE)
