@@ -75,6 +75,7 @@ def build_message(*, kind, status, branch, sha, subject, run_url, pr, outcomes):
         if pr_line:
             lines.append(pr_line)
 
+    lines.insert(1, "")  # empty row between heading and details
     if not ok:
         lines.insert(0, "<!here>")
     return "\n".join(lines)
