@@ -6,7 +6,9 @@ import webbrowser
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
-from magnetizer.preview import make_server
+from magnetizer.config import load_config
+from magnetizer.manifest import load_manifest
+from magnetizer.preview import last_edited_md, make_server, page_for_md
 from magnetizer.source_publisher import run_build
 
 _BUILD_SCRIPT = Path(__file__).parent / "build.py"
@@ -32,8 +34,14 @@ def main():
     )
     args, build_args = parser.parse_known_args()
 
+    cwd = Path.cwd()
+    # Before building: the build rewrites manifest.json, erasing what changed.
+    edited_md = None
+    if (cwd / "content").is_dir():
+        edited_md = last_edited_md(cwd / "content", load_manifest(cwd / "manifest.json"))
+
     try:
-        build_ok = run_build(_BUILD_SCRIPT, Path.cwd(), args=build_args)
+        build_ok = run_build(_BUILD_SCRIPT, cwd, args=build_args)
     except RuntimeError as e:
         print(f"  {e}", file=sys.stderr)
         sys.exit(1)
@@ -42,12 +50,16 @@ def main():
         sys.exit(1)
 
     try:
-        server = make_server(Path.cwd() / "dist", port=args.port)
+        server = make_server(cwd / "dist", port=args.port)
     except OSError as e:
         print(f"  Can't serve on port {args.port}: {e.strerror}", file=sys.stderr)
         sys.exit(1)
 
     url = f"http://localhost:{server.server_address[1]}/"
+    if edited_md:
+        page = page_for_md(edited_md, load_config(cwd / "config.yaml"))
+        if (cwd / "dist" / page).is_file():
+            url += page
     print(f"Serving at {url} (Ctrl+C to stop)", flush=True)
     if not args.no_open:
         # In a thread: with a text-mode browser, webbrowser.open blocks until

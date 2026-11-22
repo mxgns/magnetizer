@@ -352,6 +352,8 @@ Every build re-runs Pagefind indexing over the whole of `dist/` afterwards — s
 
 Run `preview.py` from your project directory to build the site and browse it locally. It runs `build.py`, then serves `dist/` at `http://localhost:8000/` and opens it in your browser; press Ctrl+C to stop. Nothing is served if the build fails.
 
+If you've edited any `.md` files since the last build, it opens the page for the most recently edited one instead of the homepage (a comment opens the page it's on).
+
 | Command | What it does |
 |---|---|
 | `preview.py` | Build, then serve and open the site |

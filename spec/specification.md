@@ -1769,9 +1769,10 @@ Must be run from the project root (same convention as `build.py`).
 - `--no-open` — don't open the site in the default browser.
 - Any other option (`--flush`, `--refresh`, `--resources`, `--verbose`) is passed straight through to `build.py`; an option `build.py` doesn't recognise fails the build the same way it would there.
 
-1. Run `build.py` with the passed-through options (same 600-second timeout as `publish.py`). If it fails or times out, exit non-zero without serving.
-2. Serve `dist/` on `127.0.0.1` only (never on other network interfaces), print `Serving at http://localhost:{port}/ (Ctrl+C to stop)`, and open that URL in the browser unless `--no-open`. A port that can't be bound (e.g. already in use) is an error, exit non-zero.
-3. Serve until Ctrl+C, then exit 0.
+1. Before building, find the most recently edited `.md` file: of the `.md` files in `content/` that are new or have different content compared to `manifest.json` (the same sha256 comparison the build uses, so a touched-but-unedited file doesn't count), the one with the newest mtime. None if there's no `manifest.json` yet (a first build), or nothing changed. This has to happen before the build, which rewrites the manifest.
+2. Run `build.py` with the passed-through options (same 600-second timeout as `publish.py`). If it fails or times out, exit non-zero without serving.
+3. Serve `dist/` on `127.0.0.1` only (never on other network interfaces), print `Serving at {URL} (Ctrl+C to stop)`, and open that URL in the browser unless `--no-open`. `{URL}` is `http://localhost:{port}/`, followed by the page for the edited `.md` from step 1, if any: `{name}.html` for `{name}.md`, the page it belongs to for a comment (`{name}-comment-NN.md` → `{name}.html`), and `404-page-output-filename` for the 404 page or its comments. If that page doesn't exist in `dist/` (e.g. an orphan comment), the homepage URL is used instead. A port that can't be bound (e.g. already in use) is an error, exit non-zero.
+4. Serve until Ctrl+C, then exit 0.
 
 The server serves files as-is from `dist/`, so root-relative links (e.g. `/feed.xml`) resolve the same way as on the live site, unlike opening the files directly in a browser. A request for a path that doesn't exist gets `dist/404.html` with a 404 status, if that file exists — matching GitHub Pages' custom 404 behaviour (see [404 page](#404-page)) — or a plain 404 otherwise. Paths outside `dist/` are never served, including via a symlink inside `dist/` that resolves to somewhere outside it (symlinks resolving within `dist/` work normally). Per-request logging is suppressed so the build output stays readable.
 

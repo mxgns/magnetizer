@@ -1,9 +1,14 @@
 """Local HTTP server for previewing a built dist/ — see preview.py."""
 
 import functools
+import re
 from http import HTTPStatus
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+
+from magnetizer.manifest import is_file_changed
+
+_COMMENT_SUFFIX = re.compile(r'-comment-\d{2}$')
 
 
 class _PreviewHandler(SimpleHTTPRequestHandler):
@@ -46,3 +51,27 @@ def make_server(dist_path, port=8000):
     """Return a server (not yet serving) for dist_path, on localhost only."""
     handler = functools.partial(_PreviewHandler, directory=str(dist_path))
     return ThreadingHTTPServer(("127.0.0.1", port), handler)
+
+
+def last_edited_md(content_dir, manifest):
+    """The .md file in content_dir changed since manifest was saved (new or
+    different content) with the newest mtime, or None if none changed — or
+    if there's no previous manifest, so a first build has nothing to compare."""
+    if not manifest:
+        return None
+    changed = [
+        f for f in Path(content_dir).glob("*.md")
+        if not f.name.startswith(".") and is_file_changed(manifest, f.name, f)
+    ]
+    if not changed:
+        return None
+    return max(changed, key=lambda f: f.stat().st_mtime).name
+
+
+def page_for_md(md_name, config):
+    """The dist/ page an .md file ends up on: its own page, or for a comment
+    the page it belongs to."""
+    stem = _COMMENT_SUFFIX.sub("", md_name[:-len(".md")])
+    if stem + ".md" == config.get("404-page-input-filename"):
+        return config["404-page-output-filename"]
+    return f"{stem}.html"
