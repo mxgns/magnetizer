@@ -112,10 +112,45 @@ def warnings_reply(lines):
     n = len(lines)
     heading = (":warning: *Build warning on 1 page*" if n == 1
                else f":warning: *Build warnings on {n} pages*")
-    shown = [line.replace("```", "'''") for line in lines[:MAX_WARNING_LINES]]
+    shown = lines[:MAX_WARNING_LINES]
     if n > MAX_WARNING_LINES:
         shown.append(f"… and {n - MAX_WARNING_LINES} more")
-    return "\n".join([heading, "```", *shown, "```"])
+    return _code_reply(heading, shown)
+
+
+MAX_ERROR_LINES = 20
+_ANSI = re.compile(r"\x1b\[[0-9;]*m")
+
+
+def _code_reply(heading, lines):
+    # A ``` inside a line would end the code block early.
+    lines = [line.replace("```", "'''") for line in lines]
+    return "\n".join([heading, "```", *lines, "```"])
+
+
+def error_excerpt(log):
+    """The tail of a failed step's combined stdout/stderr -- where the error is."""
+    lines = [line.rstrip() for line in _ANSI.sub("", log).splitlines() if line.strip()]
+    if len(lines) > MAX_ERROR_LINES:
+        return ["…"] + lines[-MAX_ERROR_LINES:]
+    return lines
+
+
+def error_reply(title, log):
+    lines = error_excerpt(log)
+    return _code_reply(f":x: *{title}*", lines) if lines else None
+
+
+def thread_replies(*, build_log, ingest_log, publish_log,
+                   build_failed, ingest_failed, publish_failed):
+    """Thread replies under the main message: warnings, then each failure's error."""
+    replies = [
+        warnings_reply(warning_lines(build_log)),
+        error_reply("Build error", build_log) if build_failed else None,
+        error_reply("Inbox ingest error", ingest_log) if ingest_failed else None,
+        error_reply("Publish error", publish_log) if publish_failed else None,
+    ]
+    return [r for r in replies if r]
 
 
 def ingested_post(ingest_log):
@@ -225,8 +260,8 @@ def build_message(*, status, published, publish_outcome, save_cache, step_outcom
     return "\n".join(lines)
 
 
-def deliver(text, warnings_text, *, bot_token, channel, webhook, api, post_webhook):
-    """Post text; with a bot token, also post warnings_text as a thread reply.
+def deliver(text, replies, *, bot_token, channel, webhook, api, post_webhook):
+    """Post text; with a bot token, also post each of replies in its thread.
 
     Incoming webhooks can't thread (they don't return the message's ts), so
     the webhook fallback posts the main message only.
@@ -234,8 +269,8 @@ def deliver(text, warnings_text, *, bot_token, channel, webhook, api, post_webho
     if bot_token and channel:
         ts = api("chat.postMessage", {"channel": channel, "text": text,
                                       "unfurl_links": False}, bot_token)["ts"]
-        if warnings_text:
-            api("chat.postMessage", {"channel": channel, "text": warnings_text,
+        for reply in replies:
+            api("chat.postMessage", {"channel": channel, "text": reply,
                                      "thread_ts": ts}, bot_token)
     elif webhook:
         post_webhook(webhook, {"text": text})
@@ -333,12 +368,16 @@ def main():
         warnings=count_warnings(build_log),
         ingest_failed=env.get("INGEST_OUTCOME") == "failure",
     )
-    warnings_text = warnings_reply(warning_lines(build_log))
-    deliver(text, warnings_text, bot_token=bot_token, channel=channel,
+    replies = thread_replies(
+        build_log=build_log, ingest_log=_read(env.get("INGEST_LOG", "")),
+        publish_log=_read(env.get("PUBLISH_LOG", "")),
+        build_failed=env.get("BUILD_OUTCOME") == "failure",
+        ingest_failed=env.get("INGEST_OUTCOME") == "failure",
+        publish_failed=env.get("PUBLISH_OUTCOME") == "failure",
+    )
+    deliver(text, replies, bot_token=bot_token, channel=channel,
             webhook=webhook, api=_slack_api, post_webhook=_post_webhook)
-    print(text)
-    if warnings_text:
-        print(warnings_text)
+    print("\n\n".join([text, *replies]))
 
 
 if __name__ == "__main__":
