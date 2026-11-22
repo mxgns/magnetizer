@@ -2,6 +2,9 @@ name: Test
 on:
   push:
   pull_request:
+permissions:
+  contents: read
+  pull-requests: read  # PR number/title for the Slack message
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -11,31 +14,25 @@ jobs:
         with:
           python-version: "3.14"
       - run: pip install -r requirements-dev.txt
-      - run: ruff check .
-      - run: pytest
+      - id: lint
+        run: ruff check .
+      - id: tests
+        run: pytest
 
-      # Posts the result to Slack. Needs a SLACK_WEBHOOK_URL repo secret
-      # (a Slack incoming webhook); skipped quietly if it isn't set, and
-      # never fails the build if Slack itself is unreachable.
+      # Needs a SLACK_WEBHOOK_URL repo secret; skips quietly without it.
+      # Push events only, so a PR branch doesn't get two messages per push.
       - name: Notify Slack
         if: always() && github.event_name == 'push'
         continue-on-error: true
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          GITHUB_TOKEN: ${{ github.token }}
+          KIND: test
           STATUS: ${{ job.status }}
+          BRANCH: ${{ github.ref_name }}
+          SHA: ${{ github.sha }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-        run: |
-          if [ -z "$SLACK_WEBHOOK_URL" ]; then
-            echo "SLACK_WEBHOOK_URL not set; skipping."
-            exit 0
-          fi
-          case "$STATUS" in
-            success)   icon=":white_check_mark:" ;;
-            cancelled) icon=":no_entry_sign:" ;;
-            *)         icon=":x:" ;;
-          esac
-          subject=$(git log -1 --format=%s "$GITHUB_SHA" 2>/dev/null \
-            | sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g')
-          text="$icon *${GITHUB_REPOSITORY#*/}* $GITHUB_WORKFLOW: $STATUS on \`$GITHUB_REF_NAME\` (${GITHUB_SHA::7}) $subject <$RUN_URL|View run>"
-          jq -n --arg text "$text" '{text: $text}' \
-            | curl -sSf -X POST -H 'Content-Type: application/json' --data @- "$SLACK_WEBHOOK_URL"
+          LINT_OUTCOME: ${{ steps.lint.outcome }}
+          TESTS_OUTCOME: ${{ steps.tests.outcome }}
+        run: python .github/scripts/slack_notify.py
+

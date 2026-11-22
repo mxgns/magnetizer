@@ -8,6 +8,7 @@ on:
 
 permissions:
   contents: read
+  pull-requests: read  # PR number/title for the Slack message
 
 jobs:
   trigger:
@@ -20,3 +21,26 @@ jobs:
         run: |
           gh workflow run publish.yml -R mxgns/blog --ref main \
             -f flush=false -f publish=true
+
+      # After the dispatch, not before: the dispatch needs no repo files, so a
+      # checkout failure must never stop the blog rebuild from being triggered.
+      - name: Check out the notifier script
+        if: always()
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: .github/scripts
+          persist-credentials: false
+
+      # Needs a SLACK_WEBHOOK_URL repo secret; skips quietly without it.
+      - name: Notify Slack
+        if: always()
+        continue-on-error: true
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          GITHUB_TOKEN: ${{ github.token }}
+          KIND: refresh
+          STATUS: ${{ job.status }}
+          BRANCH: main
+          SHA: ${{ github.event.workflow_run.head_sha }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: python3 .github/scripts/slack_notify.py

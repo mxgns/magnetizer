@@ -5,6 +5,10 @@
 
 ## Released changes
 
+### 22/11/26
+
+- Clearer Slack CI notifications, with PR details and what failed
+
 ### 21/11/26
 
 - Added related posts
