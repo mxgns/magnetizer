@@ -33,10 +33,10 @@ def test_production_deployed():
     assert msg(kind="refresh") == "\n".join([
         "*🧲 MAGNETIZER · PRODUCTION DEPLOYED*",
         "",
-        f"✅ Tests passed · <{DEPLOYS}|Blog rebuild triggered>",
-        "Commit: `d44f3d7`",
-        "Change: Hide generated headings on untitled posts",
-        f"PR: <{PR['url']}|#117> — Hide generated headings on untitled posts",
+        f"> ✅ Tests passed · <{DEPLOYS}|Blog rebuild triggered>",
+        "> Commit: `d44f3d7`",
+        "> Change: Hide generated headings on untitled posts",
+        f"> PR: <{PR['url']}|#117> — Hide generated headings on untitled posts",
     ])
 
 
@@ -46,10 +46,10 @@ def test_production_test_failure():
         "<!here>",
         "*🧲 MAGNETIZER · PRODUCTION FAILURE*",
         "",
-        f"🔴 <{RUN}|Tests failed> on main · Not deployed",
-        "Commit: `d44f3d7`",
-        "Change: Hide generated headings on untitled posts",
-        f"PR: <{PR['url']}|#117> — Hide generated headings on untitled posts",
+        f"> 🔴 <{RUN}|Tests failed> on main · Not deployed",
+        "> Commit: `d44f3d7`",
+        "> Change: Hide generated headings on untitled posts",
+        f"> PR: <{PR['url']}|#117> — Hide generated headings on untitled posts",
     ])
 
 
@@ -74,7 +74,7 @@ def test_refresh_trigger_failure():
         "<!here>",
         "*🧲 MAGNETIZER · PRODUCTION FAILURE*",
         "",
-        f"🔴 Tests passed, but the <{RUN}|blog rebuild couldn't be triggered>"
+        f"> 🔴 Tests passed, but the <{RUN}|blog rebuild couldn't be triggered>"
         " · Not deployed",
     ]
     assert "View" not in out
@@ -96,9 +96,9 @@ def test_branch_build_passed():
     assert out == "\n".join([
         "*🧪 MAGNETIZER · BRANCH BUILD PASSED*",
         "",
-        f"✅ <{RUN}|Tests passed> · Not deployed",
-        f"PR: <{pr['url']}|#118> — Add related posts",
-        "Branch: `related-posts` · `ee3ee29`",
+        f"> ✅ <{RUN}|Tests passed> · Not deployed",
+        f"> PR: <{pr['url']}|#118> — Add related posts",
+        "> Branch: `related-posts` · `ee3ee29`",
     ])
 
 
@@ -109,7 +109,7 @@ def test_branch_build_failed():
         "<!here>",
         "*🧪 MAGNETIZER · BRANCH BUILD FAILED*",
         "",
-        f"❌ <{RUN}|Tests failed> · Not deployed",
+        f"> ❌ <{RUN}|Tests failed> · Not deployed",
     ]
     assert "View" not in out
 
@@ -194,3 +194,13 @@ def test_heading_is_followed_by_an_empty_row():
         assert lines[heading].startswith("*")
         assert lines[heading + 1] == ""
         assert lines[heading + 2] != ""
+
+
+def test_details_are_a_quote_but_the_heading_is_not():
+    for out in [msg(kind="refresh"), msg(status="failure"), msg(branch="wip"),
+                msg(kind="refresh", pr=UNAVAILABLE, subject=UNAVAILABLE)]:
+        lines = out.splitlines()
+        heading = 1 if lines[0] == "<!here>" else 0
+        assert not lines[heading].startswith(">")
+        details = lines[heading + 2:]
+        assert details and all(line.startswith("> ") for line in details)
