@@ -18,9 +18,12 @@ jobs:
       - name: Dispatch a refresh build on mxgns/blog
         env:
           GH_TOKEN: ${{ secrets.BLOG_TRIGGER_TOKEN }}
+          SHA: ${{ github.event.workflow_run.head_sha }}
+        # magnetizer_sha lets the Blog's Slack message say which magnetizer
+        # change triggered the rebuild.
         run: |
           gh workflow run publish.yml -R mxgns/blog --ref main \
-            -f flush=false -f publish=true
+            -f flush=false -f publish=true -f magnetizer_sha="$SHA"
 
       # After the dispatch, not before: the dispatch needs no repo files, so a
       # checkout failure must never stop the blog rebuild from being triggered.

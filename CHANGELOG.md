@@ -7,6 +7,7 @@
 
 ### 22/11/26
 
+- Blog Slack messages list new and updated posts, with links
 - Clearer Slack CI notifications, with PR details and what failed
 
 ### 21/11/26
