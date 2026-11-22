@@ -249,3 +249,153 @@ def test_title_from_markdown():
     md = "---\ndate: 2026-01-01\ntitle: An old post\n---\n\nBody\n"
     assert blog_notify.title_from_markdown(md) == "An old post"
     assert blog_notify.title_from_markdown("---\ndate: 2026\n---\nx") is None
+
+
+# Warning details (posted as a thread reply)
+
+BUILD_LOG = """Building...
+  148   148.md   [1 img]   ⚠ Broken internal link: 'jnco-1169.md'
+  index.html   ⚠ Broken internal link: 'jnco-1169.md'
+  inventory.html   ⚠ Broken internal link: 'jnco-1169.md', Other thing
+1 created · 1 updated · 0 deleted
+⚠ 3 warnings: 148.md, index.html, inventory.html
+
+DONE with warnings
+"""
+
+
+def test_warning_lines_from_build_log():
+    assert blog_notify.warning_lines(BUILD_LOG) == [
+        "148   148.md   [1 img]   ⚠ Broken internal link: 'jnco-1169.md'",
+        "index.html   ⚠ Broken internal link: 'jnco-1169.md'",
+        "inventory.html   ⚠ Broken internal link: 'jnco-1169.md', Other thing",
+    ]
+    assert blog_notify.warning_lines("DONE.\n") == []
+
+
+def test_warnings_reply():
+    lines = blog_notify.warning_lines(BUILD_LOG)
+    assert blog_notify.warnings_reply(lines) == "\n".join([
+        ":warning: *Build warnings on 3 pages*",
+        "```",
+        *lines,
+        "```",
+    ])
+    assert blog_notify.warnings_reply(lines[:1]).startswith(
+        ":warning: *Build warning on 1 page*\n```\n")
+
+
+def test_warnings_reply_caps_long_lists():
+    lines = [f"{i}.html   ⚠ x" for i in range(60)]
+    out = blog_notify.warnings_reply(lines).splitlines()
+    assert out[0] == ":warning: *Build warnings on 60 pages*"
+    assert out[-2] == "… and 10 more"
+    assert len(out) == 1 + 1 + 50 + 1 + 1
+
+
+def test_warnings_reply_none():
+    assert blog_notify.warnings_reply([]) is None
+
+
+def test_backticks_in_warnings_cannot_end_the_code_block():
+    out = blog_notify.warnings_reply(["a.html   ⚠ Bad ```code```"])
+    assert out.count("```") == 2
+
+
+# Posting: bot token (threaded) vs webhook
+
+class FakeSlack:
+    def __init__(self):
+        self.calls = []
+
+    def api(self, method, payload, token):
+        self.calls.append(("api", method, payload, token))
+        return {"ok": True, "ts": "111.222"}
+
+    def webhook(self, url, payload):
+        self.calls.append(("webhook", url, payload))
+
+
+def test_bot_token_posts_message_then_threaded_warnings():
+    fake = FakeSlack()
+    blog_notify.deliver("MAIN", ["WARN"], bot_token="xoxb", channel="C1",
+                        webhook=None, api=fake.api, post_webhook=fake.webhook)
+    assert fake.calls == [
+        ("api", "chat.postMessage", {"channel": "C1", "text": "MAIN",
+                                     "unfurl_links": False}, "xoxb"),
+        ("api", "chat.postMessage", {"channel": "C1", "text": "WARN",
+                                     "thread_ts": "111.222"}, "xoxb"),
+    ]
+
+
+def test_bot_token_without_warnings_posts_once():
+    fake = FakeSlack()
+    blog_notify.deliver("MAIN", [], bot_token="xoxb", channel="C1",
+                        webhook=None, api=fake.api, post_webhook=fake.webhook)
+    assert len(fake.calls) == 1
+
+
+def test_webhook_fallback_posts_main_message_only():
+    fake = FakeSlack()
+    blog_notify.deliver("MAIN", ["WARN"], bot_token=None, channel=None,
+                        webhook="https://hook", api=fake.api, post_webhook=fake.webhook)
+    assert fake.calls == [("webhook", "https://hook", {"text": "MAIN"})]
+
+
+def test_bot_token_preferred_over_webhook():
+    fake = FakeSlack()
+    blog_notify.deliver("MAIN", [], bot_token="xoxb", channel="C1",
+                        webhook="https://hook", api=fake.api, post_webhook=fake.webhook)
+    assert [c[0] for c in fake.calls] == ["api"]
+
+
+def test_each_reply_is_threaded_in_order():
+    fake = FakeSlack()
+    blog_notify.deliver("MAIN", ["A", "B"], bot_token="xoxb", channel="C1",
+                        webhook=None, api=fake.api, post_webhook=fake.webhook)
+    assert [c[2]["text"] for c in fake.calls] == ["MAIN", "A", "B"]
+    assert all(c[2]["thread_ts"] == "111.222" for c in fake.calls[1:])
+
+
+# Error details (thread replies)
+
+def test_error_excerpt_is_the_tail_of_the_log_without_colour_codes():
+    log = "Building " + "." * 20 + "\n  Template 'x.html' not found\n\x1b[31mERROR\x1b[0m\n"
+    assert blog_notify.error_excerpt(log) == [
+        "Building " + "." * 20, "  Template 'x.html' not found", "ERROR"]
+
+
+def test_error_excerpt_caps_to_last_lines():
+    log = "\n".join(f"line {i}" for i in range(100)) + "\nValueError: bad photo\n"
+    out = blog_notify.error_excerpt(log)
+    assert out[0] == "…"
+    assert out[-1] == "ValueError: bad photo"
+    assert len(out) == 1 + blog_notify.MAX_ERROR_LINES
+
+
+def test_error_reply():
+    assert blog_notify.error_reply("Build error", "  Bad thing\nERROR\n") == (
+        ":x: *Build error*\n```\n  Bad thing\nERROR\n```")
+    assert blog_notify.error_reply("Build error", "\n\n") is None
+
+
+def test_thread_replies_for_each_failure():
+    replies = blog_notify.thread_replies(
+        build_log="  ok   ⚠ Broken internal link: 'x'\n  Boom\nERROR\n",
+        ingest_log="Traceback (most recent call last):\nValueError: two .md files\n",
+        publish_log="! [rejected] main -> main (fetch first)\n",
+        build_failed=True, ingest_failed=True, publish_failed=True)
+    assert [r.splitlines()[0] for r in replies] == [
+        ":warning: *Build warning on 1 page*",
+        ":x: *Build error*",
+        ":x: *Inbox ingest error*",
+        ":x: *Publish error*",
+    ]
+    assert "ValueError: two .md files" in replies[2]
+    assert "! [rejected] main -> main (fetch first)" in replies[3]
+
+
+def test_no_error_replies_when_nothing_failed():
+    assert blog_notify.thread_replies(
+        build_log="DONE.\n", ingest_log="Nothing to ingest.\n", publish_log="",
+        build_failed=False, ingest_failed=False, publish_failed=False) == []

@@ -7,6 +7,7 @@
 
 ### 22/11/26
 
+- Blog build warnings and errors posted as Slack thread replies
 - `preview.py` opens the most recently edited page instead of the homepage
 - Blog Slack messages list new and updated posts, with links
 - Clearer Slack CI notifications, with PR details and what failed
