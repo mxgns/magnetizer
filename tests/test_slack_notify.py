@@ -1,0 +1,124 @@
+import importlib.util
+from pathlib import Path
+
+_PATH = Path(__file__).parent.parent / ".github" / "scripts" / "slack_notify.py"
+_spec = importlib.util.spec_from_file_location("slack_notify", _PATH)
+slack_notify = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(slack_notify)
+build_message = slack_notify.build_message
+
+RUN = "https://github.com/mxgns/magnetizer/actions/runs/1"
+DEPLOYS = "https://github.com/mxgns/blog/actions/workflows/publish.yml"
+PR = {"number": 117, "title": "Hide generated headings on untitled posts",
+      "url": "https://github.com/mxgns/magnetizer/pull/117"}
+SHA = "d44f3d7aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+OK = {"lint": "success", "tests": "success"}
+
+
+def msg(**kw):
+    args = dict(kind="test", status="success", branch="main", sha=SHA,
+                subject="Hide generated headings on untitled posts (#117)",
+                run_url=RUN, pr=PR, outcomes=OK)
+    args.update(kw)
+    return build_message(**args)
+
+
+# Production (main)
+
+def test_main_test_success_sends_nothing_because_refresh_announces_deploy():
+    assert msg() is None
+
+
+def test_production_deployed():
+    assert msg(kind="refresh") == "\n".join([
+        "*🧲 MAGNETIZER · PRODUCTION DEPLOYED*",
+        "✅ Tests passed · Blog rebuild triggered",
+        "Commit: `d44f3d7`",
+        "Change: Hide generated headings on untitled posts",
+        "PR: #117 — Hide generated headings on untitled posts",
+        f"<{PR['url']}|View PR> · <{DEPLOYS}|View deployment>",
+    ])
+
+
+def test_production_test_failure():
+    out = msg(status="failure", outcomes={"lint": "success", "tests": "failure"})
+    assert out == "\n".join([
+        "<!here>",
+        "*🧲 MAGNETIZER · PRODUCTION FAILURE*",
+        "🔴 Tests failed on main · Not deployed",
+        "Commit: `d44f3d7`",
+        "Change: Hide generated headings on untitled posts",
+        "PR: #117 — Hide generated headings on untitled posts",
+        f"<{PR['url']}|View PR> · <{RUN}|View failed run>",
+    ])
+
+
+def test_production_lint_failure_names_lint():
+    out = msg(status="failure", outcomes={"lint": "failure", "tests": "skipped"})
+    assert "🔴 Lint failed on main · Not deployed" in out
+
+
+def test_production_setup_failure_names_setup():
+    out = msg(status="failure", outcomes={"lint": "skipped", "tests": "skipped"})
+    assert "🔴 CI setup failed on main · Not deployed" in out
+
+
+def test_cancelled_run_says_cancelled():
+    out = msg(status="cancelled", outcomes={"lint": "success", "tests": "cancelled"})
+    assert "🔴 CI run was cancelled on main · Not deployed" in out
+
+
+def test_refresh_trigger_failure():
+    out = msg(kind="refresh", status="failure")
+    assert out.splitlines()[:3] == [
+        "<!here>",
+        "*🧲 MAGNETIZER · PRODUCTION FAILURE*",
+        "🔴 Tests passed, but the blog rebuild couldn't be triggered · Not deployed",
+    ]
+    assert out.endswith(f"<{RUN}|View failed run>")
+
+
+def test_production_without_pr_omits_pr_line_and_link():
+    out = msg(kind="refresh", pr=None, subject="Direct commit")
+    assert "PR:" not in out
+    assert "Change: Direct commit" in out
+    assert out.endswith(f"<{DEPLOYS}|View deployment>")
+
+
+# Branch builds
+
+def test_branch_build_passed():
+    pr = {"number": 118, "title": "Add related posts",
+          "url": "https://github.com/mxgns/magnetizer/pull/118"}
+    out = msg(branch="related-posts", sha="ee3ee29" + "0" * 33, pr=pr)
+    assert out == "\n".join([
+        "*🧪 MAGNETIZER · BRANCH BUILD PASSED*",
+        "✅ Tests passed · Not deployed",
+        "PR: #118 — Add related posts",
+        "Branch: `related-posts` · `ee3ee29`",
+        f"<{pr['url']}|View PR> · <{RUN}|View CI>",
+    ])
+
+
+def test_branch_build_failed():
+    out = msg(branch="related-posts", status="failure",
+              outcomes={"lint": "success", "tests": "failure"})
+    assert out.splitlines()[:3] == [
+        "<!here>",
+        "*🧪 MAGNETIZER · BRANCH BUILD FAILED*",
+        "❌ Tests failed · Not deployed",
+    ]
+    assert out.endswith(f"<{RUN}|View failed CI>")
+
+
+def test_branch_without_pr_says_so():
+    out = msg(branch="wip", pr=None)
+    assert "PR: none yet" in out
+    assert out.endswith(f"<{RUN}|View CI>")
+
+
+def test_slack_control_characters_are_escaped():
+    pr = dict(PR, title="Use <b> & <i>")
+    out = msg(kind="refresh", pr=pr, subject="a < b & c")
+    assert "PR: #117 — Use &lt;b&gt; &amp; &lt;i&gt;" in out
+    assert "Change: a &lt; b &amp; c" in out
