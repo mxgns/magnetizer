@@ -92,3 +92,48 @@ class TestServing:
         finally:
             proc.terminate()
             proc.wait(timeout=10)
+
+
+class TestOpensEditedPage:
+
+    def _serve_url(self, cwd):
+        proc = subprocess.Popen(
+            [sys.executable, "-u", str(SCRIPT), "--no-open", "--port", "0"],
+            cwd=str(cwd), stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
+        )
+        try:
+            for line in proc.stdout:
+                if line.startswith("Serving"):
+                    return line.split()[2]
+            raise AssertionError("preview.py exited without serving")
+        finally:
+            proc.terminate()
+            proc.wait(timeout=10)
+
+    def test_first_run_serves_homepage(self, tmp_path):
+        make_project(tmp_path, posts={1: MINIMAL_MD, 2: MINIMAL_MD})
+        assert self._serve_url(tmp_path).endswith("/")
+
+    def test_serves_most_recently_edited_page(self, tmp_path):
+        import os
+        make_project(tmp_path, posts={1: MINIMAL_MD, 2: MINIMAL_MD, 3: MINIMAL_MD})
+        self._serve_url(tmp_path)
+        for name, mtime in (("1.md", 2_000_000_200), ("3.md", 2_000_000_100)):
+            path = tmp_path / "content" / name
+            path.write_text(MINIMAL_MD + "\nEdited.\n")
+            os.utime(path, (mtime, mtime))
+        assert self._serve_url(tmp_path).endswith("/1.html")
+
+    def test_unchanged_rerun_serves_homepage(self, tmp_path):
+        make_project(tmp_path, posts={1: MINIMAL_MD})
+        self._serve_url(tmp_path)
+        assert self._serve_url(tmp_path).endswith("/")
+
+    def test_serves_homepage_when_edited_md_has_no_page(self, tmp_path):
+        make_project(tmp_path, posts={1: MINIMAL_MD})
+        self._serve_url(tmp_path)
+        # An orphan comment (no post 9) only warns, and has no page to open.
+        (tmp_path / "content" / "9-comment-01.md").write_text(
+            "---\ndate: 2026-08-05\nauthor: Magnus\n---\nHello\n"
+        )
+        assert self._serve_url(tmp_path).endswith("/")

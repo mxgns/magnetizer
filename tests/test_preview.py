@@ -107,3 +107,101 @@ class TestMakeServer:
         (tmp_path / "real.html").write_text("<p>real</p>")
         (tmp_path / "alias.html").symlink_to(tmp_path / "real.html")
         assert fetch(serve(tmp_path) + "/alias.html") == (200, "<p>real</p>")
+
+
+class TestLastEditedMd:
+
+    def _build_manifest(self, content):
+        from magnetizer.manifest import load_manifest, save_manifest
+        save_manifest(content, content.parent / "manifest.json")
+        return load_manifest(content.parent / "manifest.json")
+
+    def _content(self, tmp_path, *names):
+        content = tmp_path / "content"
+        content.mkdir()
+        for name in names:
+            (content / name).write_text(f"# {name}\n")
+        return content
+
+    def _edit(self, path, text, mtime):
+        import os
+        path.write_text(text)
+        os.utime(path, (mtime, mtime))
+
+    def test_none_when_nothing_changed(self, tmp_path):
+        from magnetizer.preview import last_edited_md
+        content = self._content(tmp_path, "1.md", "2.md")
+        manifest = self._build_manifest(content)
+        assert last_edited_md(content, manifest) is None
+
+    def test_none_without_a_previous_manifest(self, tmp_path):
+        from magnetizer.preview import last_edited_md
+        content = self._content(tmp_path, "1.md")
+        assert last_edited_md(content, {}) is None
+
+    def test_returns_edited_md(self, tmp_path):
+        from magnetizer.preview import last_edited_md
+        content = self._content(tmp_path, "1.md", "2.md")
+        manifest = self._build_manifest(content)
+        self._edit(content / "2.md", "# changed\n", 2_000_000_000)
+        assert last_edited_md(content, manifest) == "2.md"
+
+    def test_returns_new_md(self, tmp_path):
+        from magnetizer.preview import last_edited_md
+        content = self._content(tmp_path, "1.md")
+        manifest = self._build_manifest(content)
+        (content / "2.md").write_text("# new\n")
+        assert last_edited_md(content, manifest) == "2.md"
+
+    def test_most_recently_modified_wins(self, tmp_path):
+        from magnetizer.preview import last_edited_md
+        content = self._content(tmp_path, "1.md", "2.md", "3.md")
+        manifest = self._build_manifest(content)
+        self._edit(content / "1.md", "# a\n", 2_000_000_200)
+        self._edit(content / "3.md", "# b\n", 2_000_000_100)
+        assert last_edited_md(content, manifest) == "1.md"
+
+    def test_touched_but_unchanged_is_ignored(self, tmp_path):
+        from magnetizer.preview import last_edited_md
+        content = self._content(tmp_path, "1.md")
+        manifest = self._build_manifest(content)
+        self._edit(content / "1.md", "# 1.md\n", 2_000_000_000)
+        assert last_edited_md(content, manifest) is None
+
+    def test_ignores_non_md_files(self, tmp_path):
+        from magnetizer.preview import last_edited_md
+        content = self._content(tmp_path, "1.md", "1-image-01.jpeg")
+        manifest = self._build_manifest(content)
+        self._edit(content / "1-image-01.jpeg", "new bytes", 2_000_000_000)
+        assert last_edited_md(content, manifest) is None
+
+
+class TestPageForMd:
+
+    _CONFIG = {"404-page-input-filename": None, "404-page-output-filename": None}
+
+    def test_post(self):
+        from magnetizer.preview import page_for_md
+        assert page_for_md("12.md", self._CONFIG) == "12.html"
+
+    def test_special_page(self):
+        from magnetizer.preview import page_for_md
+        assert page_for_md("about.md", self._CONFIG) == "about.html"
+
+    def test_post_comment_goes_to_its_post(self):
+        from magnetizer.preview import page_for_md
+        assert page_for_md("12-comment-03.md", self._CONFIG) == "12.html"
+
+    def test_special_page_comment_goes_to_its_page(self):
+        from magnetizer.preview import page_for_md
+        assert page_for_md("about-comment-01.md", self._CONFIG) == "about.html"
+
+    def test_404_page_uses_configured_output_filename(self):
+        from magnetizer.preview import page_for_md
+        config = {"404-page-input-filename": "error-404.md", "404-page-output-filename": "404.html"}
+        assert page_for_md("error-404.md", config) == "404.html"
+
+    def test_404_page_comment_goes_to_configured_output_filename(self):
+        from magnetizer.preview import page_for_md
+        config = {"404-page-input-filename": "error-404.md", "404-page-output-filename": "404.html"}
+        assert page_for_md("error-404-comment-01.md", config) == "404.html"
