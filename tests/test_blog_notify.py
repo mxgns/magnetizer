@@ -249,3 +249,101 @@ def test_title_from_markdown():
     md = "---\ndate: 2026-01-01\ntitle: An old post\n---\n\nBody\n"
     assert blog_notify.title_from_markdown(md) == "An old post"
     assert blog_notify.title_from_markdown("---\ndate: 2026\n---\nx") is None
+
+
+# Warning details (posted as a thread reply)
+
+BUILD_LOG = """Building...
+  148   148.md   [1 img]   ⚠ Broken internal link: 'jnco-1169.md'
+  index.html   ⚠ Broken internal link: 'jnco-1169.md'
+  inventory.html   ⚠ Broken internal link: 'jnco-1169.md', Other thing
+1 created · 1 updated · 0 deleted
+⚠ 3 warnings: 148.md, index.html, inventory.html
+
+DONE with warnings
+"""
+
+
+def test_warning_lines_from_build_log():
+    assert blog_notify.warning_lines(BUILD_LOG) == [
+        "148   148.md   [1 img]   ⚠ Broken internal link: 'jnco-1169.md'",
+        "index.html   ⚠ Broken internal link: 'jnco-1169.md'",
+        "inventory.html   ⚠ Broken internal link: 'jnco-1169.md', Other thing",
+    ]
+    assert blog_notify.warning_lines("DONE.\n") == []
+
+
+def test_warnings_reply():
+    lines = blog_notify.warning_lines(BUILD_LOG)
+    assert blog_notify.warnings_reply(lines) == "\n".join([
+        ":warning: *Build warnings on 3 pages*",
+        "```",
+        *lines,
+        "```",
+    ])
+    assert blog_notify.warnings_reply(lines[:1]).startswith(
+        ":warning: *Build warning on 1 page*\n```\n")
+
+
+def test_warnings_reply_caps_long_lists():
+    lines = [f"{i}.html   ⚠ x" for i in range(60)]
+    out = blog_notify.warnings_reply(lines).splitlines()
+    assert out[0] == ":warning: *Build warnings on 60 pages*"
+    assert out[-2] == "… and 10 more"
+    assert len(out) == 1 + 1 + 50 + 1 + 1
+
+
+def test_warnings_reply_none():
+    assert blog_notify.warnings_reply([]) is None
+
+
+def test_backticks_in_warnings_cannot_end_the_code_block():
+    out = blog_notify.warnings_reply(["a.html   ⚠ Bad ```code```"])
+    assert out.count("```") == 2
+
+
+# Posting: bot token (threaded) vs webhook
+
+class FakeSlack:
+    def __init__(self):
+        self.calls = []
+
+    def api(self, method, payload, token):
+        self.calls.append(("api", method, payload, token))
+        return {"ok": True, "ts": "111.222"}
+
+    def webhook(self, url, payload):
+        self.calls.append(("webhook", url, payload))
+
+
+def test_bot_token_posts_message_then_threaded_warnings():
+    fake = FakeSlack()
+    blog_notify.deliver("MAIN", "WARN", bot_token="xoxb", channel="C1",
+                        webhook=None, api=fake.api, post_webhook=fake.webhook)
+    assert fake.calls == [
+        ("api", "chat.postMessage", {"channel": "C1", "text": "MAIN",
+                                     "unfurl_links": False}, "xoxb"),
+        ("api", "chat.postMessage", {"channel": "C1", "text": "WARN",
+                                     "thread_ts": "111.222"}, "xoxb"),
+    ]
+
+
+def test_bot_token_without_warnings_posts_once():
+    fake = FakeSlack()
+    blog_notify.deliver("MAIN", None, bot_token="xoxb", channel="C1",
+                        webhook=None, api=fake.api, post_webhook=fake.webhook)
+    assert len(fake.calls) == 1
+
+
+def test_webhook_fallback_posts_main_message_only():
+    fake = FakeSlack()
+    blog_notify.deliver("MAIN", "WARN", bot_token=None, channel=None,
+                        webhook="https://hook", api=fake.api, post_webhook=fake.webhook)
+    assert fake.calls == [("webhook", "https://hook", {"text": "MAIN"})]
+
+
+def test_bot_token_preferred_over_webhook():
+    fake = FakeSlack()
+    blog_notify.deliver("MAIN", None, bot_token="xoxb", channel="C1",
+                        webhook="https://hook", api=fake.api, post_webhook=fake.webhook)
+    assert [c[0] for c in fake.calls] == ["api"]

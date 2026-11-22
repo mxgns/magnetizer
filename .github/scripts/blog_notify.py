@@ -96,6 +96,28 @@ def count_warnings(build_log):
     return int(m.group(1)) if m else 0
 
 
+MAX_WARNING_LINES = 50
+
+
+def warning_lines(build_log):
+    """build.py's per-page warning lines ("  name   ⚠ message"), stripped."""
+    return [line.strip() for line in build_log.splitlines()
+            if line.startswith(" ") and "   ⚠ " in line]
+
+
+def warnings_reply(lines):
+    """Thread reply listing every build warning, or None if there are none."""
+    if not lines:
+        return None
+    n = len(lines)
+    heading = (":warning: *Build warning on 1 page*" if n == 1
+               else f":warning: *Build warnings on {n} pages*")
+    shown = [line.replace("```", "'''") for line in lines[:MAX_WARNING_LINES]]
+    if n > MAX_WARNING_LINES:
+        shown.append(f"… and {n - MAX_WARNING_LINES} more")
+    return "\n".join([heading, "```", *shown, "```"])
+
+
 def ingested_post(ingest_log):
     m = re.search(r"^Post (\d+) created\.", ingest_log, re.MULTILINE)
     return m.group(1) if m else None
@@ -203,6 +225,41 @@ def build_message(*, status, published, publish_outcome, save_cache, step_outcom
     return "\n".join(lines)
 
 
+def deliver(text, warnings_text, *, bot_token, channel, webhook, api, post_webhook):
+    """Post text; with a bot token, also post warnings_text as a thread reply.
+
+    Incoming webhooks can't thread (they don't return the message's ts), so
+    the webhook fallback posts the main message only.
+    """
+    if bot_token and channel:
+        ts = api("chat.postMessage", {"channel": channel, "text": text,
+                                      "unfurl_links": False}, bot_token)["ts"]
+        if warnings_text:
+            api("chat.postMessage", {"channel": channel, "text": warnings_text,
+                                     "thread_ts": ts}, bot_token)
+    elif webhook:
+        post_webhook(webhook, {"text": text})
+
+
+def _slack_api(method, payload, token):
+    req = urllib.request.Request(
+        f"https://slack.com/api/{method}", data=json.dumps(payload).encode(),
+        headers={"Content-Type": "application/json; charset=utf-8",
+                 "Authorization": f"Bearer {token}"},
+    )
+    with urllib.request.urlopen(req, timeout=15) as resp:
+        result = json.load(resp)
+    if not result.get("ok"):
+        raise RuntimeError(f"Slack {method} failed: {result.get('error')}")
+    return result
+
+
+def _post_webhook(url, payload):
+    req = urllib.request.Request(url, data=json.dumps(payload).encode(),
+                                 headers={"Content-Type": "application/json"})
+    urllib.request.urlopen(req, timeout=15).read()
+
+
 def _git(*args):
     return subprocess.run(["git", *args], capture_output=True, text=True, check=True).stdout
 
@@ -235,9 +292,11 @@ def _changes_since(prev):
 def main():
     env = os.environ
     webhook = env.get("SLACK_WEBHOOK_URL")
-    if not webhook:
-        print("SLACK_WEBHOOK_URL not set; skipping.")
+    bot_token, channel = env.get("SLACK_BOT_TOKEN"), env.get("SLACK_CHANNEL")
+    if not (webhook or (bot_token and channel)):
+        print("Neither SLACK_BOT_TOKEN+SLACK_CHANNEL nor SLACK_WEBHOOK_URL set; skipping.")
         return
+    build_log = _read(env.get("BUILD_LOG", ""))
 
     try:
         sha = _git("rev-parse", "HEAD").strip()
@@ -271,15 +330,15 @@ def main():
             flush=env.get("FLUSH") == "true",
             magnetizer_sha=magnetizer_sha, magnetizer_pr=magnetizer_pr),
         changes=changes, titles=titles, removed_titles=removed_titles,
-        warnings=count_warnings(_read(env.get("BUILD_LOG", ""))),
+        warnings=count_warnings(build_log),
         ingest_failed=env.get("INGEST_OUTCOME") == "failure",
     )
-    req = urllib.request.Request(
-        webhook, data=json.dumps({"text": text}).encode(),
-        headers={"Content-Type": "application/json"},
-    )
-    urllib.request.urlopen(req, timeout=15).read()
+    warnings_text = warnings_reply(warning_lines(build_log))
+    deliver(text, warnings_text, bot_token=bot_token, channel=channel,
+            webhook=webhook, api=_slack_api, post_webhook=_post_webhook)
     print(text)
+    if warnings_text:
+        print(warnings_text)
 
 
 if __name__ == "__main__":
