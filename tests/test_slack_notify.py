@@ -32,6 +32,7 @@ def test_main_test_success_sends_nothing_because_refresh_announces_deploy():
 def test_production_deployed():
     assert msg(kind="refresh") == "\n".join([
         "*🧲 MAGNETIZER · PRODUCTION DEPLOYED*",
+        "",
         f"✅ Tests passed · <{DEPLOYS}|Blog rebuild triggered>",
         "Commit: `d44f3d7`",
         "Change: Hide generated headings on untitled posts",
@@ -44,6 +45,7 @@ def test_production_test_failure():
     assert out == "\n".join([
         "<!here>",
         "*🧲 MAGNETIZER · PRODUCTION FAILURE*",
+        "",
         f"🔴 <{RUN}|Tests failed> on main · Not deployed",
         "Commit: `d44f3d7`",
         "Change: Hide generated headings on untitled posts",
@@ -68,9 +70,10 @@ def test_cancelled_run_says_cancelled():
 
 def test_refresh_trigger_failure():
     out = msg(kind="refresh", status="failure")
-    assert out.splitlines()[:3] == [
+    assert out.splitlines()[:4] == [
         "<!here>",
         "*🧲 MAGNETIZER · PRODUCTION FAILURE*",
+        "",
         f"🔴 Tests passed, but the <{RUN}|blog rebuild couldn't be triggered>"
         " · Not deployed",
     ]
@@ -92,6 +95,7 @@ def test_branch_build_passed():
     out = msg(branch="related-posts", sha="ee3ee29" + "0" * 33, pr=pr)
     assert out == "\n".join([
         "*🧪 MAGNETIZER · BRANCH BUILD PASSED*",
+        "",
         f"✅ <{RUN}|Tests passed> · Not deployed",
         f"PR: <{pr['url']}|#118> — Add related posts",
         "Branch: `related-posts` · `ee3ee29`",
@@ -101,9 +105,10 @@ def test_branch_build_passed():
 def test_branch_build_failed():
     out = msg(branch="related-posts", status="failure",
               outcomes={"lint": "success", "tests": "failure"})
-    assert out.splitlines()[:3] == [
+    assert out.splitlines()[:4] == [
         "<!here>",
         "*🧪 MAGNETIZER · BRANCH BUILD FAILED*",
+        "",
         f"❌ <{RUN}|Tests failed> · Not deployed",
     ]
     assert "View" not in out
@@ -180,3 +185,12 @@ def test_fetch_metadata_failures_are_independent():
         "/repos/r/commits/s/pulls": OSError("503"),
     })
     assert slack_notify.fetch_metadata("r", "s", get) == ("Subject", UNAVAILABLE)
+
+
+def test_heading_is_followed_by_an_empty_row():
+    for out in [msg(kind="refresh"), msg(status="failure"), msg(branch="wip")]:
+        lines = out.splitlines()
+        heading = 1 if lines[0] == "<!here>" else 0
+        assert lines[heading].startswith("*")
+        assert lines[heading + 1] == ""
+        assert lines[heading + 2] != ""
