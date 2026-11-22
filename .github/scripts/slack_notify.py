@@ -75,6 +75,8 @@ def build_message(*, kind, status, branch, sha, subject, run_url, pr, outcomes):
         if pr_line:
             lines.append(pr_line)
 
+    # Heading, an empty row, then the details as a Slack quote.
+    lines = [lines[0], ""] + [f"> {line}" for line in lines[1:]]
     if not ok:
         lines.insert(0, "<!here>")
     return "\n".join(lines)
