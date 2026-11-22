@@ -38,38 +38,35 @@ def build_message(*, kind, status, branch, sha, subject, run_url, pr, outcomes):
     ok = status == "success"
     short = sha[:7]
     if pr is UNAVAILABLE:
-        pr_link, pr_line = [], f"PR: {_UNAVAILABLE_TEXT}"
+        pr_line = f"PR: {_UNAVAILABLE_TEXT}"
     elif pr:
-        pr_link = [f"<{pr['url']}|View PR>"]
-        pr_line = f"PR: #{pr['number']} — {_esc(pr['title'])}"
+        pr_line = f"PR: <{pr['url']}|#{pr['number']}> — {_esc(pr['title'])}"
     else:
-        pr_link, pr_line = [], None
+        pr_line = None
+    failed = f"<{run_url}|{_failed_part(status, outcomes)}>"
 
     if kind == "test" and branch != PRODUCTION_BRANCH:
         lines = [
             "*🧪 MAGNETIZER · BRANCH BUILD PASSED*" if ok
             else "*🧪 MAGNETIZER · BRANCH BUILD FAILED*",
-            "✅ Tests passed · Not deployed" if ok
-            else f"❌ {_failed_part(status, outcomes)} · Not deployed",
+            f"✅ <{run_url}|Tests passed> · Not deployed" if ok
+            else f"❌ {failed} · Not deployed",
             pr_line or "PR: none yet",
             f"Branch: `{_esc(branch)}` · `{short}`",
-            " · ".join(pr_link + [f"<{run_url}|{'View CI' if ok else 'View failed CI'}>"]),
         ]
     else:
         if kind == "test" and ok:
             return None
         if ok:
             header = "*🧲 MAGNETIZER · PRODUCTION DEPLOYED*"
-            detail = "✅ Tests passed · Blog rebuild triggered"
-            links = pr_link + [f"<{DEPLOYMENTS_URL}|View deployment>"]
+            detail = f"✅ Tests passed · <{DEPLOYMENTS_URL}|Blog rebuild triggered>"
         else:
             header = "*🧲 MAGNETIZER · PRODUCTION FAILURE*"
             if kind == "refresh":
-                detail = ("🔴 Tests passed, but the blog rebuild couldn't be "
-                          "triggered · Not deployed")
+                detail = (f"🔴 Tests passed, but the <{run_url}|blog rebuild "
+                          "couldn't be triggered> · Not deployed")
             else:
-                detail = f"🔴 {_failed_part(status, outcomes)} on main · Not deployed"
-            links = pr_link + [f"<{run_url}|View failed run>"]
+                detail = f"🔴 {failed} on main · Not deployed"
         if subject is UNAVAILABLE:
             change = _UNAVAILABLE_TEXT
         else:
@@ -77,7 +74,6 @@ def build_message(*, kind, status, branch, sha, subject, run_url, pr, outcomes):
         lines = [header, detail, f"Commit: `{short}`", f"Change: {change}"]
         if pr_line:
             lines.append(pr_line)
-        lines.append(" · ".join(links))
 
     if not ok:
         lines.insert(0, "<!here>")

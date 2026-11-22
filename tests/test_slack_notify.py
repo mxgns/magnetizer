@@ -32,11 +32,10 @@ def test_main_test_success_sends_nothing_because_refresh_announces_deploy():
 def test_production_deployed():
     assert msg(kind="refresh") == "\n".join([
         "*🧲 MAGNETIZER · PRODUCTION DEPLOYED*",
-        "✅ Tests passed · Blog rebuild triggered",
+        f"✅ Tests passed · <{DEPLOYS}|Blog rebuild triggered>",
         "Commit: `d44f3d7`",
         "Change: Hide generated headings on untitled posts",
-        "PR: #117 — Hide generated headings on untitled posts",
-        f"<{PR['url']}|View PR> · <{DEPLOYS}|View deployment>",
+        f"PR: <{PR['url']}|#117> — Hide generated headings on untitled posts",
     ])
 
 
@@ -45,27 +44,26 @@ def test_production_test_failure():
     assert out == "\n".join([
         "<!here>",
         "*🧲 MAGNETIZER · PRODUCTION FAILURE*",
-        "🔴 Tests failed on main · Not deployed",
+        f"🔴 <{RUN}|Tests failed> on main · Not deployed",
         "Commit: `d44f3d7`",
         "Change: Hide generated headings on untitled posts",
-        "PR: #117 — Hide generated headings on untitled posts",
-        f"<{PR['url']}|View PR> · <{RUN}|View failed run>",
+        f"PR: <{PR['url']}|#117> — Hide generated headings on untitled posts",
     ])
 
 
 def test_production_lint_failure_names_lint():
     out = msg(status="failure", outcomes={"lint": "failure", "tests": "skipped"})
-    assert "🔴 Lint failed on main · Not deployed" in out
+    assert f"🔴 <{RUN}|Lint failed> on main · Not deployed" in out
 
 
 def test_production_setup_failure_names_setup():
     out = msg(status="failure", outcomes={"lint": "skipped", "tests": "skipped"})
-    assert "🔴 CI setup failed on main · Not deployed" in out
+    assert f"🔴 <{RUN}|CI setup failed> on main · Not deployed" in out
 
 
 def test_cancelled_run_says_cancelled():
     out = msg(status="cancelled", outcomes={"lint": "success", "tests": "cancelled"})
-    assert "🔴 CI run was cancelled on main · Not deployed" in out
+    assert f"🔴 <{RUN}|CI run was cancelled> on main · Not deployed" in out
 
 
 def test_refresh_trigger_failure():
@@ -73,16 +71,17 @@ def test_refresh_trigger_failure():
     assert out.splitlines()[:3] == [
         "<!here>",
         "*🧲 MAGNETIZER · PRODUCTION FAILURE*",
-        "🔴 Tests passed, but the blog rebuild couldn't be triggered · Not deployed",
+        f"🔴 Tests passed, but the <{RUN}|blog rebuild couldn't be triggered>"
+        " · Not deployed",
     ]
-    assert out.endswith(f"<{RUN}|View failed run>")
+    assert "View" not in out
 
 
 def test_production_without_pr_omits_pr_line_and_link():
     out = msg(kind="refresh", pr=None, subject="Direct commit")
     assert "PR:" not in out
     assert "Change: Direct commit" in out
-    assert out.endswith(f"<{DEPLOYS}|View deployment>")
+    assert out.endswith("Change: Direct commit")
 
 
 # Branch builds
@@ -93,10 +92,9 @@ def test_branch_build_passed():
     out = msg(branch="related-posts", sha="ee3ee29" + "0" * 33, pr=pr)
     assert out == "\n".join([
         "*🧪 MAGNETIZER · BRANCH BUILD PASSED*",
-        "✅ Tests passed · Not deployed",
-        "PR: #118 — Add related posts",
+        f"✅ <{RUN}|Tests passed> · Not deployed",
+        f"PR: <{pr['url']}|#118> — Add related posts",
         "Branch: `related-posts` · `ee3ee29`",
-        f"<{pr['url']}|View PR> · <{RUN}|View CI>",
     ])
 
 
@@ -106,21 +104,21 @@ def test_branch_build_failed():
     assert out.splitlines()[:3] == [
         "<!here>",
         "*🧪 MAGNETIZER · BRANCH BUILD FAILED*",
-        "❌ Tests failed · Not deployed",
+        f"❌ <{RUN}|Tests failed> · Not deployed",
     ]
-    assert out.endswith(f"<{RUN}|View failed CI>")
+    assert "View" not in out
 
 
 def test_branch_without_pr_says_so():
     out = msg(branch="wip", pr=None)
     assert "PR: none yet" in out
-    assert out.endswith(f"<{RUN}|View CI>")
+    assert out.endswith("Branch: `wip` · `d44f3d7`")
 
 
 def test_slack_control_characters_are_escaped():
     pr = dict(PR, title="Use <b> & <i>")
     out = msg(kind="refresh", pr=pr, subject="a < b & c")
-    assert "PR: #117 — Use &lt;b&gt; &amp; &lt;i&gt;" in out
+    assert f"PR: <{PR['url']}|#117> — Use &lt;b&gt; &amp; &lt;i&gt;" in out
     assert "Change: a &lt; b &amp; c" in out
 
 
@@ -134,14 +132,14 @@ def test_unavailable_metadata_is_labelled_not_dropped():
     assert "Change: unavailable (GitHub lookup failed)" in out
     assert "PR: unavailable (GitHub lookup failed)" in out
     assert "Commit: `d44f3d7`" in out
-    assert out.endswith(f"<{RUN}|View failed run>")
+    assert "View" not in out
 
 
 def test_unavailable_pr_on_branch_is_not_reported_as_none_yet():
     out = msg(branch="wip", pr=UNAVAILABLE)
     assert "PR: unavailable (GitHub lookup failed)" in out
     assert "none yet" not in out
-    assert out.endswith(f"<{RUN}|View CI>")
+    assert out.endswith("Branch: `wip` · `d44f3d7`")
 
 
 def _getter(responses):
